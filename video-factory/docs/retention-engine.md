@@ -45,6 +45,12 @@ Premiere 26.3 can create single-word captions in the UI. The automation equivale
 - `social-accessible`: 3.5-second cadence, slower 105% motion, restrained transitions, native captions.
 - `youtube-explainer`: 5-second cadence, 106% emphasis motion, occasional dissolves, native captions.
 
+## Benchmark production
+
+The reusable `benchmarks/youtube-retention-showcase.json` job targets 5-8 minutes and fails QC outside that range. Its eleven chapters cover hooks, pacing, motion, proof, layouts, captions, transitions, graphics, sound/color, and workflow. The compiler places generated graphics on V3, fitted owner-supplied B-roll on V2, native captions on C1, narration on A1, and transition SFX on upper audio tracks.
+
+Long-form narration can use `generation.provider: "macos_say"` for a credential-free offline run. The provider creates real AIFF narration, 16:9 source graphics, and sentence-timed SRT cues; Premiere remains responsible for assembly, motion, overlays, captions, audio placement, project save, and H.264 export.
+
 ## Reliability rules
 
 1. Compile structured events, not arbitrary command strings.

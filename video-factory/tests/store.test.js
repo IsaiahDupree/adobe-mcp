@@ -80,6 +80,13 @@ test("job schema normalizes a scene-based HeyGen retention job", () => {
             caption_mode: "native",
             hook_text: "STOP THE SCROLL",
         },
+        showcase: {
+            enabled: true,
+            minimum_duration_seconds: 300,
+            maximum_duration_seconds: 480,
+            broll_sources: [],
+            sfx_sources: [],
+        },
     });
 
     assert.equal(job.generation.enabled, true);
@@ -88,5 +95,28 @@ test("job schema normalizes a scene-based HeyGen retention job", () => {
     assert.equal(job.retention.hookText, "STOP THE SCROLL");
     assert.equal(job.retention.captionMode, "native");
     assert.equal(job.retention.preset, "social-dynamic");
+    assert.equal(job.showcase.enabled, true);
+    assert.equal(job.showcase.minimumDurationSeconds, 300);
     assert.match(job.outputPaths.combinedCaptions, /combined-captions\.srt$/);
+});
+
+test("job schema accepts offline narration without HeyGen credentials", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "premiere-factory-local-schema-"));
+    const store = new JobStore({
+        JOBS_DIR: path.join(root, "jobs"),
+        CAMPAIGNS_DIR: path.join(root, "campaigns"),
+    });
+    const job = store.submit({
+        request: { topic: "Offline benchmark" },
+        generation: {
+            provider: "macos_say",
+            voice_name: "Samantha",
+            words_per_minute: 165,
+            scenes: [{ id: "intro", script: "A real offline narration scene." }],
+        },
+    });
+
+    assert.equal(job.generation.provider, "macos_say");
+    assert.equal(job.generation.voiceName, "Samantha");
+    assert.equal(job.generation.wordsPerMinute, 165);
 });

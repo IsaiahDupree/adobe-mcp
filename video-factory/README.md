@@ -83,6 +83,16 @@ The relevant input shape is:
 
 See [docs/retention-engine.md](docs/retention-engine.md) for the researched capability map, compiler tiers, native-caption architecture, and preset strategy.
 
+## Long-form benchmark
+
+`benchmarks/youtube-retention-showcase.json` produces a 5-8 minute, 16:9 reference video covering the major retention-editing families. It compiles eleven narrated chapters, native captions, timed motion, generated chapter graphics and callouts, owned B-roll, SFX, Premiere structural QC, Adobe H.264 export, and verified My Passport archival.
+
+The benchmark uses the offline `macos_say` generation provider so it remains runnable when a hosted avatar or TTS account has no credits. Switch `generation.provider` to `heygen` when API credits are available and presenter footage is preferred.
+
+```bash
+node cli.js submit benchmarks/youtube-retention-showcase.json --run
+```
+
 ## Agent API
 
 - `POST /api/jobs` submit a job

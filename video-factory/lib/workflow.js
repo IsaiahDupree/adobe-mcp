@@ -31,7 +31,9 @@ class VideoJobRunner {
         heygenManager = null,
         retentionPlanner = null,
         cepAdapter = null,
-        captionRenderer = null
+        captionRenderer = null,
+        showcaseRenderer = null,
+        localNarrationManager = null
     ) {
         this.store = store;
         this.appManager = appManager;
@@ -41,6 +43,8 @@ class VideoJobRunner {
         this.retentionPlanner = retentionPlanner;
         this.cepAdapter = cepAdapter;
         this.captionRenderer = captionRenderer;
+        this.showcaseRenderer = showcaseRenderer;
+        this.localNarrationManager = localNarrationManager;
         this.activeJobId = null;
     }
 
@@ -255,6 +259,8 @@ class VideoJobRunner {
                         insertionTimeTicks: Number.isFinite(clip.insertion_time_ticks)
                             ? clip.insertion_time_ticks
                             : null,
+                        durationSeconds: Number(clip.duration_seconds || 0),
+                        overwrite: clip.overwrite === true,
                     })),
                 });
             } else if (job.production.sequencePresetPath) {
@@ -374,6 +380,42 @@ class VideoJobRunner {
                 problem: "Native caption-track creation was not verified.",
             });
         }
+        if (job.showcase && job.showcase.enabled) {
+            const retentionResult = job.checkpoints["retention-edit"]?.result;
+            const showcase = retentionResult && retentionResult.showcase;
+            const premiereEdit = retentionResult && retentionResult.retentionEdit;
+            const plannedDuration = job.production.editPlan?.retention?.durationSeconds || 0;
+            if (
+                plannedDuration < job.showcase.minimumDurationSeconds ||
+                plannedDuration > job.showcase.maximumDurationSeconds
+            ) {
+                issues.push({
+                    severity: "critical",
+                    problem: "Benchmark runtime is outside the requested range.",
+                    expectedSeconds: [
+                        job.showcase.minimumDurationSeconds,
+                        job.showcase.maximumDurationSeconds,
+                    ],
+                    actualSeconds: plannedDuration,
+                });
+            }
+            if (!showcase || showcase.coverage.length !== job.generation.scenes.length) {
+                issues.push({
+                    severity: "critical",
+                    problem: "Benchmark chapter coverage is incomplete.",
+                });
+            }
+            if (
+                premiereEdit &&
+                (premiereEdit.broll.length !== job.showcase.brollSources.length ||
+                    premiereEdit.audio.length !== job.showcase.sfxSources.length)
+            ) {
+                issues.push({
+                    severity: "critical",
+                    problem: "Premiere did not place every requested benchmark asset.",
+                });
+            }
+        }
         const passed = issues.every((issue) => issue.severity !== "critical");
         const report = {
             jobId: job.id,
@@ -480,6 +522,18 @@ class VideoJobRunner {
             streams: probe.streams,
         };
         writeJsonAtomic(path.join(job.workspace, "qc", "render-validation.json"), report);
+        if (
+            job.showcase &&
+            job.showcase.enabled &&
+            (report.durationSeconds < job.showcase.minimumDurationSeconds ||
+                report.durationSeconds > job.showcase.maximumDurationSeconds)
+        ) {
+            throw new WorkflowValidationError("Rendered benchmark runtime is outside the requested range.", {
+                durationSeconds: report.durationSeconds,
+                minimumDurationSeconds: job.showcase.minimumDurationSeconds,
+                maximumDurationSeconds: job.showcase.maximumDurationSeconds,
+            });
+        }
         return report;
     }
 
@@ -487,7 +541,9 @@ class VideoJobRunner {
         const job = this.store.get(id);
         const premiereAssetsDir = path.join(job.workspace, "generated-assets", "heygen", "premiere-assets");
         ensureDir(premiereAssetsDir);
-        const sceneAssets = retentionResult.scenes.map((scene, index) => {
+        const sceneAssets = [];
+        const timeline = [];
+        retentionResult.scenes.forEach((scene, index) => {
             const extension = path.extname(scene.source) || ".mp4";
             const assetPath = path.join(premiereAssetsDir, `${scene.sceneId}${extension}`);
             if (!fs.existsSync(assetPath)) {
@@ -497,22 +553,52 @@ class VideoJobRunner {
                     fs.copyFileSync(scene.source, assetPath);
                 }
             }
-            return {
+            sceneAssets.push({
                 id: `asset-heygen-${String(index + 1).padStart(3, "0")}`,
                 path: assetPath,
-                role: "heygen-scene",
-                order: index,
-            };
+                role: scene.audioSource ? "local-scene-visual" : "heygen-scene",
+                order: sceneAssets.length,
+            });
+            timeline.push({
+                asset_path: assetPath,
+                order: timeline.length,
+                video_track_index: 0,
+                audio_track_index: 0,
+                insertion_time_ticks: Math.round(scene.start * 254016000000),
+                duration_seconds: scene.duration,
+                overwrite: Boolean(scene.audioSource),
+            });
+            if (scene.audioSource) {
+                const audioExtension = path.extname(scene.audioSource) || ".aiff";
+                const audioPath = path.join(premiereAssetsDir, `${scene.sceneId}-narration${audioExtension}`);
+                if (!fs.existsSync(audioPath)) {
+                    try {
+                        fs.linkSync(scene.audioSource, audioPath);
+                    } catch {
+                        fs.copyFileSync(scene.audioSource, audioPath);
+                    }
+                }
+                sceneAssets.push({
+                    id: `asset-narration-${String(index + 1).padStart(3, "0")}`,
+                    path: audioPath,
+                    role: "local-scene-narration",
+                    order: sceneAssets.length,
+                });
+                timeline.push({
+                    asset_path: audioPath,
+                    order: timeline.length,
+                    video_track_index: 0,
+                    audio_track_index: 0,
+                    insertion_time_ticks: Math.round(scene.start * 254016000000),
+                    duration_seconds: scene.duration,
+                    overwrite: true,
+                });
+            }
         });
         job.production.sourceAssets = sceneAssets;
         job.production.editPlan = {
             source: job.outputPaths.editManifest,
-            timeline: retentionResult.scenes.map((scene, index) => ({
-                asset_path: sceneAssets[index].path,
-                order: index,
-                video_track_index: 0,
-                audio_track_index: 0,
-            })),
+            timeline,
             retention: retentionResult,
         };
         this.store.save(job);
@@ -542,10 +628,14 @@ class VideoJobRunner {
         const captionAssets = useAnimatedCaptions
             ? await this.captionRenderer.render(job, plan)
             : [];
+        const showcase = job.showcase && job.showcase.enabled
+            ? await this.showcaseRenderer.render(job, plan)
+            : { enabled: false, graphics: [], videos: [], audio: [] };
         const editPacket = await this.cepAdapter.applyRetentionPlan({
             sequenceName: sequence.name,
             plan,
             captionAssets,
+            showcaseAssets: showcase,
         });
         const nativeCaptionTrack = useNativeCaptions
             ? await this.cepAdapter.createNativeCaptionTrack({
@@ -560,6 +650,7 @@ class VideoJobRunner {
             captionMode,
             nativeCaptionTrack,
             animatedCaptions: captionAssets,
+            showcase,
         };
     }
 
@@ -596,6 +687,10 @@ class VideoJobRunner {
                     "heygen-generation",
                     "GENERATING_AVATAR",
                     (current) => {
+                        if (current.generation.provider === "macos_say") {
+                            if (!this.localNarrationManager) throw new Error("Local narration manager is not configured.");
+                            return this.localNarrationManager.generate(current);
+                        }
                         if (!this.heygenManager) throw new Error("HeyGen manager is not configured.");
                         return this.heygenManager.generate(current);
                     }

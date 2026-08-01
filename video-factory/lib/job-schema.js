@@ -5,6 +5,7 @@ const { nowIso, slugify } = require("./util");
 
 const AUTONOMY_MODES = new Set(["supervised", "guarded", "full"]);
 const HEYGEN_ENGINES = new Set(["avatar_iii", "avatar_iv", "avatar_v"]);
+const GENERATION_PROVIDERS = new Set(["heygen", "macos_say"]);
 const ASPECT_RATIOS = new Set(["16:9", "9:16", "4:5", "5:4", "1:1", "auto"]);
 const CAPTION_MODES = new Set(["native", "animated", "both"]);
 const RETENTION_PRESETS = new Set(["social-dynamic", "social-accessible", "youtube-explainer"]);
@@ -68,7 +69,9 @@ function normalizeGeneration(spec, defaults = {}) {
     const input = spec.generation || (spec.production && spec.production.generation);
     if (!input || input.enabled === false) return { enabled: false };
     const provider = input.provider || "heygen";
-    if (provider !== "heygen") throw new Error("generation.provider must be heygen.");
+    if (!GENERATION_PROVIDERS.has(provider)) {
+        throw new Error(`generation.provider must be one of: ${Array.from(GENERATION_PROVIDERS).join(", ")}.`);
+    }
     const engine = input.engine || "avatar_iv";
     if (!HEYGEN_ENGINES.has(engine)) {
         throw new Error(`generation.engine must be one of: ${Array.from(HEYGEN_ENGINES).join(", ")}.`);
@@ -94,8 +97,8 @@ function normalizeGeneration(spec, defaults = {}) {
     });
     const avatarId = input.avatar_id || input.avatarId || defaults.avatarId;
     const voiceId = input.voice_id || input.voiceId || defaults.voiceId;
-    if (!avatarId) throw new Error("generation.avatar_id is required.");
-    if (!voiceId) throw new Error("generation.voice_id is required.");
+    if (provider === "heygen" && !avatarId) throw new Error("generation.avatar_id is required.");
+    if (provider === "heygen" && !voiceId) throw new Error("generation.voice_id is required.");
     return {
         enabled: true,
         provider,
@@ -106,7 +109,10 @@ function normalizeGeneration(spec, defaults = {}) {
         resolution: input.resolution || "720p",
         background: input.background || { type: "color", value: "#111111" },
         voiceSettings: input.voice_settings || input.voiceSettings || { speed: 1.04, locale: "en-US" },
+        voiceName: input.voice_name || input.voiceName || "Samantha",
+        wordsPerMinute: Number(input.words_per_minute || input.wordsPerMinute || 165),
         scenes,
+        concurrency: Math.max(1, Math.min(4, Number(input.concurrency || 3))),
         pollIntervalMs: Number(input.poll_interval_ms || input.pollIntervalMs || 8000),
         timeoutMs: Number(input.timeout_ms || input.timeoutMs || 20 * 60 * 1000),
     };
@@ -133,6 +139,48 @@ function normalizeRetention(spec) {
         nativeCaptionTrackName:
             input.native_caption_track_name || input.nativeCaptionTrackName || "C1_ACCESSIBILITY_EN",
         punchInScale: Number(input.punch_in_scale || input.punchInScale || 1.08),
+    };
+}
+
+function normalizeShowcase(spec) {
+    const input = spec.showcase || (spec.production && spec.production.showcase);
+    if (!input || input.enabled === false) return { enabled: false };
+    const normalizePaths = (items, field) =>
+        (items || []).map((item, index) => {
+            const value = typeof item === "string" ? item : item.path;
+            if (!value || !path.isAbsolute(value)) {
+                throw new Error(`showcase.${field}[${index}] requires an absolute path.`);
+            }
+            return path.normalize(value);
+        });
+    const normalizeBroll = (items) =>
+        (items || []).map((item, index) => {
+            const inputItem = typeof item === "string" ? { path: item } : { ...item };
+            if (!inputItem.path || !path.isAbsolute(inputItem.path)) {
+                throw new Error(`showcase.broll_sources[${index}] requires an absolute path.`);
+            }
+            return {
+                path: path.normalize(inputItem.path),
+                sceneId: inputItem.scene_id || inputItem.sceneId || null,
+                sourceStart: Number(inputItem.source_start || inputItem.sourceStart || 0),
+                scale: Number(inputItem.scale || 0) || null,
+            };
+        });
+    const minimumDurationSeconds = Number(
+        input.minimum_duration_seconds || input.minimumDurationSeconds || 300
+    );
+    const maximumDurationSeconds = Number(
+        input.maximum_duration_seconds || input.maximumDurationSeconds || 480
+    );
+    if (minimumDurationSeconds <= 0 || maximumDurationSeconds < minimumDurationSeconds) {
+        throw new Error("showcase duration range is invalid.");
+    }
+    return {
+        enabled: true,
+        minimumDurationSeconds,
+        maximumDurationSeconds,
+        brollSources: normalizeBroll(input.broll_sources || input.brollSources),
+        sfxSources: normalizePaths(input.sfx_sources || input.sfxSources, "sfx_sources"),
     };
 }
 
@@ -179,6 +227,7 @@ function normalizeJobSpec(
     const archive = normalizeArchive(spec, defaultArchiveRoot);
     const generation = normalizeGeneration(spec, defaults);
     const retention = normalizeRetention(spec, defaults);
+    const showcase = normalizeShowcase(spec);
     const render = production.render
         ? {
               ...production.render,
@@ -228,6 +277,7 @@ function normalizeJobSpec(
         },
         generation,
         retention,
+        showcase,
         archive,
         workspace,
         outputPaths: {
@@ -237,6 +287,7 @@ function normalizeJobSpec(
             generationManifest: path.join(workspace, "generated-assets", "heygen", "generation-manifest.json"),
             combinedCaptions: path.join(workspace, "transcripts", "combined-captions.srt"),
             editManifest: path.join(workspace, "edit-plans", "retention-edit-manifest.json"),
+            showcaseManifest: path.join(workspace, "edit-plans", "showcase-asset-manifest.json"),
         },
     };
 }

@@ -126,8 +126,35 @@ class CepAdapter {
                 if(track.clips.numItems)cursor=track.clips[track.clips.numItems-1].end.ticks;
             }
         }else if(items.length){
-            if(!project.createNewSequenceFromClips(sequenceName,items,project.rootItem))return JSON.stringify({success:false,error:"Premiere could not create a sequence from the media"});
+            var hasExplicitPlacement=false;
+            for(var explicitIndex=0;explicitIndex<clips.length;explicitIndex++){
+                if(clips[explicitIndex].insertionTimeTicks!==null&&clips[explicitIndex].insertionTimeTicks!==undefined)hasExplicitPlacement=true;
+            }
+            if(!project.createNewSequenceFromClips(sequenceName,hasExplicitPlacement?[items[0]]:items,project.rootItem))return JSON.stringify({success:false,error:"Premiere could not create a sequence from the media"});
             for(var s3=0;s3<project.sequences.numSequences;s3++)if(project.sequences[s3].name===sequenceName)sequence=project.sequences[s3];
+            if(hasExplicitPlacement&&sequence){
+                for(var clearVideo=0;clearVideo<sequence.videoTracks.numTracks;clearVideo++){
+                    for(var clearVideoItem=sequence.videoTracks[clearVideo].clips.numItems-1;clearVideoItem>=0;clearVideoItem--)sequence.videoTracks[clearVideo].clips[clearVideoItem].remove(false,false);
+                }
+                for(var clearAudio=0;clearAudio<sequence.audioTracks.numTracks;clearAudio++){
+                    for(var clearAudioItem=sequence.audioTracks[clearAudio].clips.numItems-1;clearAudioItem>=0;clearAudioItem--)sequence.audioTracks[clearAudio].clips[clearAudioItem].remove(false,false);
+                }
+                for(var explicitClipIndex=0;explicitClipIndex<items.length;explicitClipIndex++){
+                    var explicitClip=clips[explicitClipIndex];
+                    var explicitItem=items[explicitClipIndex];
+                    if(explicitClip.durationSeconds){
+                        var explicitIn=new Time();explicitIn.seconds=0;
+                        var explicitOut=new Time();explicitOut.seconds=Number(explicitClip.durationSeconds);
+                        explicitItem.setInPoint(explicitIn,4);explicitItem.setOutPoint(explicitOut,4);
+                    }
+                    var explicitTime=String(explicitClip.insertionTimeTicks||"0");
+                    if(explicitClip.overwrite){
+                        sequence.overwriteClip(explicitItem,explicitTime,Number(explicitClip.videoTrackIndex||0),Number(explicitClip.audioTrackIndex||0));
+                    }else{
+                        sequence.insertClip(explicitItem,explicitTime,Number(explicitClip.videoTrackIndex||0),Number(explicitClip.audioTrackIndex||0));
+                    }
+                }
+            }
         }else{
             return JSON.stringify({success:false,error:"At least one clip or a sequence preset is required"});
         }
@@ -190,15 +217,17 @@ class CepAdapter {
         return receipt;
     }
 
-    async applyRetentionPlan({ sequenceName, plan, captionAssets = [] }) {
+    async applyRetentionPlan({ sequenceName, plan, captionAssets = [], showcaseAssets = {} }) {
         const sequenceLiteral = JSON.stringify(sequenceName);
         const planLiteral = JSON.stringify(plan);
         const captionAssetsLiteral = JSON.stringify(captionAssets);
+        const showcaseAssetsLiteral = JSON.stringify(showcaseAssets);
         const script = `(function () {
     try {
         var project = app.project;
         var plan = ${planLiteral};
         var captionAssets = ${captionAssetsLiteral};
+        var showcaseAssets = ${showcaseAssetsLiteral};
         var sequence = null;
         for (var s = 0; s < project.sequences.numSequences; s++) {
             if (project.sequences[s].name === ${sequenceLiteral}) sequence = project.sequences[s];
@@ -216,6 +245,15 @@ class CepAdapter {
             for (var itemIndex = overlayTrack.clips.numItems - 1; itemIndex >= 0; itemIndex--) {
                 overlayTrack.clips[itemIndex].remove(false, false);
                 removed++;
+            }
+        }
+        if(showcaseAssets.enabled){
+            for(var audioTrackIndex=1;audioTrackIndex<sequence.audioTracks.numTracks;audioTrackIndex++){
+                var overlayAudioTrack=sequence.audioTracks[audioTrackIndex];
+                for(var audioItemIndex=overlayAudioTrack.clips.numItems-1;audioItemIndex>=0;audioItemIndex--){
+                    overlayAudioTrack.clips[audioItemIndex].remove(false,false);
+                    removed++;
+                }
             }
         }
 
@@ -277,8 +315,9 @@ class CepAdapter {
             }
             return null;
         }
-        for (var captionIndex = 0; captionIndex < captionAssets.length; captionIndex++) {
-            var caption = captionAssets[captionIndex];
+        var graphicAssets=captionAssets.concat(showcaseAssets.graphics||[]);
+        for (var captionIndex = 0; captionIndex < graphicAssets.length; captionIndex++) {
+            var caption = graphicAssets[captionIndex];
             var captionItem = findProjectItemByPath(project.rootItem, caption.path);
             if (!captionItem) {
                 if (!project.importFiles([caption.path], true, project.rootItem, false)) {
@@ -287,6 +326,7 @@ class CepAdapter {
                 captionItem = findProjectItemByPath(project.rootItem, caption.path);
             }
             if (!captionItem) return JSON.stringify({success:false,error:"Imported caption image not found"});
+            if(captionItem.refreshMedia)captionItem.refreshMedia();
             var captionIn = new Time();
             captionIn.seconds = 0;
             var captionOut = new Time();
@@ -295,9 +335,87 @@ class CepAdapter {
             captionItem.setOutPoint(captionOut, 4);
             var captionStart = new Time();
             captionStart.seconds = caption.start;
-            var targetTrack = sequence.videoTracks[1];
+            var targetTrackIndex=Number(caption.trackIndex===undefined?1:caption.trackIndex);
+            var targetTrack = sequence.videoTracks[targetTrackIndex];
+            if(!targetTrack)return JSON.stringify({success:false,error:"Missing video overlay track "+targetTrackIndex});
             targetTrack.overwriteClip(captionItem, captionStart.ticks);
-            importedCaptions.push({text:caption.text,start:caption.start,end:caption.end});
+            importedCaptions.push({text:caption.text,start:caption.start,end:caption.end,trackIndex:targetTrackIndex,purpose:caption.purpose||"animated-caption"});
+        }
+
+        var importedVideos=[];
+        var videoAssets=showcaseAssets.videos||[];
+        for(var videoIndex=0;videoIndex<videoAssets.length;videoIndex++){
+            var video=videoAssets[videoIndex];
+            var videoItem=findProjectItemByPath(project.rootItem,video.path);
+            if(!videoItem){
+                if(!project.importFiles([video.path],true,project.rootItem,false))return JSON.stringify({success:false,error:"B-roll import failed: "+video.path});
+                videoItem=findProjectItemByPath(project.rootItem,video.path);
+            }
+            if(!videoItem)return JSON.stringify({success:false,error:"Imported B-roll was not found"});
+            if(videoItem.refreshMedia)videoItem.refreshMedia();
+            var sourceStart=Number(video.sourceStart||0);
+            var videoIn=new Time();videoIn.seconds=sourceStart;
+            var videoOut=new Time();videoOut.seconds=sourceStart+(video.end-video.start);
+            videoItem.setInPoint(videoIn,4);videoItem.setOutPoint(videoOut,4);
+            var videoStart=new Time();videoStart.seconds=video.start;
+            var videoTrackIndex=Number(video.trackIndex===undefined?1:video.trackIndex);
+            var videoTrack=sequence.videoTracks[videoTrackIndex];
+            if(!videoTrack)return JSON.stringify({success:false,error:"Missing B-roll track "+videoTrackIndex});
+            videoTrack.overwriteClip(videoItem,videoStart.ticks);
+            for(var placedVideoIndex=0;placedVideoIndex<videoTrack.clips.numItems;placedVideoIndex++){
+                var placedVideo=videoTrack.clips[placedVideoIndex];
+                if(Math.abs(Number(placedVideo.start.seconds)-Number(video.start))<0.1&&placedVideo.setScaleToFrameSize){
+                    placedVideo.setScaleToFrameSize();
+                }
+                if(Math.abs(Number(placedVideo.start.seconds)-Number(video.start))<0.1&&video.scale){
+                    for(var placedComponentIndex=0;placedComponentIndex<placedVideo.components.numItems;placedComponentIndex++){
+                        var placedComponent=placedVideo.components[placedComponentIndex];
+                        if(placedComponent.matchName==="AE.ADBE Motion"||placedComponent.displayName==="Motion"){
+                            for(var placedPropertyIndex=0;placedPropertyIndex<placedComponent.properties.numItems;placedPropertyIndex++){
+                                var placedProperty=placedComponent.properties[placedPropertyIndex];
+                                if(placedProperty.displayName==="Scale")placedProperty.setValue(Number(video.scale),true);
+                            }
+                        }
+                    }
+                }
+            }
+            for(var linkedAudioTrackIndex=1;linkedAudioTrackIndex<sequence.audioTracks.numTracks;linkedAudioTrackIndex++){
+                var linkedAudioTrack=sequence.audioTracks[linkedAudioTrackIndex];
+                for(var linkedAudioIndex=0;linkedAudioIndex<linkedAudioTrack.clips.numItems;linkedAudioIndex++){
+                    var linkedAudio=linkedAudioTrack.clips[linkedAudioIndex];
+                    if(linkedAudio.name===videoItem.name&&Math.abs(Number(linkedAudio.start.seconds)-Number(video.start))<0.1){
+                        for(var linkedComponentIndex=0;linkedComponentIndex<linkedAudio.components.numItems;linkedComponentIndex++){
+                            var linkedComponent=linkedAudio.components[linkedComponentIndex];
+                            for(var linkedPropertyIndex=0;linkedPropertyIndex<linkedComponent.properties.numItems;linkedPropertyIndex++){
+                                var linkedProperty=linkedComponent.properties[linkedPropertyIndex];
+                                if(linkedComponent.matchName.indexOf("Internal Volume")===0&&linkedProperty.displayName==="Level")linkedProperty.setValue(0,true);
+                            }
+                        }
+                    }
+                }
+            }
+            importedVideos.push({id:video.id,path:video.path,start:video.start,end:video.end,trackIndex:videoTrackIndex});
+        }
+
+        var importedAudio=[];
+        var audioAssets=showcaseAssets.audio||[];
+        for(var audioIndex=0;audioIndex<audioAssets.length;audioIndex++){
+            var audio=audioAssets[audioIndex];
+            var audioItem=findProjectItemByPath(project.rootItem,audio.path);
+            if(!audioItem){
+                if(!project.importFiles([audio.path],true,project.rootItem,false))return JSON.stringify({success:false,error:"SFX import failed: "+audio.path});
+                audioItem=findProjectItemByPath(project.rootItem,audio.path);
+            }
+            if(!audioItem)return JSON.stringify({success:false,error:"Imported SFX was not found"});
+            var audioIn=new Time();audioIn.seconds=0;
+            var audioOut=new Time();audioOut.seconds=audio.end-audio.start;
+            audioItem.setInPoint(audioIn,4);audioItem.setOutPoint(audioOut,4);
+            var audioStart=new Time();audioStart.seconds=audio.start;
+            var audioTrackNumber=Number(audio.trackIndex===undefined?1:audio.trackIndex);
+            var audioTrack=sequence.audioTracks[audioTrackNumber];
+            if(!audioTrack)return JSON.stringify({success:false,error:"Missing SFX track "+audioTrackNumber});
+            audioTrack.overwriteClip(audioItem,audioStart.ticks);
+            importedAudio.push({id:audio.id,path:audio.path,start:audio.start,end:audio.end,trackIndex:audioTrackNumber});
         }
 
         project.save();
@@ -307,7 +425,9 @@ class CepAdapter {
             sequence:sequence.name,
             removedOverlayItems:removed,
             reframes:reframes,
-            captions:importedCaptions
+            overlays:importedCaptions,
+            broll:importedVideos,
+            audio:importedAudio
         });
     } catch (error) {
         return JSON.stringify({success:false,error:String(error)});

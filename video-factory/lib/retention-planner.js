@@ -69,6 +69,7 @@ class RetentionPlanner {
             scenes.push({
                 sceneId: scene.sceneId,
                 source: scene.localVideo,
+                audioSource: scene.localAudio || null,
                 start: cursor,
                 end: cursor + duration,
                 duration,

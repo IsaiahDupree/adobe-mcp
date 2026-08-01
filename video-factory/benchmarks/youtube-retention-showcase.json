@@ -1,0 +1,135 @@
+{
+  "job_id": "youtube-retention-benchmark-local-20260801",
+  "campaign_id": "youtube-retention-benchmark",
+  "priority": 95,
+  "request": {
+    "topic": "Every Retention Editing Style: A Practical YouTube Benchmark",
+    "audience": "video editors, creators, and autonomous media agents",
+    "objective": "Explain and visibly demonstrate every major family of retention editing in one benchmark video"
+  },
+  "autonomy": {
+    "mode": "full",
+    "script_approval": "automatic",
+    "rough_cut_approval": "automatic_if_qc_passes",
+    "final_publish_approval": "automatic"
+  },
+  "generation": {
+    "provider": "macos_say",
+    "aspect_ratio": "16:9",
+    "resolution": "720p",
+    "voice_name": "Samantha",
+    "words_per_minute": 165,
+    "background": {
+      "type": "color",
+      "value": "#0b0d10"
+    },
+    "timeout_ms": 3600000,
+    "scenes": [
+      {
+        "id": "cold-open",
+        "title": "The Retention Editing Benchmark",
+        "script": "This video is an editing stress test. Over the next few minutes, you will see the major systems editors use to hold attention: story structure, pacing, motion, captions, B-roll, layouts, transitions, graphics, sound design, color, and calls to action. The important part is that the video will demonstrate those devices while explaining them. Watch the frame, the text, and the rhythm change as each chapter begins. By the end, you will have a practical reference for designing either a human edit or an autonomous Premiere workflow."
+      },
+      {
+        "id": "story-hooks",
+        "title": "Hooks and Story Structure",
+        "script": "Retention begins before effects. A result-first hook shows the payoff immediately. A pain-point hook names the viewer's frustration. A before-and-after hook creates contrast. A contrarian statement challenges an assumption, while a question hook asks the viewer to predict an answer. Cold opens start inside the strongest moment. Open loops delay one useful detail, and re-hooks renew curiosity before attention falls. Visual-proof hooks are strongest when the evidence appears with the claim. The rule is simple: promise something specific, prove that promise early, and keep a meaningful question alive."
+      },
+      {
+        "id": "pacing-cuts",
+        "title": "Pacing and Dialogue Cuts",
+        "script": "Pacing controls information density. Conservative pause removal keeps a natural breath, while aggressive pause removal creates short-form energy. Filler-word removal tightens the idea without changing its meaning. Jump cuts compress time. J-cuts let the next voice arrive before its picture, and L-cuts let the previous voice continue beneath the next image. Tutorials usually benefit from tight cuts; stories need occasional breathing room. Montage acceleration shortens each shot as the sequence builds. The goal is not maximum speed. The goal is to remove low-value time while preserving clarity, emotion, and emphasis."
+      },
+      {
+        "id": "camera-motion",
+        "title": "Motion and Reframing",
+        "script": "Motion resets the eye without requiring a new shot. A micro punch-in adds quiet emphasis. A stronger punch-in marks the key sentence. A slow push builds pressure over several seconds. A crash zoom creates a sharp interruption, and pan-and-scan guides attention across a still image or screen recording. Freeze frames make room for analysis or a callout. Speed changes can compress repetitive action, while speed ramps connect moments with a burst of energy. Good motion begins and ends deliberately. Random zooming feels nervous; motivated motion makes the spoken point easier to notice."
+      },
+      {
+        "id": "proof-broll",
+        "title": "B-roll and Visual Proof",
+        "script": "B-roll is most valuable when it proves the sentence. Show the product when you name it, the dashboard when you cite a result, and the action when you explain a process. Useful options include cinematic stock, owned footage, screen demonstrations, screenshots, website captures, product closeups, before-and-after examples, reaction clips, maps, charts, and generated diagrams. A cutaway can hide a dialogue edit, but proof is the stronger reason to use it. This chapter uses owned screen footage so the supporting image is specific, licensable, and connected to the subject instead of generic decoration."
+      },
+      {
+        "id": "layouts-focus",
+        "title": "Layouts and Focus",
+        "script": "Layout techniques let several ideas share the frame. Picture-in-picture keeps the speaker visible while evidence plays beside them. Split screen makes comparisons immediate. Cropping and repositioning can create a clean before-and-after view, while a blurred background preserves context behind a focused foreground. Magnified details, masks, arrows, and subject spotlights tell the eye exactly where to look. Vertical reframing changes these decisions again because safe areas are tighter. The best layout is readable in one glance. If a viewer must search for the important element, the composition has already spent too much attention."
+      },
+      {
+        "id": "caption-systems",
+        "title": "Caption Systems",
+        "script": "Captions protect comprehension when sound is off and reinforce important language when sound is on. Phrase captions are calm and readable. Single-word captions create a faster rhythm. Keyword captions emphasize only the terms that matter. Karaoke highlighting tracks the active word, while pop and bounce treatments add motion for social-first edits. Tutorial captions should prioritize precision; story captions can breathe; sales captions often use stronger contrast. A durable Premiere project keeps a native caption track for accessibility and export, then adds animated graphics only when the creative direction needs them. Readability always outranks animation."
+      },
+      {
+        "id": "transitions-rhythm",
+        "title": "Transitions and Rhythm",
+        "script": "Most edits should use hard cuts because they are invisible and fast. Cross dissolves signal a gentle change in time or mood. Shape dissolves, whip transitions, zoom blurs, light leaks, and glitches should mark larger shifts rather than every sentence. Match cuts connect similar shapes or movement. Cutting on action hides the edit inside motion, and beat-synced cuts align visual changes with musical rhythm. A transition earns its place when it carries meaning, direction, or energy across the boundary. When every cut announces itself, none of them feels important. Restraint makes the strongest transition land harder."
+      },
+      {
+        "id": "graphics-callouts",
+        "title": "Graphics and Callouts",
+        "script": "Graphics turn abstract language into visible structure. Lower thirds identify people and places. Statistic cards make numbers memorable. Quote cards isolate a strong line. Arrows and circles direct attention, chapter cards orient the viewer, and progress bars show how much value remains. Counters and countdowns create expectation. Animated icons clarify processes, while diagrams and charts can replace vague stock footage. Each graphic should have one job: identify, compare, prove, orient, or prompt action. This benchmark uses a consistent chapter card, progress treatment, and timed callouts so the system feels designed instead of assembled from unrelated templates."
+      },
+      {
+        "id": "sound-color",
+        "title": "Sound Design and Color",
+        "script": "Sound creates retention even when the viewer is not watching every pixel. A music bed establishes energy. Dialogue ducking keeps speech clear. Room tone hides hard dialogue edits. Impacts reinforce major words, whooshes connect to visible movement, risers build anticipation, and a music drop makes the payoff feel larger. Stingers can brand an intro or call to action. Dialogue still needs consistent level, compression, and equalization. Color provides the matching visual layer: a coherent Lumetri look, contrast, skin-tone consistency, selective saturation, vignettes, and blur can direct emotion and focus without distracting from the message."
+      },
+      {
+        "id": "workflow-cta",
+        "title": "Workflow, QC, and CTA",
+        "script": "A scalable retention system records every decision as an event: what triggered it, what it changes, when it happens, and what attention goal it serves. Premiere then compiles those events into editable clips, keyframes, caption tracks, graphics, B-roll, and audio. Quality control checks runtime, frame size, missing media, caption coverage, visual-change frequency, audio integrity, and the final export. Publishing analytics can then compare devices against real audience retention. Use this video as a benchmark: copy the techniques that clarify your idea, remove the ones that only add noise, and keep improving the recipes with evidence from viewers."
+      }
+    ]
+  },
+  "retention": {
+    "enabled": true,
+    "preset": "youtube-explainer",
+    "caption_mode": "native",
+    "hook_text": "EVERY RETENTION EDITING STYLE",
+    "pattern_interrupt_text": "NEXT SYSTEM",
+    "punch_in_scale": 1.06,
+    "native_caption_track_name": "C1_ACCESSIBILITY_EN"
+  },
+  "showcase": {
+    "enabled": true,
+    "minimum_duration_seconds": 300,
+    "maximum_duration_seconds": 480,
+    "broll_sources": [
+      {
+        "path": "/Volumes/My Passport/GeneratedMedia/remotion-output/github-ai-video-platform.mp4",
+        "scene_id": "camera-motion",
+        "source_start": 8,
+        "scale": 66.667
+      },
+      {
+        "path": "/Volumes/My Passport/GeneratedMedia/remotion-output/github-safari-automations.mp4",
+        "scene_id": "proof-broll",
+        "source_start": 8,
+        "scale": 66.667
+      },
+      {
+        "path": "/Volumes/My Passport/GeneratedMedia/remotion-output/caption_styles_benchmark.mp4",
+        "scene_id": "caption-systems",
+        "source_start": 1,
+        "scale": 37.5
+      }
+    ],
+    "sfx_sources": [
+      "/Volumes/My Passport/GeneratedMedia/remotion-assets/sfx/transitions/whoosh_cinematic.mp3"
+    ]
+  },
+  "production": {
+    "project_name": "youtube-retention-editing-benchmark",
+    "sequence_name": "YOUTUBE_RETENTION_BENCHMARK_MASTER",
+    "render": {
+      "timeout_ms": 3600000
+    }
+  },
+  "archive": {
+    "enabled": true,
+    "mode": "copy",
+    "destination_root": "/Volumes/My Passport/VideoFactory",
+    "include_source_assets": false
+  }
+}

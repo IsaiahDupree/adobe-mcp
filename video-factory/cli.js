@@ -10,6 +10,8 @@ const { ApplicationManager } = require("./lib/app-manager");
 const { ArchiveManager } = require("./lib/archive-manager");
 const { HeyGenManager } = require("./lib/heygen-manager");
 const { RetentionPlanner } = require("./lib/retention-planner");
+const { ShowcaseRenderer } = require("./lib/showcase-renderer");
+const { LocalNarrationManager } = require("./lib/local-narration-manager");
 const { JobStore } = require("./lib/store");
 const { VideoJobRunner } = require("./lib/workflow");
 const { createFactoryServer } = require("./lib/server");
@@ -46,6 +48,8 @@ function createRuntime() {
     const archiveManager = new ArchiveManager(config, adapter);
     const heygenManager = new HeyGenManager(config);
     const retentionEditor = new RetentionPlanner();
+    const showcaseRenderer = new ShowcaseRenderer(config);
+    const localNarrationManager = new LocalNarrationManager(config);
     const runner = new VideoJobRunner(
         store,
         appManager,
@@ -54,7 +58,9 @@ function createRuntime() {
         heygenManager,
         retentionEditor,
         cepAdapter,
-        captionRenderer
+        captionRenderer,
+        showcaseRenderer,
+        localNarrationManager
     );
     return { adapter, store, appManager, runner };
 }

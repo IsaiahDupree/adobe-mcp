@@ -5,6 +5,9 @@
     "srt_caption_track",
     "upper_track_caption_graphics",
     "motion_keyframes",
+    "showcase_graphics",
+    "upper_track_video",
+    "audio_track_insert",
     "premiere_h264_export"
   ],
   "tiers": {
@@ -28,8 +31,8 @@
     { "id": "pan_and_scan", "category": "motion", "tier": "native", "compiler": "motion_keyframes", "goal": "direct the eye" },
     { "id": "picture_in_picture", "category": "layout", "tier": "native", "compiler": "upper_track_transform", "goal": "show speaker and proof together" },
     { "id": "split_screen", "category": "layout", "tier": "native", "compiler": "upper_track_transform", "goal": "make comparison immediate" },
-    { "id": "broll_cutaway", "category": "visual_interrupt", "tier": "native", "compiler": "upper_track_insert", "goal": "replace visual fatigue with proof" },
-    { "id": "screenshot_overlay", "category": "visual_interrupt", "tier": "native", "compiler": "upper_track_insert", "goal": "make an abstract claim concrete" },
+    { "id": "broll_cutaway", "category": "visual_interrupt", "tier": "native", "compiler": "upper_track_video", "goal": "replace visual fatigue with proof" },
+    { "id": "screenshot_overlay", "category": "visual_interrupt", "tier": "native", "compiler": "showcase_graphics", "goal": "make an abstract claim concrete" },
     { "id": "magnified_detail", "category": "visual_interrupt", "tier": "preset", "compiler": "magnify_effect", "goal": "focus attention on evidence" },
     { "id": "freeze_frame_callout", "category": "visual_interrupt", "tier": "hybrid", "compiler": "frame_hold_and_graphic", "goal": "pause on an important detail" },
     { "id": "statistic_card", "category": "graphics", "tier": "preset", "compiler": "mogrt", "goal": "make a number memorable" },

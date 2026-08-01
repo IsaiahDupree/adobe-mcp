@@ -209,10 +209,17 @@ class HeyGenManager {
         if (!this.apiKey) {
             throw new HeyGenError("HEYGEN_API_KEY is not configured.", "HEYGEN_NOT_CONFIGURED");
         }
-        const scenes = [];
-        for (const scene of job.generation.scenes) {
-            scenes.push(await this.generateScene(job, scene));
-        }
+        const scenes = new Array(job.generation.scenes.length);
+        let nextIndex = 0;
+        const worker = async () => {
+            while (nextIndex < job.generation.scenes.length) {
+                const index = nextIndex;
+                nextIndex += 1;
+                scenes[index] = await this.generateScene(job, job.generation.scenes[index]);
+            }
+        };
+        const concurrency = Math.min(job.generation.concurrency || 3, job.generation.scenes.length);
+        await Promise.all(Array.from({ length: concurrency }, () => worker()));
         const manifest = {
             schemaVersion: 1,
             provider: "heygen-v3",
