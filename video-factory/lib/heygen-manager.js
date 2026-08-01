@@ -1,0 +1,233 @@
+const fs = require("fs");
+const path = require("path");
+const { Readable } = require("stream");
+const { pipeline } = require("stream/promises");
+const { ensureDir, nowIso, readJson, run, sleep, writeJsonAtomic } = require("./util");
+
+class HeyGenError extends Error {
+    constructor(message, code = "HEYGEN_ERROR", details = {}) {
+        super(message);
+        this.name = "HeyGenError";
+        this.code = code;
+        this.details = details;
+    }
+}
+
+class HeyGenManager {
+    constructor(config) {
+        this.apiUrl = config.HEYGEN_API_URL.replace(/\/$/, "");
+        this.apiKey = config.HEYGEN_API_KEY;
+    }
+
+    headers(json = false) {
+        const headers = { "x-api-key": this.apiKey };
+        if (json) headers["content-type"] = "application/json";
+        return headers;
+    }
+
+    async request(endpoint, options = {}) {
+        let lastError;
+        for (let attempt = 1; attempt <= 4; attempt += 1) {
+            const controller = new AbortController();
+            const timer = setTimeout(() => controller.abort(), options.timeoutMs || 30000);
+            try {
+                const response = await fetch(`${this.apiUrl}${endpoint}`, {
+                    ...options,
+                    headers: { ...this.headers(Boolean(options.body)), ...(options.headers || {}) },
+                    signal: controller.signal,
+                });
+                const text = await response.text();
+                const body = text ? JSON.parse(text) : {};
+                if (response.ok) return body;
+                const message =
+                    body.message || body.error?.message || body.error || `HTTP ${response.status}`;
+                const error = new HeyGenError(`HeyGen request failed: ${message}`, "HEYGEN_API_FAILED", {
+                    status: response.status,
+                    endpoint,
+                });
+                if (response.status !== 429 && response.status < 500) throw error;
+                lastError = error;
+                const retryAfter = Number(response.headers.get("retry-after") || 0) * 1000;
+                await sleep(retryAfter || attempt * 1500);
+            } catch (error) {
+                if (error instanceof HeyGenError && error.details.status < 500 && error.details.status !== 429) {
+                    throw error;
+                }
+                lastError = error;
+                await sleep(attempt * 1000);
+            } finally {
+                clearTimeout(timer);
+            }
+        }
+        throw lastError || new HeyGenError("HeyGen request failed after retries.");
+    }
+
+    async download(url, destination) {
+        ensureDir(path.dirname(destination));
+        const partial = `${destination}.partial`;
+        const response = await fetch(url);
+        if (!response.ok || !response.body) {
+            throw new HeyGenError(`HeyGen asset download failed with HTTP ${response.status}.`, "HEYGEN_DOWNLOAD_FAILED");
+        }
+        await pipeline(Readable.fromWeb(response.body), fs.createWriteStream(partial));
+        if (!fs.existsSync(partial) || fs.statSync(partial).size === 0) {
+            throw new HeyGenError("HeyGen returned an empty asset.", "HEYGEN_DOWNLOAD_FAILED");
+        }
+        fs.renameSync(partial, destination);
+        return destination;
+    }
+
+    scenePaths(job, scene) {
+        const directory = path.join(job.workspace, "generated-assets", "heygen", scene.id);
+        return {
+            directory,
+            video: path.join(directory, "clean.mp4"),
+            subtitle: path.join(directory, "captions.srt"),
+            metadata: path.join(directory, "metadata.json"),
+        };
+    }
+
+    requestBody(job, scene) {
+        const generation = job.generation;
+        return {
+            type: "avatar",
+            avatar_id: generation.avatarId,
+            voice_id: generation.voiceId,
+            engine: { type: generation.engine },
+            script: scene.script,
+            title: scene.title || `${job.campaignId} / ${scene.id}`,
+            aspect_ratio: generation.aspectRatio,
+            resolution: generation.resolution,
+            background: generation.background,
+            voice_settings: generation.voiceSettings,
+            caption: { file_format: "srt" },
+            output_format: "mp4",
+        };
+    }
+
+    async poll(videoId, generation) {
+        const started = Date.now();
+        let resource;
+        while (Date.now() - started < generation.timeoutMs) {
+            const response = await this.request(`/v3/videos/${encodeURIComponent(videoId)}`);
+            resource = response.data || response;
+            if (resource.status === "completed") return resource;
+            if (resource.status === "failed") {
+                throw new HeyGenError(
+                    `HeyGen video ${videoId} failed: ${resource.failure_message || resource.failure_code || "unknown error"}`,
+                    "HEYGEN_GENERATION_FAILED",
+                    { videoId, failureCode: resource.failure_code || null }
+                );
+            }
+            await sleep(generation.pollIntervalMs);
+        }
+        throw new HeyGenError(
+            `HeyGen video ${videoId} did not complete within ${Math.round(generation.timeoutMs / 60000)} minutes.`,
+            "HEYGEN_TIMEOUT",
+            { videoId, lastStatus: resource && resource.status }
+        );
+    }
+
+    async generateScene(job, scene) {
+        const paths = this.scenePaths(job, scene);
+        ensureDir(paths.directory);
+        let metadata = fs.existsSync(paths.metadata) ? readJson(paths.metadata) : null;
+        if (
+            metadata &&
+            metadata.status === "completed" &&
+            fs.existsSync(paths.video) &&
+            fs.existsSync(paths.subtitle)
+        ) {
+            return metadata;
+        }
+
+        let videoId = metadata && metadata.videoId;
+        if (!videoId) {
+            const body = this.requestBody(job, scene);
+            const response = await this.request("/v3/videos", {
+                method: "POST",
+                body: JSON.stringify(body),
+            });
+            const data = response.data || response;
+            videoId = data.video_id || data.id;
+            if (!videoId) {
+                throw new HeyGenError("HeyGen accepted no video identifier.", "HEYGEN_INVALID_RESPONSE");
+            }
+            metadata = {
+                sceneId: scene.id,
+                videoId,
+                status: data.status || "pending",
+                submittedAt: nowIso(),
+                request: {
+                    ...body,
+                    script: scene.script,
+                },
+            };
+            writeJsonAtomic(paths.metadata, metadata);
+        }
+
+        const resource = await this.poll(videoId, job.generation);
+        if (!resource.video_url) {
+            throw new HeyGenError("Completed HeyGen video has no video_url.", "HEYGEN_INVALID_RESPONSE", { videoId });
+        }
+        if (!resource.subtitle_url) {
+            throw new HeyGenError("Completed HeyGen video has no subtitle_url.", "HEYGEN_INVALID_RESPONSE", { videoId });
+        }
+        await this.download(resource.video_url, paths.video);
+        await this.download(resource.subtitle_url, paths.subtitle);
+
+        const { stdout } = await run("ffprobe", [
+            "-v",
+            "error",
+            "-show_entries",
+            "format=duration,size:stream=codec_type,codec_name,width,height",
+            "-of",
+            "json",
+            paths.video,
+        ], { timeout: 30000 });
+        const probe = JSON.parse(stdout);
+        if (!probe.streams || !probe.streams.some((stream) => stream.codec_type === "video")) {
+            throw new HeyGenError("Downloaded HeyGen asset has no readable video stream.", "HEYGEN_INVALID_VIDEO");
+        }
+        metadata = {
+            ...metadata,
+            status: "completed",
+            completedAt: nowIso(),
+            durationSeconds: Number(resource.duration || probe.format.duration),
+            videoPageUrl: resource.video_page_url || null,
+            localVideo: paths.video,
+            localSubtitle: paths.subtitle,
+            bytes: Number(probe.format.size),
+            streams: probe.streams,
+        };
+        writeJsonAtomic(paths.metadata, metadata);
+        return metadata;
+    }
+
+    async generate(job) {
+        if (!job.generation.enabled) return { skipped: true };
+        if (!this.apiKey) {
+            throw new HeyGenError("HEYGEN_API_KEY is not configured.", "HEYGEN_NOT_CONFIGURED");
+        }
+        const scenes = [];
+        for (const scene of job.generation.scenes) {
+            scenes.push(await this.generateScene(job, scene));
+        }
+        const manifest = {
+            schemaVersion: 1,
+            provider: "heygen-v3",
+            jobId: job.id,
+            generatedAt: nowIso(),
+            avatarId: job.generation.avatarId,
+            voiceId: job.generation.voiceId,
+            engine: job.generation.engine,
+            aspectRatio: job.generation.aspectRatio,
+            scenes,
+            totalDurationSeconds: scenes.reduce((sum, scene) => sum + scene.durationSeconds, 0),
+        };
+        writeJsonAtomic(job.outputPaths.generationManifest, manifest);
+        return manifest;
+    }
+}
+
+module.exports = { HeyGenError, HeyGenManager };

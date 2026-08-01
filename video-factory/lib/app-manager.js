@@ -14,9 +14,10 @@ class AppReadinessError extends Error {
 }
 
 class ApplicationManager {
-    constructor(config, adapter) {
+    constructor(config, adapter, cepAdapter = null) {
         this.config = config;
         this.adapter = adapter;
+        this.cepAdapter = cepAdapter;
     }
 
     async proxyStatus() {
@@ -69,8 +70,8 @@ class ApplicationManager {
             mediaEncoderRunning,
             udtRunning,
             diskFreeGb,
-            ffmpeg,
             ffprobe,
+            imageMagick,
             uxpCli,
         ] = await Promise.all([
             this.proxyStatus(),
@@ -78,13 +79,14 @@ class ApplicationManager {
             this.processRunning("Adobe Media Encoder 2026.app/Contents/MacOS/Adobe Media Encoder 2026"),
             this.processRunning("Adobe UXP Developer Tools.app/Contents/MacOS/Adobe UXP Developer Tools"),
             this.diskFreeGb(),
-            this.toolVersion("ffmpeg", ["-version"]),
             this.toolVersion("ffprobe", ["-version"]),
+            this.toolVersion(this.config.IMAGEMAGICK_BIN, ["-version"]),
             this.toolVersion(this.config.UXP_CLI),
         ]);
 
         let responsive = false;
         let project = null;
+        let cepConnected = false;
         if (proxy && proxy.clients && proxy.clients.premiere > 0) {
             try {
                 const snapshot = await this.adapter.inspectProject();
@@ -94,6 +96,16 @@ class ApplicationManager {
                 responsive = false;
             }
         }
+        if (!responsive && this.cepAdapter) {
+            try {
+                const probe = await this.cepAdapter.probe();
+                responsive = true;
+                cepConnected = true;
+                project = { hasProject: Boolean(probe.project), name: probe.project };
+            } catch {
+                cepConnected = false;
+            }
+        }
 
         const bridgeConnected = Boolean(
             proxy && proxy.clients && Number(proxy.clients.premiere || 0) > 0
@@ -101,7 +113,9 @@ class ApplicationManager {
         return {
             node: os.hostname(),
             status:
-                premiereRunning && bridgeConnected && responsive ? "healthy" : "degraded",
+                premiereRunning && (bridgeConnected || cepConnected) && responsive
+                    ? "healthy"
+                    : "degraded",
             premiere: {
                 installed: fs.existsSync(this.config.PREMIERE_APP_PATH),
                 running: premiereRunning,
@@ -124,8 +138,9 @@ class ApplicationManager {
                     path.join(this.config.INSTALLED_PLUGIN_DIR, "manifest.json")
                 ),
                 bridgeConnected,
+                cepConnected,
             },
-            tools: { ffmpeg, ffprobe },
+            tools: { ffprobe, imageMagick },
             diskFreeGb,
         };
     }
@@ -227,6 +242,14 @@ class ApplicationManager {
     async ensureBridge() {
         const proxy = await this.proxyStatus();
         if (proxy && proxy.clients && proxy.clients.premiere > 0) return;
+        if (this.cepAdapter) {
+            try {
+                await this.cepAdapter.probe();
+                return;
+            } catch {
+                // Continue to the UXP reload path while the CEP panel starts.
+            }
+        }
         await this.ensureUxpService();
         if (!fs.existsSync(path.join(this.config.INSTALLED_PLUGIN_DIR, "manifest.json"))) {
             throw new AppReadinessError(
@@ -243,8 +266,15 @@ class ApplicationManager {
         }
         await this.waitFor(async () => {
             const status = await this.proxyStatus();
-            return Boolean(status && status.clients && status.clients.premiere > 0);
-        }, "Premiere UXP bridge", 60000);
+            if (status && status.clients && status.clients.premiere > 0) return true;
+            if (!this.cepAdapter) return false;
+            try {
+                await this.cepAdapter.probe();
+                return true;
+            } catch {
+                return false;
+            }
+        }, "Premiere automation bridge", 60000);
     }
 
     async ensureReady(options = {}) {
@@ -259,7 +289,9 @@ class ApplicationManager {
         await this.ensureBridge();
         await this.waitFor(async () => {
             try {
-                await this.adapter.inspectProject();
+                if (await this.adapter.isConnected()) await this.adapter.inspectProject();
+                else if (this.cepAdapter) await this.cepAdapter.probe();
+                else return false;
                 return true;
             } catch {
                 return false;

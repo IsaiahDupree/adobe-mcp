@@ -1,0 +1,36 @@
+{
+  "campaign_id": "heygen-retention",
+  "request": {
+    "topic": "Why retention editing starts before the timeline"
+  },
+  "autonomy": {
+    "mode": "full"
+  },
+  "generation": {
+    "provider": "heygen",
+    "engine": "avatar_iv",
+    "aspect_ratio": "9:16",
+    "resolution": "720p",
+    "scenes": [
+      {
+        "id": "hook",
+        "script": "Most AI videos lose viewers before the point ever arrives."
+      },
+      {
+        "id": "payoff",
+        "script": "Lead with the result, then change the frame every few seconds."
+      }
+    ]
+  },
+  "retention": {
+    "hook_text": "WHY VIEWERS LEAVE",
+    "pattern_interrupt_text": "THE FIX",
+    "caption_style": "bold-safe",
+    "punch_in_scale": 1.08
+  },
+  "production": {
+    "project_name": "heygen-retention-test",
+    "sequence_name": "HEYGEN_RETENTION_MASTER",
+    "render": {}
+  }
+}

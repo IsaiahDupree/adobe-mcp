@@ -59,3 +59,28 @@ test("job schema normalizes automatic My Passport archival", () => {
     assert.equal(job.archive.includeSourceAssets, true);
     assert.equal(job.archive.destinationRoot, path.join(root, "passport", "VideoFactory"));
 });
+
+test("job schema normalizes a scene-based HeyGen retention job", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "premiere-factory-heygen-schema-"));
+    const store = new JobStore({
+        JOBS_DIR: path.join(root, "jobs"),
+        CAMPAIGNS_DIR: path.join(root, "campaigns"),
+        HEYGEN_AVATAR_ID: "avatar-real-id",
+        HEYGEN_VOICE_ID: "voice-real-id",
+    });
+    const job = store.submit({
+        request: { topic: "Retention test" },
+        generation: {
+            provider: "heygen",
+            engine: "avatar_iv",
+            scenes: ["Lead with the result.", "Change the frame on the next beat."],
+        },
+        retention: { hook_text: "STOP THE SCROLL" },
+    });
+
+    assert.equal(job.generation.enabled, true);
+    assert.equal(job.generation.scenes.length, 2);
+    assert.equal(job.generation.avatarId, "avatar-real-id");
+    assert.equal(job.retention.hookText, "STOP THE SCROLL");
+    assert.match(job.outputPaths.combinedCaptions, /combined-captions\.srt$/);
+});

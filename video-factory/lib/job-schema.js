@@ -4,6 +4,8 @@ const crypto = require("crypto");
 const { nowIso, slugify } = require("./util");
 
 const AUTONOMY_MODES = new Set(["supervised", "guarded", "full"]);
+const HEYGEN_ENGINES = new Set(["avatar_iii", "avatar_iv", "avatar_v"]);
+const ASPECT_RATIOS = new Set(["16:9", "9:16", "4:5", "5:4", "1:1", "auto"]);
 
 function normalizeAsset(asset, index) {
     const input = typeof asset === "string" ? { path: asset } : { ...asset };
@@ -60,7 +62,72 @@ function normalizeArchive(spec, defaultArchiveRoot) {
     };
 }
 
-function normalizeJobSpec(spec, campaignsDir, defaultArchiveRoot = "/Volumes/My Passport/VideoFactory") {
+function normalizeGeneration(spec, defaults = {}) {
+    const input = spec.generation || (spec.production && spec.production.generation);
+    if (!input || input.enabled === false) return { enabled: false };
+    const provider = input.provider || "heygen";
+    if (provider !== "heygen") throw new Error("generation.provider must be heygen.");
+    const engine = input.engine || "avatar_iv";
+    if (!HEYGEN_ENGINES.has(engine)) {
+        throw new Error(`generation.engine must be one of: ${Array.from(HEYGEN_ENGINES).join(", ")}.`);
+    }
+    const aspectRatio = input.aspect_ratio || input.aspectRatio || "9:16";
+    if (!ASPECT_RATIOS.has(aspectRatio)) {
+        throw new Error(`generation.aspect_ratio must be one of: ${Array.from(ASPECT_RATIOS).join(", ")}.`);
+    }
+    const rawScenes = input.scenes || (input.script ? [{ script: input.script }] : []);
+    if (!Array.isArray(rawScenes) || rawScenes.length === 0) {
+        throw new Error("generation.scenes requires at least one scripted scene.");
+    }
+    const scenes = rawScenes.map((scene, index) => {
+        const item = typeof scene === "string" ? { script: scene } : { ...scene };
+        if (!item.script || !item.script.trim()) {
+            throw new Error(`generation.scenes[${index}].script is required.`);
+        }
+        return {
+            id: slugify(item.id || `scene-${String(index + 1).padStart(3, "0")}`),
+            script: item.script.trim(),
+            title: item.title || null,
+        };
+    });
+    const avatarId = input.avatar_id || input.avatarId || defaults.avatarId;
+    const voiceId = input.voice_id || input.voiceId || defaults.voiceId;
+    if (!avatarId) throw new Error("generation.avatar_id is required.");
+    if (!voiceId) throw new Error("generation.voice_id is required.");
+    return {
+        enabled: true,
+        provider,
+        avatarId,
+        voiceId,
+        engine,
+        aspectRatio,
+        resolution: input.resolution || "720p",
+        background: input.background || { type: "color", value: "#111111" },
+        voiceSettings: input.voice_settings || input.voiceSettings || { speed: 1.04, locale: "en-US" },
+        scenes,
+        pollIntervalMs: Number(input.poll_interval_ms || input.pollIntervalMs || 8000),
+        timeoutMs: Number(input.timeout_ms || input.timeoutMs || 20 * 60 * 1000),
+    };
+}
+
+function normalizeRetention(spec) {
+    const input = spec.retention || (spec.production && spec.production.retention) || {};
+    return {
+        enabled: input.enabled !== false,
+        hookText: input.hook_text || input.hookText || null,
+        patternInterruptText:
+            input.pattern_interrupt_text || input.patternInterruptText || "THE FIX",
+        captionStyle: input.caption_style || input.captionStyle || "bold-safe",
+        punchInScale: Number(input.punch_in_scale || input.punchInScale || 1.08),
+    };
+}
+
+function normalizeJobSpec(
+    spec,
+    campaignsDir,
+    defaultArchiveRoot = "/Volumes/My Passport/VideoFactory",
+    defaults = {}
+) {
     if (!spec || typeof spec !== "object" || Array.isArray(spec)) {
         throw new Error("Video job must be a JSON object.");
     }
@@ -96,6 +163,8 @@ function normalizeJobSpec(spec, campaignsDir, defaultArchiveRoot = "/Volumes/My 
 
     const sourceAssets = collectAssets(spec);
     const archive = normalizeArchive(spec, defaultArchiveRoot);
+    const generation = normalizeGeneration(spec, defaults);
+    const retention = normalizeRetention(spec, defaults);
     const render = production.render
         ? {
               ...production.render,
@@ -143,12 +212,17 @@ function normalizeJobSpec(spec, campaignsDir, defaultArchiveRoot = "/Volumes/My 
             editPlan: production.edit_plan || null,
             render,
         },
+        generation,
+        retention,
         archive,
         workspace,
         outputPaths: {
             project: path.join(workspace, "premiere", `${projectName}-v001.prproj`),
             qc: path.join(workspace, "qc", "qc-report.json"),
             render: render ? render.output_file : null,
+            generationManifest: path.join(workspace, "generated-assets", "heygen", "generation-manifest.json"),
+            combinedCaptions: path.join(workspace, "transcripts", "combined-captions.srt"),
+            editManifest: path.join(workspace, "edit-plans", "retention-edit-manifest.json"),
         },
     };
 }

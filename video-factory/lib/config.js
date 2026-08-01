@@ -1,9 +1,27 @@
 const path = require("path");
+const fs = require("fs");
+const os = require("os");
 
 const REPO_ROOT = path.resolve(__dirname, "../..");
 const FACTORY_HOME = path.resolve(
     process.env.VIDEO_FACTORY_HOME || path.join(REPO_ROOT, "../../premiere-autonomy/factory")
 );
+
+function envValue(name, fallback = "") {
+    if (process.env[name]) return process.env[name];
+    const envPath = path.join(process.env.HOME || "", ".env");
+    try {
+        const line = fs
+            .readFileSync(envPath, "utf8")
+            .split(/\r?\n/)
+            .find((item) => item.startsWith(`${name}=`));
+        if (!line) return fallback;
+        const value = line.slice(name.length + 1).trim();
+        return value.replace(/^(['"])(.*)\1$/, "$2");
+    } catch {
+        return fallback;
+    }
+}
 
 module.exports = {
     REPO_ROOT,
@@ -37,7 +55,27 @@ module.exports = {
         process.env.VIDEO_FACTORY_LAUNCH_LABEL || "com.isaiah.premiere-video-factory",
     COMMAND_TIMEOUT_MS: Number(process.env.PREMIERE_COMMAND_TIMEOUT_MS || 60000),
     APP_READY_TIMEOUT_MS: Number(process.env.PREMIERE_READY_TIMEOUT_MS || 120000),
+    PREMIERE_CEP_TEMP_DIR:
+        process.env.PREMIERE_CEP_TEMP_DIR || path.join(os.tmpdir(), "premiere-mcp-bridge"),
+    PREMIERE_CEP_TIMEOUT_MS: Number(process.env.PREMIERE_CEP_TIMEOUT_MS || 60000),
+    PREMIERE_H264_PRESET:
+        process.env.PREMIERE_H264_PRESET ||
+        "/Applications/Adobe Media Encoder 2026/Adobe Media Encoder 2026.app/Contents/MediaIO/systempresets/4E49434B_48323634/00 - Match Source - High bitrate.epr",
+    IMAGEMAGICK_BIN: process.env.IMAGEMAGICK_BIN || "/opt/homebrew/bin/magick",
+    CAPTION_FONT:
+        process.env.VIDEO_FACTORY_CAPTION_FONT ||
+        "/System/Library/Fonts/Supplemental/Arial Bold.ttf",
     MIN_DISK_FREE_GB: Number(process.env.VIDEO_FACTORY_MIN_DISK_FREE_GB || 5),
+    HEYGEN_API_URL: process.env.HEYGEN_API_URL || "https://api.heygen.com",
+    HEYGEN_API_KEY: envValue("HEYGEN_API_KEY"),
+    HEYGEN_AVATAR_ID: envValue(
+        "HEYGEN_AVATAR_ID",
+        "d9af08b6f80349aaa56096443f91d19e"
+    ),
+    HEYGEN_VOICE_ID: envValue(
+        "HEYGEN_VOICE_ID",
+        "e40f41c567924222a60ed3e1d557fc77"
+    ),
     PASSPORT_MOUNT:
         process.env.VIDEO_FACTORY_PASSPORT_MOUNT || "/Volumes/My Passport",
     PASSPORT_ARCHIVE_ROOT:

@@ -86,6 +86,18 @@ class PremiereAdapter {
             snapshotWarning: packet.snapshotWarning || null,
         };
     }
+
+    async isConnected() {
+        try {
+            const response = await fetch(`${this.proxyUrl}/status`, {
+                signal: AbortSignal.timeout(3000),
+            });
+            const status = await response.json();
+            return Boolean(status.clients && Number(status.clients.premiere || 0) > 0);
+        } catch {
+            return false;
+        }
+    }
 }
 
 module.exports = { PremiereAdapter, PremiereCommandError };

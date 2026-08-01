@@ -2,7 +2,7 @@ const fs = require("fs");
 const path = require("path");
 const { spawn } = require("child_process");
 const { validateAssets } = require("./job-schema");
-const { ensureDir, nowIso, run, sleep, writeJsonAtomic } = require("./util");
+const { ensureDir, nowIso, readJson, run, sleep, writeJsonAtomic } = require("./util");
 
 class WaitingForAssetsError extends Error {
     constructor(missing) {
@@ -23,16 +23,33 @@ class WorkflowValidationError extends Error {
 }
 
 class VideoJobRunner {
-    constructor(store, appManager, adapter, archiveManager = null) {
+    constructor(
+        store,
+        appManager,
+        adapter,
+        archiveManager = null,
+        heygenManager = null,
+        retentionPlanner = null,
+        cepAdapter = null,
+        captionRenderer = null
+    ) {
         this.store = store;
         this.appManager = appManager;
         this.adapter = adapter;
         this.archiveManager = archiveManager;
+        this.heygenManager = heygenManager;
+        this.retentionPlanner = retentionPlanner;
+        this.cepAdapter = cepAdapter;
+        this.captionRenderer = captionRenderer;
         this.activeJobId = null;
     }
 
     checkpointComplete(job, stage) {
         return job.checkpoints[stage] && job.checkpoints[stage].status === "COMPLETE";
+    }
+
+    async canUseUxp() {
+        return typeof this.adapter.isConnected !== "function" || (await this.adapter.isConnected());
     }
 
     async executeStage(id, stage, status, operation, options = {}) {
@@ -84,12 +101,18 @@ class VideoJobRunner {
         }
     }
 
-    async inspectWithRetry(expected, timeoutMs = 30000) {
+    async inspectProject(sequenceName = null) {
+        if (await this.canUseUxp()) return this.adapter.inspectProject();
+        if (!this.cepAdapter) throw new Error("No responsive Premiere automation bridge is available.");
+        return this.cepAdapter.inspectProject({ sequenceName });
+    }
+
+    async inspectWithRetry(expected, timeoutMs = 30000, sequenceName = null) {
         const started = Date.now();
         let last;
         while (Date.now() - started < timeoutMs) {
             try {
-                last = await this.adapter.inspectProject();
+                last = await this.inspectProject(sequenceName);
                 if (!expected || expected(last)) return last;
             } catch (error) {
                 last = error;
@@ -105,6 +128,26 @@ class VideoJobRunner {
     async prepareProject(job) {
         const outputPath = job.outputPaths.project;
         ensureDir(path.dirname(outputPath));
+
+        if (!(await this.canUseUxp())) {
+            if (job.production.existingProjectPath && !fs.existsSync(job.production.existingProjectPath)) {
+                throw new WaitingForAssetsError([job.production.existingProjectPath]);
+            }
+            await this.cepAdapter.prepareProject({
+                outputPath,
+                existingProjectPath: job.production.existingProjectPath,
+            });
+            const snapshot = await this.inspectWithRetry(
+                (state) => state.project && state.project.hasProject,
+                45000,
+                job.production.sequenceName
+            );
+            return {
+                projectPath: outputPath,
+                projectId: snapshot.project.id,
+                projectName: snapshot.project.name,
+            };
+        }
 
         if (fs.existsSync(outputPath)) {
             await this.adapter.command("openProject", { filePath: outputPath });
@@ -151,18 +194,22 @@ class VideoJobRunner {
         }
         if (basenames.length === 0) return { imported: [], alreadyPresent: [] };
 
-        let snapshot = await this.adapter.inspectProject();
+        let snapshot = await this.inspectProject(job.production.sequenceName);
         const existing = new Set(snapshot.projectItems.map((item) => item.name));
         const missingPaths = job.production.sourceAssets
             .filter((asset) => !existing.has(path.basename(asset.path)))
             .map((asset) => asset.path);
 
         if (missingPaths.length > 0) {
-            await this.adapter.command("importMedia", { filePaths: missingPaths });
+            if (await this.canUseUxp()) {
+                await this.adapter.command("importMedia", { filePaths: missingPaths });
+            } else {
+                await this.cepAdapter.importMedia(missingPaths);
+            }
             snapshot = await this.inspectWithRetry((state) => {
                 const names = new Set(state.projectItems.map((item) => item.name));
                 return basenames.every((name) => names.has(name));
-            }, 60000);
+            }, 60000, job.production.sequenceName);
         }
         return {
             imported: missingPaths.map((item) => path.basename(item)),
@@ -192,12 +239,25 @@ class VideoJobRunner {
 
     async assembleRoughCut(job) {
         const sequenceName = job.production.sequenceName;
-        let snapshot = await this.adapter.inspectProject();
+        let snapshot = await this.inspectProject(sequenceName);
         let sequence = snapshot.sequences.find((item) => item.name === sequenceName);
         const clips = this.timelineClips(job);
 
         if (!sequence) {
-            if (job.production.sequencePresetPath) {
+            if (!(await this.canUseUxp())) {
+                await this.cepAdapter.assembleRoughCut({
+                    sequenceName,
+                    presetPath: job.production.sequencePresetPath,
+                    clips: clips.map((clip) => ({
+                        assetPath: clip.assetPath,
+                        videoTrackIndex: Number(clip.video_track_index || 0),
+                        audioTrackIndex: Number(clip.audio_track_index || 0),
+                        insertionTimeTicks: Number.isFinite(clip.insertion_time_ticks)
+                            ? clip.insertion_time_ticks
+                            : null,
+                    })),
+                });
+            } else if (job.production.sequencePresetPath) {
                 if (!fs.existsSync(job.production.sequencePresetPath)) {
                     throw new WorkflowValidationError(
                         `Sequence preset does not exist: ${job.production.sequencePresetPath}`
@@ -237,8 +297,10 @@ class VideoJobRunner {
             }
         }
 
-        snapshot = await this.inspectWithRetry((state) =>
-            state.sequences.some((item) => item.name === sequenceName)
+        snapshot = await this.inspectWithRetry(
+            (state) => state.sequences.some((item) => item.name === sequenceName),
+            30000,
+            sequenceName
         );
         sequence = snapshot.sequences.find((item) => item.name === sequenceName);
         return {
@@ -250,18 +312,24 @@ class VideoJobRunner {
     }
 
     async saveProject(job) {
-        const packet = await this.adapter.command("saveProject");
+        const packet = (await this.canUseUxp())
+            ? await this.adapter.command("saveProject")
+            : await this.cepAdapter.saveProject();
         if (!fs.existsSync(job.outputPaths.project)) {
             throw new WorkflowValidationError(
                 `Premiere reported a save, but the project is missing: ${job.outputPaths.project}`
             );
         }
         const stats = fs.statSync(job.outputPaths.project);
-        return { projectPath: job.outputPaths.project, bytes: stats.size, response: packet.response };
+        return { projectPath: job.outputPaths.project, bytes: stats.size, response: packet.response || packet };
     }
 
     async runStructuralQc(job) {
-        const snapshot = await this.adapter.inspectProject();
+        const snapshot = (await this.canUseUxp())
+            ? await this.adapter.inspectProject()
+            : await this.cepAdapter.inspectProject({
+                  sequenceName: job.production.sequenceName,
+              });
         const sequence = snapshot.sequences.find(
             (item) => item.name === job.production.sequenceName
         );
@@ -346,24 +414,34 @@ class VideoJobRunner {
         if (render.preset_file && !fs.existsSync(render.preset_file)) {
             throw new WorkflowValidationError(`Export preset does not exist: ${render.preset_file}`);
         }
-        const snapshot = await this.adapter.inspectProject();
+        const snapshot = (await this.canUseUxp())
+            ? await this.adapter.inspectProject()
+            : await this.cepAdapter.inspectProject({ sequenceName: job.production.sequenceName });
         const sequence = snapshot.sequences.find(
             (item) => item.name === job.production.sequenceName
         );
         if (!sequence) throw new WorkflowValidationError("Cannot render a missing sequence.");
         ensureDir(path.dirname(render.output_file));
-        await this.adapter.command(
-            "exportSequence",
-            {
-                sequenceId: sequence.id,
+        if (await this.canUseUxp()) {
+            await this.adapter.command(
+                "exportSequence",
+                {
+                    sequenceId: sequence.id,
+                    outputFile: render.output_file,
+                    presetFile: render.preset_file || "",
+                    exportType: render.export_type || "IMMEDIATELY",
+                    exportFull: true,
+                    startQueueImmediately: true,
+                },
+                Number(render.command_timeout_ms || 120000)
+            );
+        } else {
+            await this.cepAdapter.exportSequence({
+                sequenceName: sequence.name,
                 outputFile: render.output_file,
-                presetFile: render.preset_file || "",
-                exportType: render.export_type || "IMMEDIATELY",
-                exportFull: true,
-                startQueueImmediately: true,
-            },
-            Number(render.command_timeout_ms || 120000)
-        );
+                presetFile: render.preset_file,
+            });
+        }
         const bytes = await this.waitForRender(
             render.output_file,
             Number(render.timeout_ms || 30 * 60 * 1000)
@@ -391,6 +469,70 @@ class VideoJobRunner {
         return report;
     }
 
+    applyGeneratedAssets(id, retentionResult) {
+        const job = this.store.get(id);
+        const premiereAssetsDir = path.join(job.workspace, "generated-assets", "heygen", "premiere-assets");
+        ensureDir(premiereAssetsDir);
+        const sceneAssets = retentionResult.scenes.map((scene, index) => {
+            const extension = path.extname(scene.source) || ".mp4";
+            const assetPath = path.join(premiereAssetsDir, `${scene.sceneId}${extension}`);
+            if (!fs.existsSync(assetPath)) {
+                try {
+                    fs.linkSync(scene.source, assetPath);
+                } catch {
+                    fs.copyFileSync(scene.source, assetPath);
+                }
+            }
+            return {
+                id: `asset-heygen-${String(index + 1).padStart(3, "0")}`,
+                path: assetPath,
+                role: "heygen-scene",
+                order: index,
+            };
+        });
+        job.production.sourceAssets = sceneAssets;
+        job.production.editPlan = {
+            source: job.outputPaths.editManifest,
+            timeline: retentionResult.scenes.map((scene, index) => ({
+                asset_path: sceneAssets[index].path,
+                order: index,
+                video_track_index: 0,
+                audio_track_index: 0,
+            })),
+            retention: retentionResult,
+        };
+        this.store.save(job);
+    }
+
+    async applyPremiereRetention(job) {
+        const plan = readJson(job.outputPaths.editManifest);
+        const snapshot = (await this.canUseUxp())
+            ? await this.adapter.inspectProject()
+            : await this.cepAdapter.inspectProject({ sequenceName: job.production.sequenceName });
+        const sequence =
+            snapshot.sequences.find((item) => item.name === job.production.sequenceName) ||
+            (snapshot.project.activeSequenceName === job.production.sequenceName
+                ? {
+                      id: snapshot.project.activeSequenceId,
+                      name: snapshot.project.activeSequenceName,
+                  }
+                : null);
+        if (!sequence) throw new WorkflowValidationError("Cannot apply retention edits to a missing sequence.");
+        if (!this.cepAdapter) throw new Error("Premiere CEP caption adapter is not configured.");
+        if (!this.captionRenderer) throw new Error("Caption renderer is not configured.");
+        const captionAssets = await this.captionRenderer.render(job, plan);
+        const editPacket = await this.cepAdapter.applyRetentionPlan({
+            sequenceName: sequence.name,
+            plan,
+            captionAssets,
+        });
+        return {
+            editor: "premiere-pro",
+            retentionEdit: editPacket,
+            captions: captionAssets,
+        };
+    }
+
     classifyFailure(error, attempts) {
         if (error.code === "WAITING_FOR_ASSETS") return "AWAITING_ASSETS";
         const manual = new Set(["WORKFLOW_VALIDATION_FAILED"]);
@@ -416,6 +558,29 @@ class VideoJobRunner {
         this.store.addEvent(id, "JOB_STARTED", { attempt: job.attempts });
 
         try {
+            let generation = null;
+            let retention = null;
+            if (this.store.get(id).generation.enabled) {
+                generation = await this.executeStage(
+                    id,
+                    "heygen-generation",
+                    "GENERATING_AVATAR",
+                    (current) => {
+                        if (!this.heygenManager) throw new Error("HeyGen manager is not configured.");
+                        return this.heygenManager.generate(current);
+                    }
+                );
+                retention = await this.executeStage(
+                    id,
+                    "retention-plan",
+                    "PLANNING_EDIT",
+                    (current) => {
+                        if (!this.retentionPlanner) throw new Error("Retention planner is not configured.");
+                        return this.retentionPlanner.plan(current, generation);
+                    }
+                );
+                this.applyGeneratedAssets(id, retention);
+            }
             await this.executeStage(
                 id,
                 "app-readiness",
@@ -435,6 +600,11 @@ class VideoJobRunner {
             await this.executeStage(id, "rough-cut", "ROUGH_CUT", (current) =>
                 this.assembleRoughCut(current)
             );
+            if (this.store.get(id).generation.enabled) {
+                await this.executeStage(id, "retention-edit", "RETENTION_EDITING", (current) =>
+                    this.applyPremiereRetention(current)
+                );
+            }
             await this.executeStage(id, "save", "SAVING_PROJECT", (current) =>
                 this.saveProject(current)
             );
@@ -479,6 +649,8 @@ class VideoJobRunner {
                         : null,
                 structuralQcPassed: qc.passed,
                 archive,
+                generation,
+                retention,
             };
             this.store.save(job);
             this.store.addEvent(id, approvalRequired ? "APPROVAL_REQUESTED" : "JOB_COMPLETED", {

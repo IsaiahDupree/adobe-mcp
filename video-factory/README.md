@@ -1,6 +1,6 @@
 # Premiere Video Factory
 
-This is the durable single-node control plane for agent-driven Premiere production. Agents submit a structured job; the worker schedules it, prepares Premiere and the UXP bridge, creates or versions the project, imports real assets, assembles the sequence, validates the timeline, saves, optionally renders through Adobe Media Encoder, and records every checkpoint.
+This is the durable single-node control plane for agent-driven Premiere production. Agents submit a structured job; the worker schedules it, prepares Premiere and its automation bridges, creates or versions the project, imports real assets, assembles the sequence, validates the timeline, saves, optionally renders through Adobe, and records every checkpoint.
 
 ## Quick start
 
@@ -45,6 +45,39 @@ Use absolute paths for source media, sequence presets, existing projects, export
 ```
 
 Jobs use immutable `v001` Premiere project output. When `existing_project_path` is supplied, the worker opens it and immediately saves the active work into the job workspace before editing.
+
+## HeyGen retention pipeline
+
+Submit `examples/heygen-retention-job.json` to run the complete presenter workflow. The factory generates each script beat independently through HeyGen v3, downloads the clean MP4 and SRT, and records a resumable generation manifest. It renders transparent caption assets from the timed SRT cues, then Premiere creates the semantic cuts, places those captions on V2, applies Motion Scale reframes, and exports the finished sequence.
+
+```bash
+node cli.js submit examples/heygen-retention-job.json --run
+```
+
+The API key is read from `HEYGEN_API_KEY` or `~/.env`; it is never written into the job. Generated files are stored under `generated-assets/heygen`, while `edit-plans/retention-edit-manifest.json` records every scene, caption cue, and planned visual change. Completed scenes are reused when a later stage is retried. FFmpeg is not used for editing; `ffprobe` is only used to validate downloaded and exported media streams.
+
+Premiere operations prefer the UXP plugin when it is connected. The installed headless CEP bridge is a complete fallback for opening or creating projects, importing assets, creating sequences, placing retention graphics, saving, inspection, and Adobe H.264 export. A stale UXP host therefore does not block queued production.
+
+The relevant input shape is:
+
+```json
+{
+  "generation": {
+    "provider": "heygen",
+    "engine": "avatar_iv",
+    "aspect_ratio": "9:16",
+    "scenes": [
+      { "id": "hook", "script": "A short hook." },
+      { "id": "payoff", "script": "A concise payoff." }
+    ]
+  },
+  "retention": {
+    "hook_text": "STOP THE SCROLL",
+    "pattern_interrupt_text": "THE FIX",
+    "punch_in_scale": 1.08
+  }
+}
+```
 
 ## Agent API
 

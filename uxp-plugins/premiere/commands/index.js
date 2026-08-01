@@ -518,6 +518,72 @@ const addMediaToSequence = async (command) => {
     }, project)  
 }
 
+const applySceneReframe = async (sequenceId, scene) => {
+    const sequence = await _getSequenceFromId(sequenceId)
+    const trackItem = await getVideoTrack(sequence, 0, scene.trackItemIndex)
+    await setParam(trackItem, "AE.ADBE Motion", "Scale", scene.punchIn.scale)
+    return {
+        sceneId:scene.sceneId,
+        mode:"static-reframe",
+        scale:scene.punchIn.scale
+    }
+}
+
+const clearVideoTracksAboveBase = async (sequenceId) => {
+    const project = await app.Project.getActiveProject()
+    const sequence = await _getSequenceFromId(sequenceId)
+    const editor = await app.SequenceEditor.getEditor(sequence)
+    const selection = await sequence.getSelection()
+    const selectedItems = await selection.getTrackItems()
+    for(const selected of selectedItems) {
+        await selection.removeItem(selected)
+    }
+
+    let removed = 0
+    const trackCount = await sequence.getVideoTrackCount()
+    for(let trackIndex = 1; trackIndex < trackCount; trackIndex++) {
+        const track = await sequence.getVideoTrack(trackIndex)
+        const items = await track.getTrackItems(1, false)
+        for(const item of items) {
+            selection.addItem(item, true)
+            removed++
+        }
+    }
+
+    if(removed > 0) {
+        execute(() => [
+            editor.createRemoveItemsAction(selection, false, app.Constants.MediaType.ANY, false)
+        ], project)
+    }
+    return removed
+}
+
+const applyRetentionPlan = async (command) => {
+    const options = command.options
+    const plan = options.plan
+    const sequenceId = options.sequenceId
+    const punchIns = []
+
+    const removedOverlayItems = await clearVideoTracksAboveBase(sequenceId)
+
+    for(let i = 0; i < plan.scenes.length; i++) {
+        try {
+            punchIns.push(await applySceneReframe(sequenceId, {
+                ...plan.scenes[i],
+                trackItemIndex:i
+            }))
+        } catch(e) {
+            throw new Error(`applyRetentionPlan punch-in [${plan.scenes[i].sceneId}] : ${e}`)
+        }
+    }
+    return {
+        editor:"premiere-pro-uxp",
+        sequenceId,
+        removedOverlayItems,
+        punchIns
+    }
+}
+
 const execute = (getActions, project) => {
     try {
         project.lockedAccess( () => {
@@ -603,7 +669,11 @@ const getAudioTracks = async (sequence) => {
             let endTimeTicks = (await c.getEndTime()).ticks
             let durationTicks = (await c.getDuration()).ticks
             let durationSeconds = (await c.getDuration()).seconds
-            let name = (await c.getProjectItem()).name
+            let projectItem = await c.getProjectItem()
+            let name = projectItem ? projectItem.name : "Generated Audio"
+            if(!projectItem && typeof c.getName === "function") {
+                name = await c.getName()
+            }
             let type = await c.getType()
             let index = k++
 
@@ -683,7 +753,11 @@ const getVideoTracks = async (sequence) => {
             let endTimeTicks = (await c.getEndTime()).ticks
             let durationTicks = (await c.getDuration()).ticks
             let durationSeconds = (await c.getDuration()).seconds
-            let name = (await c.getProjectItem()).name
+            let projectItem = await c.getProjectItem()
+            let name = projectItem ? projectItem.name : "Generated Graphic"
+            if(!projectItem && typeof c.getName === "function") {
+                name = await c.getName()
+            }
             let type = await c.getType()
             let index = k++
 
@@ -913,6 +987,7 @@ const commandHandlers = {
     setVideoClipDisabled,
     appendVideoTransition,
     appendVideoFilter,
+    applyRetentionPlan,
     addMediaToSequence,
     importMedia,
     createProject,

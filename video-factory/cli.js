@@ -4,8 +4,12 @@ const fs = require("fs");
 const path = require("path");
 const config = require("./lib/config");
 const { PremiereAdapter } = require("./lib/premiere-adapter");
+const { CepAdapter } = require("./lib/cep-adapter");
+const { CaptionRenderer } = require("./lib/caption-renderer");
 const { ApplicationManager } = require("./lib/app-manager");
 const { ArchiveManager } = require("./lib/archive-manager");
+const { HeyGenManager } = require("./lib/heygen-manager");
+const { RetentionPlanner } = require("./lib/retention-planner");
 const { JobStore } = require("./lib/store");
 const { VideoJobRunner } = require("./lib/workflow");
 const { createFactoryServer } = require("./lib/server");
@@ -35,10 +39,23 @@ function print(value) {
 
 function createRuntime() {
     const adapter = new PremiereAdapter(config);
+    const cepAdapter = new CepAdapter(config);
+    const captionRenderer = new CaptionRenderer(config);
     const store = new JobStore(config);
-    const appManager = new ApplicationManager(config, adapter);
+    const appManager = new ApplicationManager(config, adapter, cepAdapter);
     const archiveManager = new ArchiveManager(config, adapter);
-    const runner = new VideoJobRunner(store, appManager, adapter, archiveManager);
+    const heygenManager = new HeyGenManager(config);
+    const retentionEditor = new RetentionPlanner();
+    const runner = new VideoJobRunner(
+        store,
+        appManager,
+        adapter,
+        archiveManager,
+        heygenManager,
+        retentionEditor,
+        cepAdapter,
+        captionRenderer
+    );
     return { adapter, store, appManager, runner };
 }
 
