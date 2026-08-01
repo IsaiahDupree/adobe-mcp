@@ -2,6 +2,7 @@ const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
 const { nowIso, slugify } = require("./util");
+const creativeReferenceRegistry = require("../config/creative-reference-registry.json");
 
 const AUTONOMY_MODES = new Set(["supervised", "guarded", "full"]);
 const HEYGEN_ENGINES = new Set(["avatar_iii", "avatar_iv", "avatar_v"]);
@@ -9,6 +10,8 @@ const GENERATION_PROVIDERS = new Set(["heygen", "macos_say"]);
 const ASPECT_RATIOS = new Set(["16:9", "9:16", "4:5", "5:4", "1:1", "auto"]);
 const CAPTION_MODES = new Set(["native", "animated", "both"]);
 const RETENTION_PRESETS = new Set(["social-dynamic", "social-accessible", "youtube-explainer"]);
+const ASSET_PROVIDERS = new Set(["pexels", "pixabay"]);
+const CREATIVE_REFERENCE_IDS = new Set(creativeReferenceRegistry.references.map((item) => item.id));
 
 function normalizeAsset(asset, index) {
     const input = typeof asset === "string" ? { path: asset } : { ...asset };
@@ -128,6 +131,10 @@ function normalizeRetention(spec) {
     if (!RETENTION_PRESETS.has(preset)) {
         throw new Error(`retention.preset must be one of: ${Array.from(RETENTION_PRESETS).join(", ")}.`);
     }
+    const creativeReferences = input.creative_reference_ids || input.creativeReferenceIds || [];
+    if (!Array.isArray(creativeReferences) || creativeReferences.some((id) => !CREATIVE_REFERENCE_IDS.has(id))) {
+        throw new Error("retention.creative_reference_ids contains an unknown creative reference.");
+    }
     return {
         enabled: input.enabled !== false,
         preset,
@@ -139,6 +146,7 @@ function normalizeRetention(spec) {
         nativeCaptionTrackName:
             input.native_caption_track_name || input.nativeCaptionTrackName || "C1_ACCESSIBILITY_EN",
         punchInScale: Number(input.punch_in_scale || input.punchInScale || 1.08),
+        creativeReferences: [...new Set(creativeReferences)],
     };
 }
 
@@ -166,6 +174,50 @@ function normalizeShowcase(spec) {
                 scale: Number(inputItem.scale || 0) || null,
             };
         });
+    const normalizeAssetRequests = (items) =>
+        (items || []).map((item, index) => {
+            const request = { ...item };
+            if (!request.query || !String(request.query).trim()) {
+                throw new Error(`showcase.asset_requests[${index}].query is required.`);
+            }
+            const providers = request.providers || (request.provider ? [request.provider] : ["pexels", "pixabay"]);
+            if (!Array.isArray(providers) || providers.length === 0 || providers.some((provider) => !ASSET_PROVIDERS.has(provider))) {
+                throw new Error(
+                    `showcase.asset_requests[${index}].providers must contain pexels or pixabay.`
+                );
+            }
+            const orientation = request.orientation || "landscape";
+            if (!["landscape", "portrait", "square", "any"].includes(orientation)) {
+                throw new Error(`showcase.asset_requests[${index}].orientation is invalid.`);
+            }
+            const minDurationSeconds = Number(request.min_duration_seconds || request.minDurationSeconds || 5);
+            const maxDurationSeconds = Number(request.max_duration_seconds || request.maxDurationSeconds || 45);
+            if (minDurationSeconds <= 0 || maxDurationSeconds < minDurationSeconds) {
+                throw new Error(`showcase.asset_requests[${index}] has an invalid duration range.`);
+            }
+            return {
+                id: slugify(request.id || `broll-${String(index + 1).padStart(2, "0")}`),
+                type: "video",
+                sceneId: slugify(request.scene_id || request.sceneId || `scene-${index + 1}`),
+                purpose: request.purpose || "visual-proof",
+                query: String(request.query).trim(),
+                providers: [...new Set(providers)],
+                orientation,
+                minDurationSeconds,
+                maxDurationSeconds,
+                idealDurationSeconds: Number(
+                    request.ideal_duration_seconds || request.idealDurationSeconds ||
+                    Math.min(maxDurationSeconds, Math.max(minDurationSeconds, 12))
+                ),
+                candidateCount: Math.max(3, Math.min(40, Number(request.candidate_count || request.candidateCount || 15))),
+                sourceStart: Math.max(0, Number(request.source_start || request.sourceStart || 0)),
+                placementDurationSeconds: Math.max(
+                    2,
+                    Math.min(12, Number(request.placement_duration_seconds || request.placementDurationSeconds || 5))
+                ),
+                scale: Number(request.scale || 0) || null,
+            };
+        });
     const minimumDurationSeconds = Number(
         input.minimum_duration_seconds || input.minimumDurationSeconds || 300
     );
@@ -175,12 +227,28 @@ function normalizeShowcase(spec) {
     if (minimumDurationSeconds <= 0 || maximumDurationSeconds < minimumDurationSeconds) {
         throw new Error("showcase duration range is invalid.");
     }
+    const brollSources = normalizeBroll(input.broll_sources || input.brollSources);
+    const sfxSources = normalizePaths(input.sfx_sources || input.sfxSources, "sfx_sources");
+    const assetRequests = normalizeAssetRequests(input.asset_requests || input.assetRequests);
+    const policyInput = input.asset_policy || input.assetPolicy || {};
+    const assetPolicy = {
+        mode: policyInput.mode || (assetRequests.length > 0 ? "provider-only" : "local-allowed"),
+        recordProvenance: policyInput.record_provenance !== false && policyInput.recordProvenance !== false,
+    };
+    if (!["provider-only", "local-allowed"].includes(assetPolicy.mode)) {
+        throw new Error("showcase.asset_policy.mode must be provider-only or local-allowed.");
+    }
+    if (assetPolicy.mode === "provider-only" && (brollSources.length > 0 || sfxSources.length > 0)) {
+        throw new Error("Provider-only showcase jobs cannot include pre-existing local B-roll or SFX paths.");
+    }
     return {
         enabled: true,
         minimumDurationSeconds,
         maximumDurationSeconds,
-        brollSources: normalizeBroll(input.broll_sources || input.brollSources),
-        sfxSources: normalizePaths(input.sfx_sources || input.sfxSources, "sfx_sources"),
+        brollSources,
+        sfxSources,
+        assetRequests,
+        assetPolicy,
     };
 }
 
@@ -288,6 +356,7 @@ function normalizeJobSpec(
             combinedCaptions: path.join(workspace, "transcripts", "combined-captions.srt"),
             editManifest: path.join(workspace, "edit-plans", "retention-edit-manifest.json"),
             showcaseManifest: path.join(workspace, "edit-plans", "showcase-asset-manifest.json"),
+            assetRegistry: path.join(workspace, "source-assets", "asset-registry.json"),
         },
     };
 }

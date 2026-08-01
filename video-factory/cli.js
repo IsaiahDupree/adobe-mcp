@@ -11,6 +11,7 @@ const { ArchiveManager } = require("./lib/archive-manager");
 const { HeyGenManager } = require("./lib/heygen-manager");
 const { RetentionPlanner } = require("./lib/retention-planner");
 const { ShowcaseRenderer } = require("./lib/showcase-renderer");
+const { ProductionAssetBroker } = require("./lib/asset-broker");
 const { LocalNarrationManager } = require("./lib/local-narration-manager");
 const { JobStore } = require("./lib/store");
 const { VideoJobRunner } = require("./lib/workflow");
@@ -49,6 +50,7 @@ function createRuntime() {
     const heygenManager = new HeyGenManager(config);
     const retentionEditor = new RetentionPlanner();
     const showcaseRenderer = new ShowcaseRenderer(config);
+    const assetBroker = new ProductionAssetBroker(config);
     const localNarrationManager = new LocalNarrationManager(config);
     const runner = new VideoJobRunner(
         store,
@@ -60,7 +62,8 @@ function createRuntime() {
         cepAdapter,
         captionRenderer,
         showcaseRenderer,
-        localNarrationManager
+        localNarrationManager,
+        assetBroker
     );
     return { adapter, store, appManager, runner };
 }

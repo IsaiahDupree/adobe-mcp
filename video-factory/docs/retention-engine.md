@@ -45,9 +45,15 @@ Premiere 26.3 can create single-word captions in the UI. The automation equivale
 - `social-accessible`: 3.5-second cadence, slower 105% motion, restrained transitions, native captions.
 - `youtube-explainer`: 5-second cadence, 106% emphasis motion, occasional dissolves, native captions.
 
+## Provider-only asset broker
+
+`showcase.asset_requests` describes each required cutaway by query, target scene, purpose, orientation, duration, and ordered provider list. The production asset broker searches Pexels and Pixabay at runtime, selects a 16:9 rendition near 1080p, downloads it into the job workspace, and writes `source-assets/asset-registry.json` with creator, source page, provider ID, license URL, dimensions, byte size, and SHA-256.
+
+Set `showcase.asset_policy.mode` to `provider-only` to reject all pre-existing local B-roll and SFX paths. GitHub projects in `config/creative-reference-registry.json` contribute engineering and editorial patterns only; their bundled media never becomes an implicit production asset.
+
 ## Benchmark production
 
-The reusable `benchmarks/youtube-retention-showcase.json` job targets 5-8 minutes and fails QC outside that range. Its eleven chapters cover hooks, pacing, motion, proof, layouts, captions, transitions, graphics, sound/color, and workflow. The compiler places generated graphics on V3, fitted owner-supplied B-roll on V2, native captions on C1, narration on A1, and transition SFX on upper audio tracks.
+The reusable `benchmarks/youtube-retention-showcase.json` job targets 5-8 minutes and fails QC outside that range. Its eleven chapters cover hooks, pacing, motion, proof, layouts, captions, transitions, graphics, sound/color, and workflow. The compiler places generated graphics on V3, provenance-tracked Pexels/Pixabay B-roll on V2, native captions on C1, and narration on A1. The portable My Passport archive includes the stock source package and asset registry.
 
 Long-form narration can use `generation.provider: "macos_say"` for a credential-free offline run. The provider creates real AIFF narration, 16:9 source graphics, and sentence-timed SRT cues; Premiere remains responsible for assembly, motion, overlays, captions, audio placement, project save, and H.264 export.
 

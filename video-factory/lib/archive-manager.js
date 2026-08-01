@@ -131,6 +131,7 @@ class ArchiveManager {
             "published",
             "logs",
         ];
+        if (options.includeSourceAssets) workspaceFolders.push("source-assets");
         const paths = [];
         for (const folder of workspaceFolders) {
             paths.push(...walkFiles(path.join(job.workspace, folder)));

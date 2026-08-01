@@ -33,7 +33,8 @@ class VideoJobRunner {
         cepAdapter = null,
         captionRenderer = null,
         showcaseRenderer = null,
-        localNarrationManager = null
+        localNarrationManager = null,
+        assetBroker = null
     ) {
         this.store = store;
         this.appManager = appManager;
@@ -45,6 +46,7 @@ class VideoJobRunner {
         this.captionRenderer = captionRenderer;
         this.showcaseRenderer = showcaseRenderer;
         this.localNarrationManager = localNarrationManager;
+        this.assetBroker = assetBroker;
         this.activeJobId = null;
     }
 
@@ -654,6 +656,29 @@ class VideoJobRunner {
         };
     }
 
+    applyBrokerAssets(id, registry) {
+        if (!registry || !Array.isArray(registry.assets) || registry.assets.length === 0) return;
+        const job = this.store.get(id);
+        job.showcase.brollSources = registry.assets.map((asset) => ({
+            id: asset.id,
+            path: asset.localPath,
+            sceneId: asset.sceneId,
+            sourceStart: asset.sourceStart,
+            placementDurationSeconds: asset.placementDurationSeconds,
+            scale: asset.scale,
+            purpose: asset.purpose,
+            provider: asset.provider,
+            providerAssetId: asset.providerAssetId,
+            pageUrl: asset.pageUrl,
+            creator: asset.creator,
+            attribution: asset.attribution,
+            license: asset.license,
+            licenseUrl: asset.licenseUrl,
+            sha256: asset.sha256,
+        }));
+        this.store.save(job);
+    }
+
     classifyFailure(error, attempts) {
         if (error.code === "WAITING_FOR_ASSETS") return "AWAITING_ASSETS";
         const manual = new Set(["WORKFLOW_VALIDATION_FAILED"]);
@@ -705,6 +730,18 @@ class VideoJobRunner {
                     }
                 );
                 this.applyGeneratedAssets(id, retention);
+            }
+            if ((this.store.get(id).showcase?.assetRequests || []).length > 0) {
+                const assetRegistry = await this.executeStage(
+                    id,
+                    "asset-sourcing",
+                    "SOURCING_ASSETS",
+                    (current) => {
+                        if (!this.assetBroker) throw new Error("Production asset broker is not configured.");
+                        return this.assetBroker.resolve(current);
+                    }
+                );
+                this.applyBrokerAssets(id, assetRegistry);
             }
             await this.executeStage(
                 id,

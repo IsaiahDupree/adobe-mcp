@@ -120,3 +120,50 @@ test("job schema accepts offline narration without HeyGen credentials", () => {
     assert.equal(job.generation.voiceName, "Samantha");
     assert.equal(job.generation.wordsPerMinute, 165);
 });
+
+test("job schema normalizes provider-only semantic asset requests", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "premiere-factory-broker-schema-"));
+    const store = new JobStore({
+        JOBS_DIR: path.join(root, "jobs"),
+        CAMPAIGNS_DIR: path.join(root, "campaigns"),
+    });
+    const job = store.submit({
+        request: { topic: "Provider sourced benchmark" },
+        showcase: {
+            enabled: true,
+            asset_policy: { mode: "provider-only" },
+            asset_requests: [{
+                id: "editor-proof",
+                scene_id: "camera-motion",
+                query: "professional video editor",
+                providers: ["pexels", "pixabay"],
+                orientation: "landscape",
+            }],
+        },
+    });
+
+    assert.equal(job.showcase.assetPolicy.mode, "provider-only");
+    assert.equal(job.showcase.assetRequests[0].sceneId, "camera-motion");
+    assert.deepEqual(job.showcase.assetRequests[0].providers, ["pexels", "pixabay"]);
+    assert.match(job.outputPaths.assetRegistry, /source-assets\/asset-registry\.json$/);
+});
+
+test("provider-only jobs reject pre-existing local creative assets", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "premiere-factory-provider-policy-"));
+    const localClip = path.join(root, "old-broll.mp4");
+    fs.writeFileSync(localClip, "old media");
+    const store = new JobStore({
+        JOBS_DIR: path.join(root, "jobs"),
+        CAMPAIGNS_DIR: path.join(root, "campaigns"),
+    });
+
+    assert.throws(() => store.submit({
+        request: { topic: "Disallowed local media" },
+        showcase: {
+            enabled: true,
+            asset_policy: { mode: "provider-only" },
+            asset_requests: [{ query: "editor", provider: "pexels" }],
+            broll_sources: [localClip],
+        },
+    }), /cannot include pre-existing local B-roll or SFX/);
+});

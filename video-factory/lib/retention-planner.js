@@ -2,6 +2,7 @@ const fs = require("fs");
 const path = require("path");
 const { ensureDir, nowIso, readJson, writeJsonAtomic } = require("./util");
 const { getRetentionPreset } = require("./retention-presets");
+const creativeReferenceRegistry = require("../config/creative-reference-registry.json");
 
 function subtitleSeconds(value) {
     const match = value.trim().match(/(\d{2}):(\d{2}):(\d{2})[,.](\d{3})/);
@@ -116,6 +117,9 @@ class RetentionPlanner {
             createdAt: nowIso(),
             editor: "premiere-pro",
             preset: preset.id,
+            creativeReferences: creativeReferenceRegistry.references.filter((reference) =>
+                (job.retention.creativeReferences || []).includes(reference.id)
+            ),
             sequenceName: job.production.sequenceName,
             durationSeconds: cursor,
             hook: job.retention.hookText

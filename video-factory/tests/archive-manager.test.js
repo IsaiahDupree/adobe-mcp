@@ -34,6 +34,10 @@ function createCompletedJob(root, id) {
 test("archive copy verifies checksums and keeps local payloads", async () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "premiere-archive-copy-"));
     const job = createCompletedJob(root, "copy-job");
+    const brokerAsset = path.join(job.workspace, "source-assets", "broker", "pexels-123.mp4");
+    fs.mkdirSync(path.dirname(brokerAsset), { recursive: true });
+    fs.writeFileSync(brokerAsset, Buffer.alloc(4096, 9));
+    job.archive.includeSourceAssets = true;
     const manager = new ArchiveManager(
         { PASSPORT_ARCHIVE_ROOT: job.archive.destinationRoot },
         null
@@ -44,6 +48,7 @@ test("archive copy verifies checksums and keeps local payloads", async () => {
     assert.equal(receipt.mode, "copy");
     assert.ok(fs.existsSync(job.outputPaths.project));
     assert.ok(fs.existsSync(receipt.archivedProjectPath));
+    assert.ok(fs.existsSync(path.join(receipt.archiveDirectory, "source-assets", "broker", "pexels-123.mp4")));
     assert.equal(
         await sha256(job.outputPaths.project),
         await sha256(receipt.archivedProjectPath)

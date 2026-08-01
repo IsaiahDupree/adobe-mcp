@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "policy": "Reference source code and editorial patterns only. Never import repository media unless a separate commercial-use license is verified and recorded.",
+  "references": [
+    {
+      "id": "heygen-hyperframes-launch",
+      "repository": "https://github.com/heygen-com/hyperframes-launch-video",
+      "licenseScope": "Composition source and media are published for reference use; the HyperFrames framework is Apache-2.0.",
+      "patterns": [
+        "cold_open_montage",
+        "music_drop_feature_reel",
+        "kinetic_type",
+        "footage_compositing",
+        "caption_emphasis_word",
+        "cta_endcard"
+      ]
+    },
+    {
+      "id": "heygen-hyperframes-framework",
+      "repository": "https://github.com/heygen-com/hyperframes",
+      "licenseScope": "Apache-2.0 framework code; user-provided media retains its own license.",
+      "patterns": [
+        "seekable_animation",
+        "timeline_composition",
+        "audio_reactive_visual",
+        "data_visualization",
+        "designed_overlay"
+      ]
+    },
+    {
+      "id": "remotion-overlay",
+      "repository": "https://github.com/remotion-dev/template-overlay",
+      "licenseScope": "Use implementation structure subject to the repository license; clear all supplied media separately.",
+      "patterns": [
+        "transparent_editor_overlay",
+        "lower_third",
+        "proof_stat_card",
+        "progress_bar",
+        "screen_callout"
+      ]
+    },
+    {
+      "id": "remotion-tiktok-captions",
+      "repository": "https://github.com/remotion-dev/template-tiktok",
+      "licenseScope": "Use caption timing and layout implementation subject to the repository license; do not reuse example media.",
+      "patterns": [
+        "caption_emphasis_word",
+        "word_timed_caption",
+        "active_word_highlight"
+      ]
+    }
+  ]
+}

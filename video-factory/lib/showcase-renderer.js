@@ -89,15 +89,22 @@ class ShowcaseRenderer {
                 brollScenes[index] || plan.scenes[Math.min(index, plan.scenes.length - 1)];
             const start = scene.start + Math.min(7, scene.duration * 0.28);
             return {
-                id: `owned-broll-${index + 1}`,
+                id: entry.id || `broll-${index + 1}`,
                 path: source,
-                sourceStart: typeof entry === "string" ? 8 : entry.sourceStart,
+                sourceStart: typeof entry === "string" ? 0 : entry.sourceStart,
                 scale: typeof entry === "string" ? 66.667 : entry.scale,
                 start,
-                end: Math.min(scene.end - 0.5, start + 5),
+                end: Math.min(scene.end - 0.5, start + (entry.placementDurationSeconds || 5)),
                 trackIndex: 1,
-                purpose: "owned-broll-proof",
-                license: "owner-supplied",
+                purpose: entry.purpose || "visual-proof",
+                provider: entry.provider || null,
+                providerAssetId: entry.providerAssetId || null,
+                pageUrl: entry.pageUrl || null,
+                creator: entry.creator || null,
+                attribution: entry.attribution || null,
+                license: entry.license || "owner-supplied",
+                licenseUrl: entry.licenseUrl || null,
+                sha256: entry.sha256 || null,
             };
         });
 

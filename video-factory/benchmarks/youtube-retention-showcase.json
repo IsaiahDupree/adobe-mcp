@@ -1,5 +1,5 @@
 {
-  "job_id": "youtube-retention-benchmark-local-20260801",
+  "job_id": "youtube-retention-benchmark-stock-v2-20260801",
   "campaign_id": "youtube-retention-benchmark",
   "priority": 95,
   "request": {
@@ -48,7 +48,7 @@
       {
         "id": "proof-broll",
         "title": "B-roll and Visual Proof",
-        "script": "B-roll is most valuable when it proves the sentence. Show the product when you name it, the dashboard when you cite a result, and the action when you explain a process. Useful options include cinematic stock, owned footage, screen demonstrations, screenshots, website captures, product closeups, before-and-after examples, reaction clips, maps, charts, and generated diagrams. A cutaway can hide a dialogue edit, but proof is the stronger reason to use it. This chapter uses owned screen footage so the supporting image is specific, licensable, and connected to the subject instead of generic decoration."
+        "script": "B-roll is most valuable when it proves the sentence. Show the product when you name it, the dashboard when you cite a result, and the action when you explain a process. Useful options include cinematic stock, provider-cleared footage, screen demonstrations, screenshots, website captures, product closeups, before-and-after examples, reaction clips, maps, charts, and generated diagrams. A cutaway can hide a dialogue edit, but proof is the stronger reason to use it. This chapter uses freshly sourced Pexels and Pixabay footage with recorded provenance so every supporting image is specific, traceable, and ready for an autonomous production workflow."
       },
       {
         "id": "layouts-focus",
@@ -89,38 +89,95 @@
     "hook_text": "EVERY RETENTION EDITING STYLE",
     "pattern_interrupt_text": "NEXT SYSTEM",
     "punch_in_scale": 1.06,
-    "native_caption_track_name": "C1_ACCESSIBILITY_EN"
+    "native_caption_track_name": "C1_ACCESSIBILITY_EN",
+    "creative_reference_ids": [
+      "heygen-hyperframes-launch",
+      "heygen-hyperframes-framework",
+      "remotion-overlay",
+      "remotion-tiktok-captions"
+    ]
   },
   "showcase": {
     "enabled": true,
     "minimum_duration_seconds": 300,
     "maximum_duration_seconds": 480,
-    "broll_sources": [
+    "asset_policy": {
+      "mode": "provider-only",
+      "record_provenance": true
+    },
+    "asset_requests": [
       {
-        "path": "/Volumes/My Passport/GeneratedMedia/remotion-output/github-ai-video-platform.mp4",
+        "id": "editor-motion-proof",
         "scene_id": "camera-motion",
-        "source_start": 8,
-        "scale": 66.667
+        "query": "professional video editor editing timeline computer",
+        "providers": ["pexels"],
+        "purpose": "camera-motion-proof",
+        "orientation": "landscape",
+        "min_duration_seconds": 6,
+        "max_duration_seconds": 35,
+        "placement_duration_seconds": 6
       },
       {
-        "path": "/Volumes/My Passport/GeneratedMedia/remotion-output/github-safari-automations.mp4",
+        "id": "analytics-proof",
         "scene_id": "proof-broll",
-        "source_start": 8,
-        "scale": 66.667
+        "query": "business analytics computer data dashboard",
+        "providers": ["pixabay"],
+        "purpose": "visual-proof",
+        "orientation": "landscape",
+        "min_duration_seconds": 6,
+        "max_duration_seconds": 35,
+        "placement_duration_seconds": 6
       },
       {
-        "path": "/Volumes/My Passport/GeneratedMedia/remotion-output/caption_styles_benchmark.mp4",
+        "id": "creator-layout-proof",
+        "scene_id": "layouts-focus",
+        "query": "content creator working computer studio",
+        "providers": ["pexels"],
+        "purpose": "picture-in-picture-layout-proof",
+        "orientation": "landscape",
+        "min_duration_seconds": 6,
+        "max_duration_seconds": 35,
+        "placement_duration_seconds": 6
+      },
+      {
+        "id": "typing-caption-proof",
         "scene_id": "caption-systems",
-        "source_start": 1,
-        "scale": 37.5
+        "query": "typing computer keyboard subtitles",
+        "providers": ["pixabay"],
+        "purpose": "caption-workflow-proof",
+        "orientation": "landscape",
+        "min_duration_seconds": 6,
+        "max_duration_seconds": 35,
+        "placement_duration_seconds": 6
+      },
+      {
+        "id": "data-graphics-proof",
+        "scene_id": "graphics-callouts",
+        "query": "data visualization analytics screen",
+        "providers": ["pexels"],
+        "purpose": "graphics-proof",
+        "orientation": "landscape",
+        "min_duration_seconds": 6,
+        "max_duration_seconds": 35,
+        "placement_duration_seconds": 6
+      },
+      {
+        "id": "audio-color-proof",
+        "scene_id": "sound-color",
+        "query": "audio mixing studio color grading",
+        "providers": ["pixabay"],
+        "purpose": "sound-color-proof",
+        "orientation": "landscape",
+        "min_duration_seconds": 6,
+        "max_duration_seconds": 35,
+        "placement_duration_seconds": 6
       }
     ],
-    "sfx_sources": [
-      "/Volumes/My Passport/GeneratedMedia/remotion-assets/sfx/transitions/whoosh_cinematic.mp3"
-    ]
+    "broll_sources": [],
+    "sfx_sources": []
   },
   "production": {
-    "project_name": "youtube-retention-editing-benchmark",
+    "project_name": "youtube-retention-editing-benchmark-stock-v2",
     "sequence_name": "YOUTUBE_RETENTION_BENCHMARK_MASTER",
     "render": {
       "timeout_ms": 3600000
@@ -130,6 +187,6 @@
     "enabled": true,
     "mode": "copy",
     "destination_root": "/Volumes/My Passport/VideoFactory",
-    "include_source_assets": false
+    "include_source_assets": true
   }
 }

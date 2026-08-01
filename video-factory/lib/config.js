@@ -68,6 +68,8 @@ module.exports = {
     MIN_DISK_FREE_GB: Number(process.env.VIDEO_FACTORY_MIN_DISK_FREE_GB || 5),
     HEYGEN_API_URL: process.env.HEYGEN_API_URL || "https://api.heygen.com",
     HEYGEN_API_KEY: envValue("HEYGEN_API_KEY"),
+    PEXELS_API_KEY: envValue("PEXELS_API_KEY"),
+    PIXABAY_API_KEY: envValue("PIXABAY_API_KEY"),
     HEYGEN_AVATAR_ID: envValue(
         "HEYGEN_AVATAR_ID",
         "d9af08b6f80349aaa56096443f91d19e"
