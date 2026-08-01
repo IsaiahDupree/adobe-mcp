@@ -34,7 +34,7 @@
       "description": "Control Adobe Premiere Pro via MCP protocol",
       "command": "adobe-premiere",
       "env": {
-        "PROXY_URL": "http://localhost:3001",
+        "PROXY_URL": "http://localhost:3031",
         "APPLICATION": "premiere"
       },
       "requires": ["proxy-server"],
@@ -86,7 +86,7 @@
       "command": "adobe-proxy",
       "runtime": "node",
       "ports": {
-        "websocket": 3001
+        "websocket": 3031
       }
     }
   },

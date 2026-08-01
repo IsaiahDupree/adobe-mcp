@@ -2,27 +2,67 @@
 <html>
 
 <head>
-  <script src="main.js"></script>
+  <meta charset="UTF-8">
   <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
+  <main class="shell">
+    <section class="topbar">
+      <div>
+        <h1>Premiere MCP Agent</h1>
+        <div id="connectionMeta" class="muted">Proxy http://localhost:3031</div>
+      </div>
+      <div id="statusPill" class="status status-off">Disconnected</div>
+    </section>
 
+    <section class="toolbar" aria-label="Connection controls">
+      <button id="btnStart" class="primary">Connect</button>
+      <button id="btnRefresh" type="button">Refresh</button>
+      <button id="btnSave" type="button">Save</button>
+      <label class="check">
+        <input id="chkConnectOnLaunch" type="checkbox">
+        <span>Auto-connect</span>
+      </label>
+    </section>
 
+    <section id="alert" class="alert" hidden></section>
 
-  <div>
-    <sp-button id="btnStart">Connect</sp-button>
-  </div>
-  <p>&nbsp;</p>
-  <div>
-    <sp-checkbox id="chkConnectOnLaunch">Connect on Launch</sp-checkbox>
-  </div>
-  <footer>
-    <div>
-      <div>Created by Mike Chambers</div>
-      <div>https://github.com/mikechambers/adb-mcp</div>
-    </div>
-  </footer>
+    <section class="metrics" aria-label="Project status">
+      <div class="metric">
+        <div class="metric-label">Sequences</div>
+        <div id="sequenceCount" class="metric-value">-</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Project Items</div>
+        <div id="itemCount" class="metric-value">-</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Timeline Clips</div>
+        <div id="clipCount" class="metric-value">-</div>
+      </div>
+    </section>
+
+    <section class="panel-grid">
+      <section class="panel">
+        <div class="panel-heading">
+          <h2>Sequences</h2>
+          <span id="activeSequence" class="muted">No active sequence</span>
+        </div>
+        <div id="sequenceList" class="list empty">No project snapshot yet.</div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-heading">
+          <h2>Recent Events</h2>
+          <button id="btnClearLog" type="button" class="ghost">Clear</button>
+        </div>
+        <div id="eventLog" class="log" aria-live="polite"></div>
+      </section>
+    </section>
+  </main>
+
+  <script src="main.js"></script>
 </body>
 
 </html>

@@ -1,0 +1,25 @@
+{
+  "campaign_id": "premiere-autonomy",
+  "request": {
+    "topic": "Premiere Video Factory rendered integration",
+    "content_goal": "validate_full_render_loop"
+  },
+  "autonomy": {
+    "mode": "full",
+    "rough_cut_approval": "automatic_if_qc_passes",
+    "final_publish_approval": "automatic"
+  },
+  "production": {
+    "project_name": "factory-render-integration",
+    "sequence_name": "RENDER_MASTER",
+    "source_assets": [
+      "/Users/isaiahdupree/Documents/Software/premiere-autonomy/integration-assets/factory-source.mp4"
+    ],
+    "render": {
+      "preset_file": "/Applications/Adobe Premiere Pro 2026/Adobe Premiere Pro 2026.app/Contents/MediaIO/systempresets/4E49434B_48323634/YouTube 1080p HD.epr",
+      "output_file": "/Users/isaiahdupree/Documents/Software/premiere-autonomy/integration-assets/factory-render-output.mp4",
+      "export_type": "IMMEDIATELY",
+      "timeout_ms": 300000
+    }
+  }
+}

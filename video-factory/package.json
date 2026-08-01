@@ -1,0 +1,11 @@
+{
+  "name": "premiere-video-factory",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Durable single-node control plane for autonomous Premiere production",
+  "scripts": {
+    "factory": "node cli.js",
+    "serve": "node cli.js serve",
+    "test": "node --test tests/*.test.js"
+  }
+}

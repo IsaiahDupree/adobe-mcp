@@ -76,8 +76,48 @@ const findSequenceByName = async (sequenceName) => {
     return
 }
 
+const getFunctionNames = (value) => {
+    const names = new Set();
+    let cursor = value;
+
+    while (cursor) {
+        for (const name of Object.getOwnPropertyNames(cursor)) {
+            try {
+                if (typeof value[name] === "function") {
+                    names.add(name);
+                }
+            } catch {
+                // Some UXP host-backed properties can throw during inspection.
+            }
+        }
+        cursor = Object.getPrototypeOf(cursor);
+    }
+
+    return Array.from(names).sort();
+}
+
 const getProjectInfo = async (command) => {
-    return {}
+    let project = await app.Project.getActiveProject()
+
+    if(!project) {
+        return { hasProject: false }
+    }
+
+    const activeSequence = await project.getActiveSequence()
+
+    return {
+        hasProject: true,
+        id: project.guid ? project.guid.toString() : undefined,
+        name: project.name,
+        path: project.path,
+        activeSequenceId: activeSequence && activeSequence.guid
+            ? activeSequence.guid.toString()
+            : undefined,
+        activeSequenceName: activeSequence ? activeSequence.name : undefined,
+        constructorName: project.constructor ? project.constructor.name : undefined,
+        keys: Object.keys(project),
+        functions: getFunctionNames(project)
+    }
 }
 
 const _getSequenceFromId = async (id) => {
@@ -132,6 +172,69 @@ const createProject = async (command) => {
     //create a default sequence and set it as active
     //let sequence = await project.createSequence("default")
     //await project.setActiveSequence(sequence)
+}
+
+const createSequence = async (command) => {
+    let options = command.options
+    let sequenceName = options.sequenceName || options.name || "default"
+
+    let project = await app.Project.getActiveProject()
+
+    let found = false
+    try {
+        await findProjectItem(sequenceName, project)
+        found  = true
+    } catch {
+        //do nothing
+    }
+
+    if(found) {
+        throw Error(`createSequence : sequence name [${sequenceName}] is already in use`)
+    }
+
+    let sequence = await project.createSequence(sequenceName)
+
+    if(!sequence) {
+        throw new Error(`createSequence : Could not create sequence [${sequenceName}]`)
+    }
+
+    await _setActiveSequence(sequence)
+
+    return {
+        id: sequence.guid.toString(),
+        name: sequence.name,
+    }
+}
+
+const createSequenceWithPresetPath = async (command) => {
+    const options = command.options
+    const sequenceName = options.sequenceName || options.name || "default"
+    const presetPath = options.presetPath
+
+    if(!presetPath) {
+        throw new Error("createSequenceWithPresetPath : presetPath is required")
+    }
+
+    const project = await app.Project.getActiveProject()
+    const existing = await findSequenceByName(sequenceName)
+
+    if(existing) {
+        throw Error(`createSequenceWithPresetPath : sequence name [${sequenceName}] is already in use`)
+    }
+
+    const sequence = await project.createSequenceWithPresetPath(sequenceName, presetPath)
+
+    if(!sequence) {
+        throw new Error(`createSequenceWithPresetPath : Could not create sequence [${sequenceName}]`)
+    }
+
+    await _setActiveSequence(sequence)
+
+    return {
+        id: sequence.guid.toString(),
+        name: sequence.name,
+        presetPath,
+    }
 }
 
 const exportFrame = async (command) => {
@@ -674,7 +777,8 @@ const getProjectContentInfo = async () => {
 const saveProject = async (command) => {
     let project = await app.Project.getActiveProject()
 
-    project.save()
+    const saved = await project.save()
+    return { saved, path: project.path }
 }
 
 const saveProjectAs = async (command) => {
@@ -683,7 +787,8 @@ const saveProjectAs = async (command) => {
     const options = command.options;
     const filePath = options.filePath;
 
-    project.saveAs(filePath)
+    const saved = await project.saveAs(filePath)
+    return { saved, path: project.path }
 }
 
 const openProject = async (command) => {
@@ -691,7 +796,72 @@ const openProject = async (command) => {
     const options = command.options;
     const filePath = options.filePath;
 
-    await app.Project.open(filePath);    
+    const project = await app.Project.open(filePath)
+    return {
+        opened: Boolean(project),
+        id: project && project.guid ? project.guid.toString() : undefined,
+        name: project ? project.name : undefined,
+        path: project ? project.path : filePath,
+    }
+}
+
+const exportSequence = async (command) => {
+    const options = command.options
+    const sequence = options.sequenceId
+        ? await _getSequenceFromId(options.sequenceId)
+        : await app.Project.getActiveProject().then(project => project.getActiveSequence())
+
+    if(!sequence) {
+        throw new Error("exportSequence : Requires an active or specified sequence")
+    }
+
+    const outputFile = options.outputFile
+    const presetFile = options.presetFile || ""
+    const exportTypeName = options.exportType || "IMMEDIATELY"
+    const exportType = app.Constants.ExportType[exportTypeName]
+
+    if(!outputFile) {
+        throw new Error("exportSequence : outputFile is required")
+    }
+
+    if(exportType === undefined) {
+        throw new Error(`exportSequence : Unknown exportType [${exportTypeName}]`)
+    }
+
+    const manager = await app.EncoderManager.getManager()
+
+    if(!manager || !manager.isAMEInstalled) {
+        throw new Error("exportSequence : Adobe Media Encoder is not installed")
+    }
+
+    if(exportTypeName === "QUEUE_TO_AME" && typeof manager.launchEncoder === "function") {
+        await manager.launchEncoder()
+    }
+
+    const accepted = await manager.exportSequence(
+        sequence,
+        exportType,
+        outputFile,
+        presetFile,
+        options.exportFull !== false
+    )
+
+    if(!accepted) {
+        throw new Error(`exportSequence : Export was not accepted for [${outputFile}]`)
+    }
+
+    if(exportTypeName === "QUEUE_TO_AME" && options.startQueueImmediately !== false && typeof manager.startBatchEncode === "function") {
+        await manager.startBatchEncode()
+    }
+
+    return {
+        accepted,
+        outputFile,
+        presetFile,
+        exportType: exportTypeName,
+        sequenceId: sequence.guid.toString(),
+        sequenceName: sequence.name,
+    }
 }
 
 const parseAndRouteCommand = async (command) => {
@@ -724,6 +894,9 @@ const commandHandlers = {
     addMediaToSequence,
     importMedia,
     createProject,
+    createSequence,
+    createSequenceWithPresetPath,
+    exportSequence,
 };
 
 const checkRequiresActiveProject = async (command) => {
@@ -740,7 +913,7 @@ const checkRequiresActiveProject = async (command) => {
 };
 
 const requiresActiveProject = (command) => {
-    return !["createProject", "openProject"].includes(command.action);
+    return !["createProject", "openProject", "getProjectInfo"].includes(command.action);
 };
 
 module.exports = {

@@ -12,6 +12,8 @@ eggs/
 .eggs/
 lib/
 lib64/
+!video-factory/lib/
+!video-factory/lib/**
 parts/
 sdist/
 var/

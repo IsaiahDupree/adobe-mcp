@@ -1,0 +1,20 @@
+{
+  "campaign_id": "premiere-autonomy",
+  "request": {
+    "topic": "Premiere Video Factory integration job",
+    "content_goal": "validate_autonomous_editing"
+  },
+  "schedule": {
+    "production_start": "2026-08-01T12:00:00-04:00"
+  },
+  "autonomy": {
+    "mode": "guarded",
+    "rough_cut_approval": "automatic_if_qc_passes",
+    "final_publish_approval": "required"
+  },
+  "production": {
+    "project_name": "factory-integration",
+    "sequence_name": "FACTORY_MASTER",
+    "source_assets": []
+  }
+}

@@ -37,7 +37,7 @@ const io = new Server(server,
   }
 );
 
-const PORT = 3001
+const PORT = Number(process.env.PORT || 3031)
 
 // Add middleware
 app.use(express.json());
@@ -110,7 +110,17 @@ io.on('connection', (socket) => {
         command:command
     }
 
-    sendToApplication(packet)
+    const delivered = sendToApplication(packet)
+
+    if (!delivered) {
+      socket.emit('packet_response', {
+        senderId: socket.id,
+        application,
+        command,
+        status: 'FAILURE',
+        message: `No ${application} plugin is connected to the proxy.`
+      });
+    }
     
     // Send response back to this client
     //socket.emit('json_response', { from: 'server', command });

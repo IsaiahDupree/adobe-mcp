@@ -22,6 +22,7 @@
 
 from mcp.server.fastmcp import FastMCP
 from ..shared import init, sendCommand, createCommand, socket_client
+import os
 import sys
 
 
@@ -37,8 +38,8 @@ mcp = FastMCP(mcp_name, log_level="ERROR")
 print(f"{mcp_name} running on stdio", file=sys.stderr)
 
 APPLICATION = "premiere"
-PROXY_URL = 'http://localhost:3001'
-PROXY_TIMEOUT = 20
+PROXY_URL = os.environ.get("PROXY_URL", "http://localhost:3031")
+PROXY_TIMEOUT = int(os.environ.get("PROXY_TIMEOUT", "20"))
 
 socket_client.configure(
     app=APPLICATION, 
@@ -160,6 +161,38 @@ def set_active_sequence(sequence_id: str):
 
     command = createCommand("setActiveSequence", {
         "sequenceId":sequence_id
+    })
+
+    return sendCommand(command)
+
+
+@mcp.tool()
+def create_sequence(sequence_name: str = "default"):
+    """
+    Creates a new empty sequence in the active Premiere Pro project and makes it active.
+
+    Args:
+        sequence_name (str, optional): The name to give the new sequence. Defaults to "default".
+    """
+
+    command = createCommand("createSequence", {
+        "sequenceName": sequence_name
+    })
+
+    return sendCommand(command)
+
+@mcp.tool()
+def create_sequence_with_preset(sequence_name: str, preset_path: str):
+    """Creates an empty sequence using an installed Premiere sequence preset.
+
+    Args:
+        sequence_name: Name for the new sequence.
+        preset_path: Absolute path to a Premiere .sqpreset file.
+    """
+
+    command = createCommand("createSequenceWithPresetPath", {
+        "sequenceName": sequence_name,
+        "presetPath": preset_path
     })
 
     return sendCommand(command)
@@ -568,6 +601,35 @@ def import_media(file_paths:list):
         "filePaths":file_paths
     })
 
+    return sendCommand(command)
+
+@mcp.tool()
+def export_sequence(
+    output_file: str,
+    sequence_id: str | None = None,
+    preset_file: str = "",
+    export_type: str = "IMMEDIATELY",
+):
+    """Exports a Premiere sequence through Adobe Media Encoder.
+
+    Args:
+        output_file: Absolute destination path for the rendered media.
+        sequence_id: Sequence GUID. The active sequence is used when omitted.
+        preset_file: Optional absolute path to an Adobe Media Encoder .epr preset.
+        export_type: IMMEDIATELY, QUEUE_TO_AME, or QUEUE_TO_APP.
+    """
+
+    options = {
+        "outputFile": output_file,
+        "presetFile": preset_file,
+        "exportType": export_type,
+        "exportFull": True,
+        "startQueueImmediately": True,
+    }
+    if sequence_id:
+        options["sequenceId"] = sequence_id
+
+    command = createCommand("exportSequence", options)
     return sendCommand(command)
 
 @mcp.resource("config://get_instructions")
