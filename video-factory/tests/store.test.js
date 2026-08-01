@@ -41,3 +41,21 @@ test("job schema rejects non-absolute asset paths", () => {
         /absolute path/
     );
 });
+
+test("job schema normalizes automatic My Passport archival", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "premiere-factory-archive-schema-"));
+    const store = new JobStore({
+        JOBS_DIR: path.join(root, "jobs"),
+        CAMPAIGNS_DIR: path.join(root, "campaigns"),
+        PASSPORT_ARCHIVE_ROOT: path.join(root, "passport", "VideoFactory"),
+    });
+    const job = store.submit({
+        request: { topic: "Archive job" },
+        archive: { enabled: true, mode: "move", include_source_assets: true },
+    });
+
+    assert.equal(job.archive.enabled, true);
+    assert.equal(job.archive.mode, "move");
+    assert.equal(job.archive.includeSourceAssets, true);
+    assert.equal(job.archive.destinationRoot, path.join(root, "passport", "VideoFactory"));
+});

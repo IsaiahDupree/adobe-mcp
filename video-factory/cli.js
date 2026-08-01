@@ -2,14 +2,14 @@
 
 const fs = require("fs");
 const path = require("path");
-const { spawn } = require("child_process");
 const config = require("./lib/config");
 const { PremiereAdapter } = require("./lib/premiere-adapter");
 const { ApplicationManager } = require("./lib/app-manager");
+const { ArchiveManager } = require("./lib/archive-manager");
 const { JobStore } = require("./lib/store");
 const { VideoJobRunner } = require("./lib/workflow");
 const { createFactoryServer } = require("./lib/server");
-const { ensureDir } = require("./lib/util");
+const { ensureDir, run, sleep } = require("./lib/util");
 
 function usage() {
     console.error(`Premiere Video Factory
@@ -22,6 +22,7 @@ Usage:
   node cli.js tick
   node cli.js approve <job-id>
   node cli.js cancel <job-id>
+  node cli.js archive <job-id> [--move] [--include-source-assets]
   node cli.js serve [--port 3032]
   node cli.js install-service
   node cli.js start-service
@@ -36,7 +37,8 @@ function createRuntime() {
     const adapter = new PremiereAdapter(config);
     const store = new JobStore(config);
     const appManager = new ApplicationManager(config, adapter);
-    const runner = new VideoJobRunner(store, appManager, adapter);
+    const archiveManager = new ArchiveManager(config, adapter);
+    const runner = new VideoJobRunner(store, appManager, adapter, archiveManager);
     return { adapter, store, appManager, runner };
 }
 
@@ -72,6 +74,8 @@ function servicePlist() {
     <key>VIDEO_FACTORY_HOME</key><string>${escape(config.FACTORY_HOME)}</string>
     <key>VIDEO_FACTORY_PORT</key><string>${config.FACTORY_PORT}</string>
     <key>PROXY_URL</key><string>${escape(config.PROXY_URL)}</string>
+    <key>VIDEO_FACTORY_PASSPORT_MOUNT</key><string>${escape(config.PASSPORT_MOUNT)}</string>
+    <key>VIDEO_FACTORY_ARCHIVE_ROOT</key><string>${escape(config.PASSPORT_ARCHIVE_ROOT)}</string>
   </dict>
 </dict>
 </plist>
@@ -85,30 +89,42 @@ async function serviceCommand(action) {
     if (action === "install") {
         ensureDir(launchAgents);
         fs.writeFileSync(plistPath, servicePlist(), "utf8");
-        const child = spawn("/bin/launchctl", ["bootstrap", domain, plistPath], {
-            stdio: "ignore",
-        });
-        await new Promise((resolve) => child.on("close", resolve));
         try {
-            await require("./lib/util").run("/bin/launchctl", [
-                "kickstart",
-                "-k",
+            await run("/bin/launchctl", [
+                "bootout",
                 `${domain}/${config.FACTORY_LAUNCH_LABEL}`,
             ]);
         } catch {
-            // The service may already be running from bootstrap.
+            // The service may not be loaded yet.
         }
+        let bootstrapError;
+        for (let attempt = 0; attempt < 5; attempt += 1) {
+            try {
+                await run("/bin/launchctl", ["bootstrap", domain, plistPath]);
+                bootstrapError = null;
+                break;
+            } catch (error) {
+                bootstrapError = error;
+                await sleep(500);
+            }
+        }
+        if (bootstrapError) throw bootstrapError;
+        await run("/bin/launchctl", [
+            "kickstart",
+            "-k",
+            `${domain}/${config.FACTORY_LAUNCH_LABEL}`,
+        ]);
         return { installed: true, plistPath, label: config.FACTORY_LAUNCH_LABEL };
     }
     if (action === "start") {
-        await require("./lib/util").run("/bin/launchctl", [
+        await run("/bin/launchctl", [
             "kickstart",
             "-k",
             `${domain}/${config.FACTORY_LAUNCH_LABEL}`,
         ]);
         return { started: true, label: config.FACTORY_LAUNCH_LABEL };
     }
-    await require("./lib/util").run("/bin/launchctl", [
+    await run("/bin/launchctl", [
         "kill",
         "SIGTERM",
         `${domain}/${config.FACTORY_LAUNCH_LABEL}`,
@@ -155,6 +171,17 @@ async function main() {
     }
     if (command === "cancel") {
         print(store.cancel(args[1]));
+        return;
+    }
+    if (command === "archive") {
+        if (!args[1]) throw new Error("archive requires a job ID.");
+        print(
+            await runner.archive(args[1], {
+                mode: args.includes("--move") ? "move" : "copy",
+                includeSourceAssets: args.includes("--include-source-assets"),
+                destinationRoot: optionValue(args, "--destination-root", undefined),
+            })
+        );
         return;
     }
     if (command === "serve") {

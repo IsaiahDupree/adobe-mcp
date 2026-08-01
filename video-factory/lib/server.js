@@ -83,6 +83,11 @@ function createFactoryServer({ store, runner, appManager, config }) {
                     sendJson(response, 200, store.approve(id));
                     return;
                 }
+                if (request.method === "POST" && segments[3] === "archive") {
+                    const options = await readBody(request);
+                    sendJson(response, 200, await runner.archive(id, options));
+                    return;
+                }
             }
 
             if (request.method === "POST" && url.pathname === "/api/worker/tick") {

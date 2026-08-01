@@ -103,6 +103,13 @@ def open_project(file_path: str):
 
     return sendCommand(command)
 
+@mcp.tool()
+def close_project():
+    """Saves and closes the active Premiere project without showing a dialog."""
+
+    command = createCommand("closeProject", {})
+    return sendCommand(command)
+
 
 @mcp.tool()
 def create_project(directory_path: str, project_name: str):

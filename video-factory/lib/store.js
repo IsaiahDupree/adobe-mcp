@@ -15,7 +15,11 @@ class JobStore {
     }
 
     submit(spec) {
-        const normalized = normalizeJobSpec(spec, this.config.CAMPAIGNS_DIR);
+        const normalized = normalizeJobSpec(
+            spec,
+            this.config.CAMPAIGNS_DIR,
+            this.config.PASSPORT_ARCHIVE_ROOT
+        );
         if (fs.existsSync(this.jobPath(normalized.id))) {
             throw new Error(`Job ${normalized.id} already exists.`);
         }
@@ -72,6 +76,7 @@ class JobStore {
             schedule: { production_start: job.scheduledFor },
             autonomy: job.autonomy,
             production: job.production,
+            archive: job.archive,
         });
     }
 

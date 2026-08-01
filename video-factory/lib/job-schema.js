@@ -30,7 +30,37 @@ function collectAssets(spec) {
         .sort((a, b) => a.order - b.order);
 }
 
-function normalizeJobSpec(spec, campaignsDir) {
+function normalizeArchive(spec, defaultArchiveRoot) {
+    const input = spec.archive || (spec.production && spec.production.archive);
+    if (!input) {
+        return {
+            enabled: false,
+            mode: "copy",
+            destinationRoot: defaultArchiveRoot,
+            includeSourceAssets: false,
+        };
+    }
+    const mode = input.mode || "copy";
+    if (!["copy", "move"].includes(mode)) {
+        throw new Error("archive.mode must be copy or move.");
+    }
+    const destinationRoot = path.normalize(
+        input.destination_root || input.destinationRoot || defaultArchiveRoot
+    );
+    if (!path.isAbsolute(destinationRoot)) {
+        throw new Error("archive.destination_root must be absolute.");
+    }
+    return {
+        enabled: input.enabled !== false,
+        mode,
+        destinationRoot,
+        includeSourceAssets: Boolean(
+            input.include_source_assets || input.includeSourceAssets
+        ),
+    };
+}
+
+function normalizeJobSpec(spec, campaignsDir, defaultArchiveRoot = "/Volumes/My Passport/VideoFactory") {
     if (!spec || typeof spec !== "object" || Array.isArray(spec)) {
         throw new Error("Video job must be a JSON object.");
     }
@@ -65,6 +95,7 @@ function normalizeJobSpec(spec, campaignsDir) {
     }
 
     const sourceAssets = collectAssets(spec);
+    const archive = normalizeArchive(spec, defaultArchiveRoot);
     const render = production.render
         ? {
               ...production.render,
@@ -112,6 +143,7 @@ function normalizeJobSpec(spec, campaignsDir) {
             editPlan: production.edit_plan || null,
             render,
         },
+        archive,
         workspace,
         outputPaths: {
             project: path.join(workspace, "premiere", `${projectName}-v001.prproj`),

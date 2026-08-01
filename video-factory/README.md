@@ -59,3 +59,31 @@ Jobs use immutable `v001` Premiere project output. When `existing_project_path` 
 - `POST /api/worker/tick` execute the next due job
 
 The API binds to `127.0.0.1` only. It is intentionally not exposed to the public internet.
+
+## My Passport archival
+
+Finished jobs can be copied or moved into `/Volumes/My Passport/VideoFactory/<campaign>/<job>/`. Every file is copied to a temporary destination, verified by byte size and SHA-256, and recorded in `archive-manifest.json` before move mode removes any local payload.
+
+Archive an existing completed job:
+
+```bash
+node cli.js archive <job-id>
+node cli.js archive <job-id> --move
+```
+
+Enable automatic archival in a job request:
+
+```json
+{
+  "archive": {
+    "enabled": true,
+    "mode": "move",
+    "destination_root": "/Volumes/My Passport/VideoFactory",
+    "include_source_assets": false
+  }
+}
+```
+
+Move mode removes completed projects, renders, generated assets, voice assets, proxies, and approved/published payloads after verification. It retains the small local request, QC, receipt, and event records. Original source footage is only included and removed when `include_source_assets` is explicitly enabled.
+
+The matching HTTP operation is `POST /api/jobs/:id/archive` with a body such as `{"mode":"move"}`.

@@ -23,10 +23,11 @@ class WorkflowValidationError extends Error {
 }
 
 class VideoJobRunner {
-    constructor(store, appManager, adapter) {
+    constructor(store, appManager, adapter, archiveManager = null) {
         this.store = store;
         this.appManager = appManager;
         this.adapter = adapter;
+        this.archiveManager = archiveManager;
         this.activeJobId = null;
     }
 
@@ -443,6 +444,14 @@ class VideoJobRunner {
             const render = await this.executeStage(id, "render", "EXPORTING", (current) =>
                 this.renderAndValidate(current)
             );
+            const archive = this.store.get(id).archive.enabled
+                ? await this.executeStage(id, "archive", "ARCHIVING", (current) => {
+                      if (!this.archiveManager) {
+                          throw new Error("Archive manager is not configured.");
+                      }
+                      return this.archiveManager.archiveJob(current);
+                  })
+                : null;
 
             job = this.store.get(id);
             const approvalRequired =
@@ -453,10 +462,23 @@ class VideoJobRunner {
             job.lock = null;
             job.error = null;
             job.result = {
-                projectPath: job.outputPaths.project,
+                projectPath:
+                    archive && archive.mode === "move"
+                        ? archive.archivedProjectPath
+                        : job.outputPaths.project,
                 sequenceName: job.production.sequenceName,
-                render: render && !render.skipped ? render : null,
+                render:
+                    render && !render.skipped
+                        ? {
+                              ...render,
+                              outputFile:
+                                  archive && archive.mode === "move"
+                                      ? archive.archivedRenderPath
+                                      : render.outputFile,
+                          }
+                        : null,
                 structuralQcPassed: qc.passed,
+                archive,
             };
             this.store.save(job);
             this.store.addEvent(id, approvalRequired ? "APPROVAL_REQUESTED" : "JOB_COMPLETED", {
@@ -500,6 +522,72 @@ class VideoJobRunner {
                 status: this.store.get(next.id).status,
                 error: error.message,
             };
+        }
+    }
+
+    async archive(id, overrides = {}) {
+        if (!this.archiveManager) throw new Error("Archive manager is not configured.");
+        if (this.activeJobId && this.activeJobId !== id) {
+            throw new Error(`Production node is busy with ${this.activeJobId}.`);
+        }
+        let job = this.store.get(id);
+        const resumableArchiveFailure =
+            job.status === "ARCHIVING" &&
+            job.checkpoints.archive &&
+            job.checkpoints.archive.status === "FAILED";
+        if (!["COMPLETE", "APPROVAL_REQUIRED"].includes(job.status) && !resumableArchiveFailure) {
+            throw new Error(`Job ${id} must be complete before archival; current status is ${job.status}.`);
+        }
+        const priorStatus = job.completedAt ? "COMPLETE" : "APPROVAL_REQUIRED";
+        this.activeJobId = id;
+        try {
+            const options = this.archiveManager.normalizeOptions(job, overrides);
+            job.archive = options;
+            this.store.save(job);
+            const receipt = await this.executeStage(
+                id,
+                "archive",
+                "ARCHIVING",
+                (current) => this.archiveManager.archiveJob(current, options),
+                { always: true }
+            );
+            job = this.store.get(id);
+            job.status = job.completedAt ? "COMPLETE" : "APPROVAL_REQUIRED";
+            job.result = {
+                ...(job.result || {}),
+                archive: receipt,
+                projectPath:
+                    receipt.mode === "move" && receipt.archivedProjectPath
+                        ? receipt.archivedProjectPath
+                        : job.result && job.result.projectPath,
+                render:
+                    job.result && job.result.render
+                        ? {
+                              ...job.result.render,
+                              outputFile:
+                                  receipt.mode === "move" && receipt.archivedRenderPath
+                                      ? receipt.archivedRenderPath
+                                      : job.result.render.outputFile,
+                          }
+                        : null,
+            };
+            this.store.save(job);
+            this.store.addEvent(id, "JOB_ARCHIVED", receipt);
+            return this.store.get(id);
+        } catch (error) {
+            job = this.store.get(id);
+            job.status = priorStatus;
+            job.error = {
+                code: error.code || "ARCHIVE_FAILED",
+                message: error.message,
+                details: error.details || undefined,
+                at: nowIso(),
+            };
+            this.store.save(job);
+            this.store.addEvent(id, "JOB_ARCHIVE_FAILED", { error: job.error });
+            throw error;
+        } finally {
+            this.activeJobId = null;
         }
     }
 }

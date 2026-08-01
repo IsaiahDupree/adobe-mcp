@@ -805,6 +805,27 @@ const openProject = async (command) => {
     }
 }
 
+const closeProject = async () => {
+    const project = await app.Project.getActiveProject()
+    if(!project) {
+        return { closed: true, hadProject: false }
+    }
+
+    await project.save()
+    const options = new app.CloseProjectOptions()
+    options.setPromptIfDirty(false)
+    options.setShowCancelButton(false)
+    options.setSaveWorkspace(true)
+    options.setIsAppBeingPreparedToQuit(false)
+    const closed = await project.close(options)
+
+    if(!closed) {
+        throw new Error(`closeProject : Could not close [${project.path}]`)
+    }
+
+    return { closed, hadProject: true, path: project.path }
+}
+
 const exportSequence = async (command) => {
     const options = command.options
     const sequence = options.sequenceId
@@ -879,6 +900,7 @@ const parseAndRouteCommand = async (command) => {
 
 const commandHandlers = {
     openProject,
+    closeProject,
     saveProjectAs,
     saveProject,
     getProjectInfo,
@@ -913,7 +935,7 @@ const checkRequiresActiveProject = async (command) => {
 };
 
 const requiresActiveProject = (command) => {
-    return !["createProject", "openProject", "getProjectInfo"].includes(command.action);
+    return !["createProject", "openProject", "closeProject", "getProjectInfo"].includes(command.action);
 };
 
 module.exports = {

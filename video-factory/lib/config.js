@@ -38,4 +38,8 @@ module.exports = {
     COMMAND_TIMEOUT_MS: Number(process.env.PREMIERE_COMMAND_TIMEOUT_MS || 60000),
     APP_READY_TIMEOUT_MS: Number(process.env.PREMIERE_READY_TIMEOUT_MS || 120000),
     MIN_DISK_FREE_GB: Number(process.env.VIDEO_FACTORY_MIN_DISK_FREE_GB || 5),
+    PASSPORT_MOUNT:
+        process.env.VIDEO_FACTORY_PASSPORT_MOUNT || "/Volumes/My Passport",
+    PASSPORT_ARCHIVE_ROOT:
+        process.env.VIDEO_FACTORY_ARCHIVE_ROOT || "/Volumes/My Passport/VideoFactory",
 };
