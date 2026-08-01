@@ -19,6 +19,7 @@ test("retention planner offsets HeyGen captions across semantic scene cuts", () 
         generation: { enabled: true },
         retention: {
             enabled: true,
+            preset: "social-dynamic",
             hookText: "WHY VIEWERS LEAVE",
             patternInterruptText: "THE FIX",
             punchInScale: 1.08,
@@ -37,5 +38,8 @@ test("retention planner offsets HeyGen captions across semantic scene cuts", () 
     assert.equal(result.captions.length, 2);
     assert.equal(result.captions[1].start, 1.6);
     assert.equal(result.metrics.plannedPunchIns, 2);
+    assert.equal(result.preset, "social-dynamic");
+    assert.equal(result.events.filter((event) => event.operation === "native_captions").length, 2);
+    assert.ok(result.events.every((event) => event.retentionGoal));
     assert.match(fs.readFileSync(job.outputPaths.combinedCaptions, "utf8"), /00:00:01,600/);
 });

@@ -23,6 +23,8 @@
     ]
   },
   "retention": {
+    "preset": "social-dynamic",
+    "caption_mode": "native",
     "hook_text": "WHY VIEWERS LEAVE",
     "pattern_interrupt_text": "THE FIX",
     "caption_style": "bold-safe",

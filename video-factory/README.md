@@ -48,7 +48,7 @@ Jobs use immutable `v001` Premiere project output. When `existing_project_path` 
 
 ## HeyGen retention pipeline
 
-Submit `examples/heygen-retention-job.json` to run the complete presenter workflow. The factory generates each script beat independently through HeyGen v3, downloads the clean MP4 and SRT, and records a resumable generation manifest. It renders transparent caption assets from the timed SRT cues, then Premiere creates the semantic cuts, places those captions on V2, applies Motion Scale reframes, and exports the finished sequence.
+Submit `examples/heygen-retention-job.json` to run the complete presenter workflow. The factory generates each script beat independently through HeyGen v3, downloads the clean MP4 and SRT, and records a resumable generation manifest. Premiere creates the semantic cuts, applies Motion reframes, builds a native editable caption track, and exports the finished sequence. Animated caption graphics remain available through `caption_mode: "animated"` or `"both"`.
 
 ```bash
 node cli.js submit examples/heygen-retention-job.json --run
@@ -72,12 +72,16 @@ The relevant input shape is:
     ]
   },
   "retention": {
+    "preset": "social-dynamic",
+    "caption_mode": "native",
     "hook_text": "STOP THE SCROLL",
     "pattern_interrupt_text": "THE FIX",
     "punch_in_scale": 1.08
   }
 }
 ```
+
+See [docs/retention-engine.md](docs/retention-engine.md) for the researched capability map, compiler tiers, native-caption architecture, and preset strategy.
 
 ## Agent API
 

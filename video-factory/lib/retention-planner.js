@@ -1,6 +1,7 @@
 const fs = require("fs");
 const path = require("path");
 const { ensureDir, nowIso, readJson, writeJsonAtomic } = require("./util");
+const { getRetentionPreset } = require("./retention-presets");
 
 function subtitleSeconds(value) {
     const match = value.trim().match(/(\d{2}):(\d{2}):(\d{2})[,.](\d{3})/);
@@ -45,8 +46,10 @@ class RetentionPlanner {
     plan(job, generationResult = null) {
         if (!job.generation.enabled || !job.retention.enabled) return { skipped: true };
         const generation = generationResult || readJson(job.outputPaths.generationManifest);
+        const preset = getRetentionPreset(job.retention.preset);
         const scenes = [];
         const captions = [];
+        const events = [];
         let cursor = 0;
 
         generation.scenes.forEach((scene, index) => {
@@ -76,6 +79,24 @@ class RetentionPlanner {
                 },
                 patternInterrupt: index > 0 ? job.retention.patternInterruptText : null,
             });
+            events.push({
+                timeSeconds: cursor,
+                operation: index === 0 ? "result_first_hook" : "semantic_cut",
+                trigger: index === 0 ? "viewer_entry" : "new_idea",
+                retentionGoal: index === 0 ? "prove value immediately" : "reset visual attention",
+                sceneId: scene.sceneId,
+                compiler: "sequence_assembly",
+            });
+            events.push({
+                timeSeconds: punchStart,
+                endSeconds: punchEnd,
+                operation: preset.motion,
+                trigger: "mid_scene_visual_refresh",
+                retentionGoal: "prevent visual fatigue",
+                sceneId: scene.sceneId,
+                compiler: "motion_keyframes",
+                parameters: { scale: Math.round(job.retention.punchInScale * 100) },
+            });
             cursor += duration;
         });
         if (captions.length === 0) throw new Error("HeyGen returned no usable caption cues.");
@@ -93,6 +114,7 @@ class RetentionPlanner {
             jobId: job.id,
             createdAt: nowIso(),
             editor: "premiere-pro",
+            preset: preset.id,
             sequenceName: job.production.sequenceName,
             durationSeconds: cursor,
             hook: job.retention.hookText
@@ -100,11 +122,26 @@ class RetentionPlanner {
                 : null,
             scenes,
             captions,
+            events: [
+                ...events,
+                ...captions.map((cue) => ({
+                    timeSeconds: cue.start,
+                    endSeconds: cue.end,
+                    operation: "native_captions",
+                    trigger: "spoken_phrase",
+                    retentionGoal: "preserve comprehension without sound",
+                    sceneId: cue.sceneId,
+                    compiler: "srt_caption_track",
+                    parameters: { text: cue.text },
+                })),
+            ].sort((a, b) => a.timeSeconds - b.timeSeconds),
             metrics: {
                 scenes: scenes.length,
                 captionCues: captions.length,
                 plannedPunchIns: scenes.length,
                 plannedPatternInterrupts: scenes.filter((scene) => scene.patternInterrupt).length,
+                plannedEvents: events.length + captions.length,
+                targetVisualChangeIntervalSeconds: preset.visualChangeIntervalSeconds,
             },
         };
         writeJsonAtomic(job.outputPaths.editManifest, manifest);

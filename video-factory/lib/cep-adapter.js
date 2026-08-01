@@ -1,6 +1,6 @@
 const fs = require("fs");
 const path = require("path");
-const { ensureDir, sleep } = require("./util");
+const { ensureDir, nowIso, readJson, sleep, writeJsonAtomic } = require("./util");
 
 class CepAdapter {
     constructor(config) {
@@ -139,6 +139,57 @@ class CepAdapter {
         return this.executeScript(script, 5 * 60 * 1000);
     }
 
+    async createNativeCaptionTrack({ sequenceName, srtPath, requestedTrackName }) {
+        if (!fs.existsSync(srtPath)) throw new Error(`Caption source does not exist: ${srtPath}`);
+        const receiptPath = `${srtPath}.premiere-track.json`;
+        if (fs.existsSync(receiptPath)) {
+            const receipt = readJson(receiptPath);
+            if (receipt.sequenceName === sequenceName && receipt.source === srtPath) {
+                return { ...receipt, created: false, reused: true };
+            }
+        }
+        const script = `(function(){try{
+    var sequenceName=${JSON.stringify(sequenceName)};
+    var srtPath=${JSON.stringify(srtPath)};
+    var project=app.project;
+    var sequence=null;
+    function findByPath(parent,mediaPath){
+        if(!parent||!parent.children)return null;
+        for(var i=0;i<parent.children.numItems;i++){
+            var child=parent.children[i];
+            try{if(child.getMediaPath&&child.getMediaPath()===mediaPath)return child;}catch(ignorePath){}
+            var nested=findByPath(child,mediaPath);
+            if(nested)return nested;
+        }
+        return null;
+    }
+    for(var s=0;s<project.sequences.numSequences;s++)if(project.sequences[s].name===sequenceName)sequence=project.sequences[s];
+    if(!sequence)return JSON.stringify({success:false,error:"Sequence not found"});
+    var captionItem=findByPath(project.rootItem,srtPath);
+    if(!captionItem){
+        if(!project.importFiles([srtPath],true,project.rootItem,false))return JSON.stringify({success:false,error:"SRT import failed: "+srtPath});
+        captionItem=findByPath(project.rootItem,srtPath);
+    }
+    if(!captionItem)return JSON.stringify({success:false,error:"Imported SRT project item was not found"});
+    if(!project.activeSequence||project.activeSequence.sequenceID!==sequence.sequenceID)project.openSequence(sequence.sequenceID);
+    if(!project.activeSequence||project.activeSequence.sequenceID!==sequence.sequenceID)return JSON.stringify({success:false,error:"Premiere could not activate the caption target sequence"});
+    var created=project.activeSequence.createCaptionTrack(captionItem,0);
+    if(!created)return JSON.stringify({success:false,error:"Premiere did not create a native caption track (itemType="+String(captionItem.type)+")"});
+    project.save();
+    return JSON.stringify({success:true,created:true,reused:false,verification:"createCaptionTrack-returned-true",requestedTrackName:${JSON.stringify(requestedTrackName)},source:srtPath});
+}catch(error){return JSON.stringify({success:false,error:String(error)});}})();`;
+        const result = await this.executeScript(script, 120000);
+        const receipt = {
+            ...result,
+            sequenceName,
+            source: srtPath,
+            receiptPath,
+            verifiedAt: nowIso(),
+        };
+        writeJsonAtomic(receiptPath, receipt);
+        return receipt;
+    }
+
     async applyRetentionPlan({ sequenceName, plan, captionAssets = [] }) {
         const sequenceLiteral = JSON.stringify(sequenceName);
         const planLiteral = JSON.stringify(plan);
@@ -153,6 +204,12 @@ class CepAdapter {
             if (project.sequences[s].name === ${sequenceLiteral}) sequence = project.sequences[s];
         }
         if (!sequence) return JSON.stringify({success:false,error:"Sequence not found"});
+        if (!project.activeSequence || project.activeSequence.sequenceID !== sequence.sequenceID) {
+            project.openSequence(sequence.sequenceID);
+        }
+        if (!project.activeSequence || project.activeSequence.sequenceID !== sequence.sequenceID) {
+            return JSON.stringify({success:false,error:"Premiere could not activate the retention target sequence"});
+        }
         var removed = 0;
         for (var trackIndex = 1; trackIndex < sequence.videoTracks.numTracks; trackIndex++) {
             var overlayTrack = sequence.videoTracks[trackIndex];
@@ -175,14 +232,38 @@ class CepAdapter {
                     for (var propertyIndex = 0; propertyIndex < component.properties.numItems; propertyIndex++) {
                         var property = component.properties[propertyIndex];
                         if (property.displayName === "Scale") {
-                            property.setValue(scene.punchIn.scale, true);
+                            var keyframes=[];
+                            if(property.setTimeVarying&&property.addKey&&property.setValueAtKey){
+                                property.setTimeVarying(true);
+                                var oldKeys=property.getKeys?(property.getKeys()||[]):[];
+                                if(property.removeKey){
+                                    for(var oldKeyIndex=0;oldKeyIndex<oldKeys.length;oldKeyIndex++)property.removeKey(oldKeys[oldKeyIndex]);
+                                }
+                                var rampSeconds=Math.min(0.18,Math.max(0.08,(scene.punchIn.end-scene.punchIn.start)/4));
+                                var times=[
+                                    scene.start,
+                                    scene.punchIn.start,
+                                    scene.punchIn.start+rampSeconds,
+                                    scene.punchIn.end,
+                                    Math.min(scene.end,scene.punchIn.end+rampSeconds),
+                                    scene.end
+                                ];
+                                var values=[100,100,scene.punchIn.scale,scene.punchIn.scale,100,100];
+                                for(var keyIndex=0;keyIndex<times.length;keyIndex++){
+                                    property.addKey(times[keyIndex]);
+                                    property.setValueAtKey(times[keyIndex],values[keyIndex],true);
+                                    keyframes.push({time:times[keyIndex],value:values[keyIndex]});
+                                }
+                            }else{
+                                property.setValue(scene.punchIn.scale,true);
+                            }
                             scaleSet = true;
+                            reframes.push({sceneId:scene.sceneId,scale:scene.punchIn.scale,keyframes:keyframes,mode:keyframes.length?"timed-punch-in":"static-reframe"});
                         }
                     }
                 }
             }
             if (!scaleSet) return JSON.stringify({success:false,error:"Scale property not found for " + scene.sceneId});
-            reframes.push({sceneId:scene.sceneId,scale:scene.punchIn.scale});
         }
 
         var importedCaptions = [];

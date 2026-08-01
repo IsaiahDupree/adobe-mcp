@@ -75,12 +75,18 @@ test("job schema normalizes a scene-based HeyGen retention job", () => {
             engine: "avatar_iv",
             scenes: ["Lead with the result.", "Change the frame on the next beat."],
         },
-        retention: { hook_text: "STOP THE SCROLL" },
+        retention: {
+            preset: "social-dynamic",
+            caption_mode: "native",
+            hook_text: "STOP THE SCROLL",
+        },
     });
 
     assert.equal(job.generation.enabled, true);
     assert.equal(job.generation.scenes.length, 2);
     assert.equal(job.generation.avatarId, "avatar-real-id");
     assert.equal(job.retention.hookText, "STOP THE SCROLL");
+    assert.equal(job.retention.captionMode, "native");
+    assert.equal(job.retention.preset, "social-dynamic");
     assert.match(job.outputPaths.combinedCaptions, /combined-captions\.srt$/);
 });

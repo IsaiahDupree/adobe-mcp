@@ -6,6 +6,8 @@ const { nowIso, slugify } = require("./util");
 const AUTONOMY_MODES = new Set(["supervised", "guarded", "full"]);
 const HEYGEN_ENGINES = new Set(["avatar_iii", "avatar_iv", "avatar_v"]);
 const ASPECT_RATIOS = new Set(["16:9", "9:16", "4:5", "5:4", "1:1", "auto"]);
+const CAPTION_MODES = new Set(["native", "animated", "both"]);
+const RETENTION_PRESETS = new Set(["social-dynamic", "social-accessible", "youtube-explainer"]);
 
 function normalizeAsset(asset, index) {
     const input = typeof asset === "string" ? { path: asset } : { ...asset };
@@ -112,12 +114,24 @@ function normalizeGeneration(spec, defaults = {}) {
 
 function normalizeRetention(spec) {
     const input = spec.retention || (spec.production && spec.production.retention) || {};
+    const captionMode = input.caption_mode || input.captionMode || "native";
+    const preset = input.preset || "social-dynamic";
+    if (!CAPTION_MODES.has(captionMode)) {
+        throw new Error(`retention.caption_mode must be one of: ${Array.from(CAPTION_MODES).join(", ")}.`);
+    }
+    if (!RETENTION_PRESETS.has(preset)) {
+        throw new Error(`retention.preset must be one of: ${Array.from(RETENTION_PRESETS).join(", ")}.`);
+    }
     return {
         enabled: input.enabled !== false,
+        preset,
         hookText: input.hook_text || input.hookText || null,
         patternInterruptText:
             input.pattern_interrupt_text || input.patternInterruptText || "THE FIX",
         captionStyle: input.caption_style || input.captionStyle || "bold-safe",
+        captionMode,
+        nativeCaptionTrackName:
+            input.native_caption_track_name || input.nativeCaptionTrackName || "C1_ACCESSIBILITY_EN",
         punchInScale: Number(input.punch_in_scale || input.punchInScale || 1.08),
     };
 }

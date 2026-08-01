@@ -360,6 +360,20 @@ class VideoJobRunner {
                 actualAudio: audioClips,
             });
         }
+        const requiresNativeCaptions =
+            job.generation.enabled &&
+            job.retention.enabled &&
+            ["native", "both"].includes(job.retention.captionMode || "native");
+        const nativeCaptionResult =
+            job.checkpoints["retention-edit"] &&
+            job.checkpoints["retention-edit"].result &&
+            job.checkpoints["retention-edit"].result.nativeCaptionTrack;
+        if (requiresNativeCaptions && (!nativeCaptionResult || !nativeCaptionResult.success)) {
+            issues.push({
+                severity: "critical",
+                problem: "Native caption-track creation was not verified.",
+            });
+        }
         const passed = issues.every((issue) => issue.severity !== "critical");
         const report = {
             jobId: job.id,
@@ -519,17 +533,33 @@ class VideoJobRunner {
                 : null);
         if (!sequence) throw new WorkflowValidationError("Cannot apply retention edits to a missing sequence.");
         if (!this.cepAdapter) throw new Error("Premiere CEP caption adapter is not configured.");
-        if (!this.captionRenderer) throw new Error("Caption renderer is not configured.");
-        const captionAssets = await this.captionRenderer.render(job, plan);
+        const captionMode = job.retention.captionMode || "native";
+        const useNativeCaptions = ["native", "both"].includes(captionMode);
+        const useAnimatedCaptions = ["animated", "both"].includes(captionMode);
+        if (useAnimatedCaptions && !this.captionRenderer) {
+            throw new Error("Animated caption renderer is not configured.");
+        }
+        const captionAssets = useAnimatedCaptions
+            ? await this.captionRenderer.render(job, plan)
+            : [];
         const editPacket = await this.cepAdapter.applyRetentionPlan({
             sequenceName: sequence.name,
             plan,
             captionAssets,
         });
+        const nativeCaptionTrack = useNativeCaptions
+            ? await this.cepAdapter.createNativeCaptionTrack({
+                  sequenceName: sequence.name,
+                  srtPath: job.outputPaths.combinedCaptions,
+                  requestedTrackName: job.retention.nativeCaptionTrackName || "C1_ACCESSIBILITY_EN",
+              })
+            : null;
         return {
             editor: "premiere-pro",
             retentionEdit: editPacket,
-            captions: captionAssets,
+            captionMode,
+            nativeCaptionTrack,
+            animatedCaptions: captionAssets,
         };
     }
 
