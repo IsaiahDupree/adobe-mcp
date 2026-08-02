@@ -70,6 +70,17 @@ class CepAdapter {
         return this.executeScript(script, 120000);
     }
 
+    async closeProject(filePath) {
+        const script = `(function(){try{
+    var requestedPath=${JSON.stringify(filePath)};
+    if(!app.project||!app.project.path)return JSON.stringify({success:true,closed:false,reason:"no-project",bridge:"cep"});
+    if(requestedPath&&app.project.path!==requestedPath)return JSON.stringify({success:true,closed:false,reason:"different-project",activePath:app.project.path,bridge:"cep"});
+    var closed=app.project.closeDocument(1,0);
+    return JSON.stringify({success:closed!==false,closed:closed!==false,projectPath:requestedPath,bridge:"cep"});
+}catch(error){return JSON.stringify({success:false,error:String(error)});}})();`;
+        return this.executeScript(script, 120000);
+    }
+
     async importMedia(filePaths) {
         const pathsLiteral = JSON.stringify(filePaths);
         const script = `(function(){try{

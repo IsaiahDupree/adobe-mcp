@@ -70,3 +70,23 @@ test("retention script falls back to an available SFX track and records the mapp
     assert.match(capturedScript, /sequence\.audioTracks\.numTracks-1/);
     assert.match(capturedScript, /requestedTrackIndex:requestedAudioTrackNumber/);
 });
+
+test("CEP project close saves and closes only the requested active project", async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "premiere-cep-close-"));
+    const adapter = new CepAdapter({
+        PREMIERE_CEP_TEMP_DIR: root,
+        PREMIERE_CEP_TIMEOUT_MS: 100,
+        PREMIERE_H264_PRESET: path.join(root, "unused.epr"),
+    });
+    let capturedScript = "";
+    adapter.executeScript = async (script) => {
+        capturedScript = script;
+        return { success: true, closed: true, bridge: "cep" };
+    };
+
+    const result = await adapter.closeProject("/tmp/requested.prproj");
+
+    assert.equal(result.bridge, "cep");
+    assert.match(capturedScript, /different-project/);
+    assert.match(capturedScript, /closeDocument\(1,0\)/);
+});

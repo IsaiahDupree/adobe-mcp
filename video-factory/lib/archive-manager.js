@@ -39,9 +39,10 @@ function sha256(filePath) {
 }
 
 class ArchiveManager {
-    constructor(config, adapter) {
+    constructor(config, adapter, cepAdapter = null) {
         this.config = config;
         this.adapter = adapter;
+        this.cepAdapter = cepAdapter;
     }
 
     normalizeOptions(job, overrides = {}) {
@@ -212,21 +213,34 @@ class ArchiveManager {
     }
 
     async closeActiveArchivedProject(job) {
-        if (!this.adapter) return null;
         if (!job.outputPaths.project || !fs.existsSync(job.outputPaths.project)) return null;
+        let adapterError = null;
         try {
-            const snapshot = await this.adapter.inspectProject();
-            if (
-                snapshot.project &&
-                snapshot.project.hasProject &&
-                path.resolve(snapshot.project.path) === path.resolve(job.outputPaths.project)
-            ) {
-                const packet = await this.adapter.command("closeProject");
-                return packet.response || { closed: true };
+            if (this.adapter) {
+                const snapshot = await this.adapter.inspectProject();
+                if (
+                    snapshot.project &&
+                    snapshot.project.hasProject &&
+                    path.resolve(snapshot.project.path) === path.resolve(job.outputPaths.project)
+                ) {
+                    const packet = await this.adapter.command("closeProject");
+                    return packet.response || { closed: true, bridge: "uxp" };
+                }
+                return null;
             }
         } catch (error) {
+            adapterError = error;
+        }
+        if (this.cepAdapter) {
+            try {
+                return await this.cepAdapter.closeProject(job.outputPaths.project);
+            } catch (error) {
+                adapterError = error;
+            }
+        }
+        if (adapterError) {
             throw new ArchiveError(
-                `Could not close the active Premiere project before moving it: ${error.message}`,
+                `Could not close the active Premiere project before moving it: ${adapterError.message}`,
                 "ARCHIVE_PROJECT_CLOSE_FAILED"
             );
         }

@@ -74,3 +74,30 @@ test("archive move deletes local payloads only after verification", async () => 
     assert.ok(fs.existsSync(receipt.archivedProjectPath));
     assert.ok(fs.existsSync(receipt.archivedRenderPath));
 });
+
+test("archive project close falls back to CEP when UXP is disconnected", async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "premiere-archive-cep-close-"));
+    const job = createCompletedJob(root, "cep-close-job");
+    const uxpAdapter = {
+        async inspectProject() {
+            throw new Error("No premiere plugin is connected to the proxy.");
+        },
+    };
+    const calls = [];
+    const cepAdapter = {
+        async closeProject(projectPath) {
+            calls.push(projectPath);
+            return { success: true, closed: true, bridge: "cep" };
+        },
+    };
+    const manager = new ArchiveManager(
+        { PASSPORT_ARCHIVE_ROOT: job.archive.destinationRoot },
+        uxpAdapter,
+        cepAdapter
+    );
+
+    const receipt = await manager.closeActiveArchivedProject(job);
+
+    assert.equal(receipt.bridge, "cep");
+    assert.deepEqual(calls, [job.outputPaths.project]);
+});

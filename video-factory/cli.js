@@ -80,7 +80,7 @@ function createRuntime() {
     const captionRenderer = new CaptionRenderer(config);
     const store = new JobStore(config);
     const appManager = new ApplicationManager(config, adapter, cepAdapter);
-    const archiveManager = new ArchiveManager(config, adapter);
+    const archiveManager = new ArchiveManager(config, adapter, cepAdapter);
     const heygenManager = new HeyGenManager(config);
     const retentionEditor = new RetentionPlanner();
     const showcaseRenderer = new ShowcaseRenderer(config);
