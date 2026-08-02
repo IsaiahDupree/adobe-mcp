@@ -21,7 +21,16 @@ async function readBody(request) {
     return JSON.parse(Buffer.concat(chunks).toString("utf8"));
 }
 
-function createFactoryServer({ store, runner, appManager, config, boardStore = null, boardRunner = null }) {
+function createFactoryServer({
+    store,
+    runner,
+    appManager,
+    config,
+    boardStore = null,
+    boardRunner = null,
+    compositionStore = null,
+    compositionRunner = null,
+}) {
     let schedulerTimer = null;
 
     const server = http.createServer(async (request, response) => {
@@ -36,6 +45,10 @@ function createFactoryServer({ store, runner, appManager, config, boardStore = n
                     boards: boardStore ? {
                         total: boardStore.list().length,
                         activeBoardId: boardRunner.activeBoardId,
+                    } : null,
+                    compositions: compositionStore ? {
+                        total: compositionStore.list().length,
+                        activeBatchId: compositionRunner.activeBatchId,
                     } : null,
                     queue: {
                         total: jobs.length,
@@ -96,6 +109,32 @@ function createFactoryServer({ store, runner, appManager, config, boardStore = n
                 if (request.method === "POST" && segments[3] === "run") {
                     setImmediate(() => boardRunner.run(id).catch(() => {}));
                     sendJson(response, 202, { accepted: true, boardId: id });
+                    return;
+                }
+            }
+
+            if (compositionStore && request.method === "GET" && url.pathname === "/api/compositions") {
+                sendJson(response, 200, {
+                    compositions: compositionStore.list(),
+                    activeBatchId: compositionRunner.activeBatchId,
+                });
+                return;
+            }
+
+            if (compositionStore && request.method === "POST" && url.pathname === "/api/compositions") {
+                sendJson(response, 201, compositionStore.submit(await readBody(request)));
+                return;
+            }
+
+            if (compositionStore && segments[0] === "api" && segments[1] === "compositions" && segments[2]) {
+                const id = decodeURIComponent(segments[2]);
+                if (request.method === "GET" && segments.length === 3) {
+                    sendJson(response, 200, compositionStore.get(id));
+                    return;
+                }
+                if (request.method === "POST" && segments[3] === "run") {
+                    setImmediate(() => compositionRunner.run(id).catch(() => {}));
+                    sendJson(response, 202, { accepted: true, compositionId: id });
                     return;
                 }
             }

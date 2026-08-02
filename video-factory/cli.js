@@ -23,6 +23,12 @@ const { Showrunner } = require("./lib/showrunner");
 const { TechnicalQa } = require("./lib/technical-qa");
 const { TrendScout } = require("./lib/trend-scout");
 const { LocalNarrationManager } = require("./lib/local-narration-manager");
+const { SceneDirector } = require("./lib/scene-director");
+const { SubjectAnalyzer } = require("./lib/subject-analyzer");
+const { ResponsiveLayoutEngine } = require("./lib/responsive-layout-engine");
+const { AnimationGrammarRenderer } = require("./lib/animation-grammar-renderer");
+const { CompositionQa } = require("./lib/composition-qa");
+const { CompositionBatchRunner, CompositionBatchStore } = require("./lib/composition-batch");
 const { JobStore } = require("./lib/store");
 const { VideoJobRunner } = require("./lib/workflow");
 const { createFactoryServer } = require("./lib/server");
@@ -38,6 +44,9 @@ Usage:
   node cli.js board-submit <board.json> [--run]
   node cli.js board-run <board-id>
   node cli.js board-status [board-id]
+  node cli.js composition-submit <composition.json> [--run]
+  node cli.js composition-run <composition-id>
+  node cli.js composition-status [composition-id]
   node cli.js run <job-id>
   node cli.js status [job-id]
   node cli.js tick
@@ -77,9 +86,16 @@ function createRuntime() {
         captionRenderer,
         showcaseRenderer,
         localNarrationManager,
-        assetBroker
+        assetBroker,
+        new SceneDirector(),
+        new SubjectAnalyzer(config),
+        new ResponsiveLayoutEngine(),
+        new AnimationGrammarRenderer(config),
+        new CompositionQa()
     );
     const boardStore = new BoardStore(config);
+    const compositionStore = new CompositionBatchStore(config, store);
+    const compositionRunner = new CompositionBatchRunner(compositionStore, store, runner);
     const boardRunner = new ProductionBoardRunner({
         config,
         boardStore,
@@ -94,7 +110,16 @@ function createRuntime() {
         releaseArbiter: new ReleaseArbiter(),
         releasePackager: new ReleasePackager(),
     });
-    return { adapter, store, appManager, runner, boardStore, boardRunner };
+    return {
+        adapter,
+        store,
+        appManager,
+        runner,
+        boardStore,
+        boardRunner,
+        compositionStore,
+        compositionRunner,
+    };
 }
 
 function optionValue(args, name, fallback) {
@@ -194,7 +219,15 @@ async function main() {
         usage();
         process.exit(command ? 0 : 2);
     }
-    const { store, appManager, runner, boardStore, boardRunner } = createRuntime();
+    const {
+        store,
+        appManager,
+        runner,
+        boardStore,
+        boardRunner,
+        compositionStore,
+        compositionRunner,
+    } = createRuntime();
 
     if (command === "health") {
         print(args.includes("--ensure") ? await appManager.ensureReady() : await appManager.health());
@@ -226,6 +259,22 @@ async function main() {
     }
     if (command === "board-status") {
         print(args[1] ? boardStore.get(args[1]) : { boards: boardStore.list() });
+        return;
+    }
+    if (command === "composition-submit") {
+        if (!args[1]) throw new Error("composition-submit requires a composition JSON file.");
+        const spec = JSON.parse(fs.readFileSync(path.resolve(args[1]), "utf8"));
+        const batch = compositionStore.submit(spec);
+        print(args.includes("--run") ? await compositionRunner.run(batch.id) : batch);
+        return;
+    }
+    if (command === "composition-run") {
+        if (!args[1]) throw new Error("composition-run requires a composition ID.");
+        print(await compositionRunner.run(args[1]));
+        return;
+    }
+    if (command === "composition-status") {
+        print(args[1] ? compositionStore.get(args[1]) : { compositions: compositionStore.list() });
         return;
     }
     if (command === "run") {
@@ -269,6 +318,8 @@ async function main() {
             config,
             boardStore,
             boardRunner,
+            compositionStore,
+            compositionRunner,
         });
         server.listen(port, "127.0.0.1", () => {
             process.stdout.write(`Premiere Video Factory listening on http://127.0.0.1:${port}\n`);

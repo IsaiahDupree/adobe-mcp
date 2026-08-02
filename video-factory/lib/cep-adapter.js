@@ -274,6 +274,11 @@ class CepAdapter {
             var scene = plan.scenes[sceneIndex];
             var sourceClip = baseTrack.clips[sceneIndex];
             if (!sourceClip) return JSON.stringify({success:false,error:"Missing scene clip " + scene.sceneId});
+            var compositionCamera=scene.compositionCamera;
+            var useCompositionCamera=Boolean(compositionCamera&&compositionCamera.enabled);
+            var focusStart=useCompositionCamera?compositionCamera.phases[1].start:scene.punchIn.start;
+            var focusEnd=useCompositionCamera?compositionCamera.phases[1].end:scene.punchIn.end;
+            var focusScale=useCompositionCamera?compositionCamera.scale*100:scene.punchIn.scale;
             var scaleSet = false;
             for (var componentIndex = 0; componentIndex < sourceClip.components.numItems; componentIndex++) {
                 var component = sourceClip.components[componentIndex];
@@ -288,26 +293,52 @@ class CepAdapter {
                                 if(property.removeKey){
                                     for(var oldKeyIndex=0;oldKeyIndex<oldKeys.length;oldKeyIndex++)property.removeKey(oldKeys[oldKeyIndex]);
                                 }
-                                var rampSeconds=Math.min(0.18,Math.max(0.08,(scene.punchIn.end-scene.punchIn.start)/4));
+                                var rampSeconds=Math.min(0.18,Math.max(0.08,(focusEnd-focusStart)/4));
                                 var times=[
                                     scene.start,
-                                    scene.punchIn.start,
-                                    scene.punchIn.start+rampSeconds,
-                                    scene.punchIn.end,
-                                    Math.min(scene.end,scene.punchIn.end+rampSeconds),
+                                    focusStart,
+                                    focusStart+rampSeconds,
+                                    focusEnd,
+                                    Math.min(scene.end,focusEnd+rampSeconds),
                                     scene.end
                                 ];
-                                var values=[100,100,scene.punchIn.scale,scene.punchIn.scale,100,100];
+                                var values=[100,100,focusScale,focusScale,100,100];
                                 for(var keyIndex=0;keyIndex<times.length;keyIndex++){
                                     property.addKey(times[keyIndex]);
                                     property.setValueAtKey(times[keyIndex],values[keyIndex],true);
                                     keyframes.push({time:times[keyIndex],value:values[keyIndex]});
                                 }
                             }else{
-                                property.setValue(scene.punchIn.scale,true);
+                                property.setValue(focusScale,true);
                             }
                             scaleSet = true;
-                            reframes.push({sceneId:scene.sceneId,scale:scene.punchIn.scale,keyframes:keyframes,mode:keyframes.length?"timed-punch-in":"static-reframe"});
+                            reframes.push({sceneId:scene.sceneId,scale:focusScale,keyframes:keyframes,mode:keyframes.length?(useCompositionCamera?"face-aware-composition-camera":"timed-punch-in"):"static-reframe"});
+                        }
+                        if(useCompositionCamera&&property.displayName==="Position"){
+                            var frameWidth=Number(plan.frame&&plan.frame.width||1920);
+                            var frameHeight=Number(plan.frame&&plan.frame.height||1080);
+                            var currentPosition=property.getValue?property.getValue():[0.5,0.5];
+                            var normalizedPosition=Number(currentPosition[0])<=2&&Number(currentPosition[1])<=2;
+                            var center=normalizedPosition?[0.5,0.5]:[frameWidth/2,frameHeight/2];
+                            var positionWidth=normalizedPosition?1:frameWidth;
+                            var positionHeight=normalizedPosition?1:frameHeight;
+                            var focused=[
+                                center[0]+Number(compositionCamera.translation.x||0)*positionWidth,
+                                center[1]+Number(compositionCamera.translation.y||0)*positionHeight
+                            ];
+                            if(property.setTimeVarying&&property.addKey&&property.setValueAtKey){
+                                property.setTimeVarying(true);
+                                var oldPositionKeys=property.getKeys?(property.getKeys()||[]):[];
+                                if(property.removeKey){
+                                    for(var oldPositionKeyIndex=0;oldPositionKeyIndex<oldPositionKeys.length;oldPositionKeyIndex++)property.removeKey(oldPositionKeys[oldPositionKeyIndex]);
+                                }
+                                var positionTimes=[scene.start,focusStart,focusStart+0.12,focusEnd,Math.min(scene.end,focusEnd+0.12),scene.end];
+                                var positionValues=[center,center,focused,focused,center,center];
+                                for(var positionKeyIndex=0;positionKeyIndex<positionTimes.length;positionKeyIndex++){
+                                    property.addKey(positionTimes[positionKeyIndex]);
+                                    property.setValueAtKey(positionTimes[positionKeyIndex],positionValues[positionKeyIndex],true);
+                                }
+                            }
                         }
                     }
                 }
@@ -326,6 +357,7 @@ class CepAdapter {
             }
             return null;
         }
+        var graphicAnimations=[];
         var graphicAssets=captionAssets.concat(showcaseAssets.graphics||[]);
         for (var captionIndex = 0; captionIndex < graphicAssets.length; captionIndex++) {
             var caption = graphicAssets[captionIndex];
@@ -350,6 +382,59 @@ class CepAdapter {
             var targetTrack = sequence.videoTracks[targetTrackIndex];
             if(!targetTrack)return JSON.stringify({success:false,error:"Missing video overlay track "+targetTrackIndex});
             targetTrack.overwriteClip(captionItem, captionStart.ticks);
+            var animation=caption.animation||null;
+            if(animation){
+                for(var placedGraphicIndex=0;placedGraphicIndex<targetTrack.clips.numItems;placedGraphicIndex++){
+                    var placedGraphic=targetTrack.clips[placedGraphicIndex];
+                    if(Math.abs(Number(placedGraphic.start.seconds)-Number(caption.start))>=0.1)continue;
+                    var introEnd=Math.min(caption.end,caption.start+Number(animation.introSeconds||0.45));
+                    var outroStart=Math.max(caption.start,caption.end-Number(animation.outroSeconds||0.55));
+                    var receipt={id:caption.id||caption.text,opacity:[],scale:[]};
+                    for(var graphicComponentIndex=0;graphicComponentIndex<placedGraphic.components.numItems;graphicComponentIndex++){
+                        var graphicComponent=placedGraphic.components[graphicComponentIndex];
+                        for(var graphicPropertyIndex=0;graphicPropertyIndex<graphicComponent.properties.numItems;graphicPropertyIndex++){
+                            var graphicProperty=graphicComponent.properties[graphicPropertyIndex];
+                            var animationTimes=[caption.start,introEnd,outroStart,caption.end];
+                            if(graphicProperty.displayName==="Opacity"){
+                                var oldOpacityKeys=graphicProperty.getKeys?(graphicProperty.getKeys()||[]):[];
+                                if(graphicProperty.removeKey){
+                                    for(var oldOpacityIndex=0;oldOpacityIndex<oldOpacityKeys.length;oldOpacityIndex++)graphicProperty.removeKey(oldOpacityKeys[oldOpacityIndex]);
+                                }
+                                if(graphicProperty.setTimeVarying)graphicProperty.setTimeVarying(false);
+                                graphicProperty.setValue(100,true);
+                                receipt.opacity.push({mode:"static-export-safe",value:100});
+                            }
+                            if(graphicProperty.displayName==="Scale"&&graphicProperty.setTimeVarying&&graphicProperty.addKey&&graphicProperty.setValueAtKey){
+                                graphicProperty.setTimeVarying(true);
+                                var oldGraphicScaleKeys=graphicProperty.getKeys?(graphicProperty.getKeys()||[]):[];
+                                if(graphicProperty.removeKey){
+                                    for(var oldGraphicScaleKeyIndex=0;oldGraphicScaleKeyIndex<oldGraphicScaleKeys.length;oldGraphicScaleKeyIndex++)graphicProperty.removeKey(oldGraphicScaleKeys[oldGraphicScaleKeyIndex]);
+                                }
+                                var graphicScaleValues=[94,100,100,96];
+                                for(var graphicScaleIndex=0;graphicScaleIndex<animationTimes.length;graphicScaleIndex++){
+                                    graphicProperty.addKey(animationTimes[graphicScaleIndex]);
+                                    graphicProperty.setValueAtKey(animationTimes[graphicScaleIndex],graphicScaleValues[graphicScaleIndex],true);
+                                    receipt.scale.push({time:animationTimes[graphicScaleIndex],value:graphicScaleValues[graphicScaleIndex]});
+                                }
+                            }
+                            if(graphicProperty.displayName==="Position"&&caption.geometry&&caption.geometry.panel&&caption.geometry.dimensions){
+                                var graphicPosition=graphicProperty.getValue?graphicProperty.getValue():[0.5,0.5];
+                                var graphicNormalized=Number(graphicPosition[0])<=2&&Number(graphicPosition[1])<=2;
+                                var panelCenterX=Number(caption.geometry.panel.left)+Number(caption.geometry.panel.width)/2;
+                                var panelCenterY=Number(caption.geometry.panel.top)+Number(caption.geometry.panel.height)/2;
+                                var positioned=graphicNormalized?[
+                                    panelCenterX/Number(caption.geometry.dimensions.width),
+                                    panelCenterY/Number(caption.geometry.dimensions.height)
+                                ]:[panelCenterX,panelCenterY];
+                                graphicProperty.setValue(positioned,true);
+                                receipt.position=positioned;
+                            }
+                        }
+                    }
+                    graphicAnimations.push(receipt);
+                    break;
+                }
+            }
             importedCaptions.push({text:caption.text,start:caption.start,end:caption.end,trackIndex:targetTrackIndex,purpose:caption.purpose||"animated-caption"});
         }
 
@@ -437,6 +522,7 @@ class CepAdapter {
             removedOverlayItems:removed,
             reframes:reframes,
             overlays:importedCaptions,
+            graphicAnimations:graphicAnimations,
             broll:importedVideos,
             audio:importedAudio
         });

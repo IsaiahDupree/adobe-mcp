@@ -11,6 +11,7 @@ const ASPECT_RATIOS = new Set(["16:9", "9:16", "4:5", "5:4", "1:1", "auto"]);
 const CAPTION_MODES = new Set(["native", "animated", "both"]);
 const RETENTION_PRESETS = new Set(["social-dynamic", "social-accessible", "youtube-explainer"]);
 const ASSET_PROVIDERS = new Set(["pexels", "pixabay"]);
+const COMPOSITION_FORMATS = new Set(["16:9", "9:16", "1:1"]);
 const CREATIVE_REFERENCE_IDS = new Set(creativeReferenceRegistry.references.map((item) => item.id));
 
 function normalizeAsset(asset, index) {
@@ -100,6 +101,14 @@ function normalizeGeneration(spec, defaults = {}) {
     });
     const avatarId = input.avatar_id || input.avatarId || defaults.avatarId;
     const voiceId = input.voice_id || input.voiceId || defaults.voiceId;
+    const outputFormat = input.output_format || input.outputFormat || "mp4";
+    if (!["mp4", "webm"].includes(outputFormat)) {
+        throw new Error("generation.output_format must be mp4 or webm.");
+    }
+    const fit = input.fit || null;
+    if (fit && !["contain", "cover"].includes(fit)) {
+        throw new Error("generation.fit must be contain or cover.");
+    }
     if (provider === "heygen" && !avatarId) throw new Error("generation.avatar_id is required.");
     if (provider === "heygen" && !voiceId) throw new Error("generation.voice_id is required.");
     return {
@@ -110,7 +119,12 @@ function normalizeGeneration(spec, defaults = {}) {
         engine,
         aspectRatio,
         resolution: input.resolution || "720p",
-        background: input.background || { type: "color", value: "#111111" },
+        background: outputFormat === "webm" ? null : (input.background || { type: "color", value: "#111111" }),
+        outputFormat,
+        removeBackground: outputFormat === "webm" || Boolean(input.remove_background || input.removeBackground),
+        fit,
+        motionPrompt: input.motion_prompt || input.motionPrompt || null,
+        expressiveness: input.expressiveness || null,
         voiceSettings: input.voice_settings || input.voiceSettings || { speed: 1.04, locale: "en-US" },
         voiceName: input.voice_name || input.voiceName || "Samantha",
         wordsPerMinute: Number(input.words_per_minute || input.wordsPerMinute || 165),
@@ -118,6 +132,51 @@ function normalizeGeneration(spec, defaults = {}) {
         concurrency: Math.max(1, Math.min(4, Number(input.concurrency || 3))),
         pollIntervalMs: Number(input.poll_interval_ms || input.pollIntervalMs || 8000),
         timeoutMs: Number(input.timeout_ms || input.timeoutMs || 20 * 60 * 1000),
+    };
+}
+
+function normalizeComposition(spec, generation) {
+    const input = spec.composition || (spec.production && spec.production.composition);
+    if (!input || input.enabled === false || !generation.enabled) return { enabled: false };
+    const formats = input.formats || [generation.aspectRatio];
+    if (!Array.isArray(formats) || formats.length === 0 || formats.some((format) => !COMPOSITION_FORMATS.has(format))) {
+        throw new Error("composition.formats must contain 16:9, 9:16, or 1:1.");
+    }
+    const character = input.character || {};
+    const analysis = input.subject_analysis || input.subjectAnalysis || {};
+    const layout = input.layout || {};
+    const animation = input.animation || {};
+    return {
+        enabled: true,
+        formats: [...new Set(formats)],
+        character: {
+            id: character.id || "primary-presenter",
+            avatarGroupId: character.avatar_group_id || character.avatarGroupId || null,
+            avatarLookId: character.avatar_look_id || character.avatarLookId || generation.avatarId || null,
+            lookOrientation: character.look_orientation || character.lookOrientation || null,
+            compositionRole: character.composition_role || character.compositionRole || "foreground-speaker",
+            faceSpaceRequest: character.face_space_request || character.faceSpaceRequest || "auto",
+            gestureSpaceRequest: character.gesture_space_request || character.gestureSpaceRequest || "upper-body",
+        },
+        subjectAnalysis: {
+            provider: "opencv-haar",
+            sampleIntervalSeconds: Math.max(0.25, Math.min(3, Number(analysis.sample_interval_seconds || analysis.sampleIntervalSeconds || 1))),
+            minimumFaceConfidence: Math.max(0, Math.min(1, Number(analysis.minimum_face_confidence || analysis.minimumFaceConfidence || 0.62))),
+        },
+        layout: {
+            facePadding: Math.max(0.02, Math.min(0.25, Number(layout.face_padding || layout.facePadding || 0.08))),
+            deadband: Math.max(0, Math.min(0.1, Number(layout.deadband || 0.018))),
+            smoothingAlpha: Math.max(0.05, Math.min(0.95, Number(layout.smoothing_alpha || layout.smoothingAlpha || 0.32))),
+            maxZoom: Math.max(1, Math.min(1.25, Number(layout.max_zoom || layout.maxZoom || 1.18))),
+            minSecondsBetweenZooms: Math.max(1, Number(layout.min_seconds_between_zooms || layout.minSecondsBetweenZooms || 6)),
+        },
+        animation: {
+            style: animation.style || "clean-dark-glass",
+            accentColor: animation.accent_color || animation.accentColor || "#20D5C2",
+            introSeconds: Math.max(0.25, Math.min(1, Number(animation.intro_seconds || animation.introSeconds || 0.45))),
+            outroSeconds: Math.max(0.25, Math.min(1, Number(animation.outro_seconds || animation.outroSeconds || 0.55))),
+            maximumTreatmentsPerMinute: Math.max(2, Math.min(12, Number(animation.maximum_treatments_per_minute || animation.maximumTreatmentsPerMinute || 7))),
+        },
     };
 }
 
@@ -296,6 +355,7 @@ function normalizeJobSpec(
     const generation = normalizeGeneration(spec, defaults);
     const retention = normalizeRetention(spec, defaults);
     const showcase = normalizeShowcase(spec);
+    const composition = normalizeComposition(spec, generation);
     const render = production.render
         ? {
               ...production.render,
@@ -346,6 +406,7 @@ function normalizeJobSpec(
         generation,
         retention,
         showcase,
+        composition,
         archive,
         workspace,
         outputPaths: {
@@ -357,6 +418,11 @@ function normalizeJobSpec(
             editManifest: path.join(workspace, "edit-plans", "retention-edit-manifest.json"),
             showcaseManifest: path.join(workspace, "edit-plans", "showcase-asset-manifest.json"),
             assetRegistry: path.join(workspace, "source-assets", "asset-registry.json"),
+            visualScenePlan: path.join(workspace, "edit-plans", "visual-scene-plan.json"),
+            subjectTrack: path.join(workspace, "edit-plans", "subject-track.json"),
+            responsiveLayout: path.join(workspace, "edit-plans", "responsive-layout.json"),
+            compositionAssets: path.join(workspace, "edit-plans", "composition-assets.json"),
+            compositionQa: path.join(workspace, "qc", "composition-qa.json"),
         },
     };
 }
@@ -368,4 +434,4 @@ function validateAssets(job) {
     return { valid: missing.length === 0, missing };
 }
 
-module.exports = { normalizeJobSpec, validateAssets };
+module.exports = { normalizeComposition, normalizeJobSpec, validateAssets };

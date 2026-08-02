@@ -29,6 +29,7 @@ module.exports = {
     FACTORY_PACKAGE_DIR,
     FACTORY_HOME,
     JOBS_DIR: path.join(FACTORY_HOME, "jobs"),
+    COMPOSITIONS_DIR: path.join(FACTORY_HOME, "compositions"),
     CAMPAIGNS_DIR: path.join(FACTORY_HOME, "campaigns"),
     BOARDS_DIR: path.join(FACTORY_HOME, "boards"),
     PROXY_URL: process.env.PROXY_URL || "http://127.0.0.1:3031",
@@ -68,6 +69,7 @@ module.exports = {
     FFMPEG_BIN: process.env.FFMPEG_BIN || "/opt/homebrew/bin/ffmpeg",
     FFPROBE_BIN: process.env.FFPROBE_BIN || "ffprobe",
     YT_DLP_BIN: process.env.YT_DLP_BIN || "/opt/homebrew/bin/yt-dlp",
+    PYTHON_BIN: process.env.VIDEO_FACTORY_PYTHON_BIN || "/opt/homebrew/bin/python3",
     CODEX_JUDGE_TIMEOUT_MS: Number(process.env.VIDEO_FACTORY_CODEX_JUDGE_TIMEOUT_MS || 180000),
     CAPTION_FONT:
         process.env.VIDEO_FACTORY_CAPTION_FONT ||

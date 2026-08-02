@@ -79,9 +79,10 @@ class HeyGenManager {
 
     scenePaths(job, scene) {
         const directory = path.join(job.workspace, "generated-assets", "heygen", scene.id);
+        const extension = job.generation.outputFormat === "webm" ? "webm" : "mp4";
         return {
             directory,
-            video: path.join(directory, "clean.mp4"),
+            video: path.join(directory, `clean.${extension}`),
             subtitle: path.join(directory, "captions.srt"),
             metadata: path.join(directory, "metadata.json"),
         };
@@ -89,7 +90,7 @@ class HeyGenManager {
 
     requestBody(job, scene) {
         const generation = job.generation;
-        return {
+        const body = {
             type: "avatar",
             avatar_id: generation.avatarId,
             voice_id: generation.voiceId,
@@ -98,11 +99,18 @@ class HeyGenManager {
             title: scene.title || `${job.campaignId} / ${scene.id}`,
             aspect_ratio: generation.aspectRatio,
             resolution: generation.resolution,
-            background: generation.background,
             voice_settings: generation.voiceSettings,
             caption: { file_format: "srt" },
-            output_format: "mp4",
+            output_format: generation.outputFormat,
         };
+        if (generation.background) body.background = generation.background;
+        if (generation.fit) body.fit = generation.fit;
+        if (generation.removeBackground) body.remove_background = true;
+        if (generation.engine === "avatar_iv") {
+            if (generation.motionPrompt) body.motion_prompt = generation.motionPrompt;
+            if (generation.expressiveness) body.expressiveness = generation.expressiveness;
+        }
+        return body;
     }
 
     async poll(videoId, generation) {
@@ -229,6 +237,8 @@ class HeyGenManager {
             voiceId: job.generation.voiceId,
             engine: job.generation.engine,
             aspectRatio: job.generation.aspectRatio,
+            outputFormat: job.generation.outputFormat,
+            removeBackground: job.generation.removeBackground,
             scenes,
             totalDurationSeconds: scenes.reduce((sum, scene) => sum + scene.durationSeconds, 0),
         };

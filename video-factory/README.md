@@ -83,6 +83,19 @@ The relevant input shape is:
 
 See [docs/retention-engine.md](docs/retention-engine.md) for the researched capability map, compiler tiers, native-caption architecture, and preset strategy.
 
+## Scene Composition Engine
+
+The composition runner creates independent HeyGen and Premiere masters for landscape and portrait delivery. It does not crop one output into the other. The checked-in look registry contains all 20 looks retrieved from avatar group `fe1d6bdab82a4e1e955ba4329d467c5b`; visual review selected `93a72551393b4a13a7e256a3fa3ca421` for 16:9 and `3583ef262c2c4b779989de0a79ec14dd` for 9:16.
+
+```bash
+node cli.js composition-submit examples/heygen-scene-composition.json --run
+node cli.js composition-status heygen-scene-composition-live-20260801
+```
+
+Before generation, the Scene Director translates script semantics into an explicit visual-scene plan. After HeyGen returns the real presenter clip, OpenCV samples face position and confidence, ranks free regions, and creates a format-specific responsive layout. Low-confidence or already-tight shots disable camera motion. ImageMagick renders transparent composition layers, Premiere applies timed Motion and Opacity keyframes, and native captions remain editable inside the project.
+
+Each child job records `visual-scene-plan.json`, `subject-track.json`, `responsive-layout.json`, `composition-assets.json`, and `composition-qa.json`. Critical face overlap, caption-safe-zone overlap, missing assets, overlong treatments, or camera motion below the confidence threshold stops the workflow before Premiere compilation.
+
 ## Long-form benchmark
 
 `benchmarks/youtube-retention-showcase.json` produces a 5-8 minute, 16:9 reference video covering the major retention-editing families. It compiles eleven narrated chapters, native captions, timed motion, generated chapter graphics and callouts, provider-sourced B-roll, SFX, Premiere structural QC, Adobe H.264 export, and verified My Passport archival.
@@ -104,6 +117,10 @@ node cli.js submit benchmarks/youtube-retention-showcase.json --run
 - `GET /api/health` inspect node, apps, bridge, and queue
 - `POST /api/node/ensure` start/reconnect managed applications
 - `POST /api/worker/tick` execute the next due job
+- `POST /api/compositions` create independent format masters
+- `GET /api/compositions` list composition batches
+- `GET /api/compositions/:id` inspect both format jobs and selected looks
+- `POST /api/compositions/:id/run` run or resume both masters sequentially
 
 The API binds to `127.0.0.1` only. It is intentionally not exposed to the public internet.
 

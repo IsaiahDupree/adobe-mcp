@@ -22,6 +22,24 @@ class WorkflowValidationError extends Error {
     }
 }
 
+async function averageVideoLuma(filePath) {
+    const { stdout } = await run("ffmpeg", [
+        "-hide_banner",
+        "-loglevel", "error",
+        "-i", filePath,
+        "-vf", "fps=1,scale=160:-2,signalstats,metadata=print:file=-",
+        "-an",
+        "-f", "null",
+        "-",
+    ], { timeout: 2 * 60 * 1000, maxBuffer: 8 * 1024 * 1024 });
+    const values = stdout.split(/\r?\n/)
+        .filter((line) => line.includes("lavfi.signalstats.YAVG="))
+        .map((line) => Number(line.split("=").at(-1)))
+        .filter(Number.isFinite);
+    if (!values.length) throw new WorkflowValidationError(`Pixel QA could not sample ${filePath}.`);
+    return values.reduce((sum, value) => sum + value, 0) / values.length;
+}
+
 class VideoJobRunner {
     constructor(
         store,
@@ -34,7 +52,12 @@ class VideoJobRunner {
         captionRenderer = null,
         showcaseRenderer = null,
         localNarrationManager = null,
-        assetBroker = null
+        assetBroker = null,
+        sceneDirector = null,
+        subjectAnalyzer = null,
+        responsiveLayoutEngine = null,
+        animationGrammarRenderer = null,
+        compositionQa = null
     ) {
         this.store = store;
         this.appManager = appManager;
@@ -47,6 +70,11 @@ class VideoJobRunner {
         this.showcaseRenderer = showcaseRenderer;
         this.localNarrationManager = localNarrationManager;
         this.assetBroker = assetBroker;
+        this.sceneDirector = sceneDirector;
+        this.subjectAnalyzer = subjectAnalyzer;
+        this.responsiveLayoutEngine = responsiveLayoutEngine;
+        this.animationGrammarRenderer = animationGrammarRenderer;
+        this.compositionQa = compositionQa;
         this.activeJobId = null;
     }
 
@@ -517,13 +545,34 @@ class VideoJobRunner {
         if (!probe.streams || !probe.streams.some((stream) => stream.codec_type === "video")) {
             throw new WorkflowValidationError("Rendered file has no readable video stream.", probe);
         }
+        let pixelQa = null;
+        if (job.generation.enabled && job.production.sourceAssets[0]?.path) {
+            // FFmpeg is only decoding sparse frames for validation; Premiere remains the editor and exporter.
+            const [renderAverageLuma, sourceAverageLuma] = await Promise.all([
+                averageVideoLuma(render.output_file),
+                averageVideoLuma(job.production.sourceAssets[0].path),
+            ]);
+            const minimumLuma = Math.max(8, sourceAverageLuma * 0.22);
+            pixelQa = {
+                provider: "ffmpeg-signalstats-read-only",
+                sampleRateFps: 1,
+                renderAverageLuma: Number(renderAverageLuma.toFixed(3)),
+                sourceAverageLuma: Number(sourceAverageLuma.toFixed(3)),
+                minimumLuma: Number(minimumLuma.toFixed(3)),
+                passed: renderAverageLuma >= minimumLuma,
+            };
+        }
         const report = {
             outputFile: render.output_file,
             bytes,
             durationSeconds: Number(probe.format.duration),
             streams: probe.streams,
+            pixelQa,
         };
         writeJsonAtomic(path.join(job.workspace, "qc", "render-validation.json"), report);
+        if (pixelQa && !pixelQa.passed) {
+            throw new WorkflowValidationError("Rendered video is materially darker than its source and may be blank.", pixelQa);
+        }
         if (
             job.showcase &&
             job.showcase.enabled &&
@@ -608,6 +657,26 @@ class VideoJobRunner {
 
     async applyPremiereRetention(job) {
         const plan = readJson(job.outputPaths.editManifest);
+        const compositionLayout = job.composition?.enabled && fs.existsSync(job.outputPaths.responsiveLayout)
+            ? readJson(job.outputPaths.responsiveLayout)
+            : null;
+        const compositionAssets = job.composition?.enabled && fs.existsSync(job.outputPaths.compositionAssets)
+            ? readJson(job.outputPaths.compositionAssets)
+            : { enabled: false, graphics: [] };
+        const currentVariant = compositionLayout?.variants?.find(
+            (variant) => variant.format === job.generation.aspectRatio
+        );
+        if (currentVariant) {
+            plan.frame = currentVariant.dimensions;
+            plan.scenes = plan.scenes.map((scene) => {
+                const composed = currentVariant.scenes.find((item) => item.sceneId === scene.sceneId);
+                if (!composed) return scene;
+                return {
+                    ...scene,
+                    compositionCamera: composed.camera,
+                };
+            });
+        }
         const snapshot = (await this.canUseUxp())
             ? await this.adapter.inspectProject()
             : await this.cepAdapter.inspectProject({ sequenceName: job.production.sequenceName });
@@ -633,6 +702,7 @@ class VideoJobRunner {
         const showcase = job.showcase && job.showcase.enabled
             ? await this.showcaseRenderer.render(job, plan)
             : { enabled: false, graphics: [], videos: [], audio: [] };
+        showcase.graphics = [...(showcase.graphics || []), ...(compositionAssets.graphics || [])];
         const editPacket = await this.cepAdapter.applyRetentionPlan({
             sequenceName: sequence.name,
             plan,
@@ -653,6 +723,10 @@ class VideoJobRunner {
             nativeCaptionTrack,
             animatedCaptions: captionAssets,
             showcase,
+            composition: {
+                layout: currentVariant || null,
+                assets: compositionAssets.graphics || [],
+            },
         };
     }
 
@@ -706,7 +780,23 @@ class VideoJobRunner {
         try {
             let generation = null;
             let retention = null;
+            let visualScenePlan = null;
+            let subjectTrack = null;
+            let responsiveLayout = null;
+            let compositionAssets = null;
+            let compositionQa = null;
             if (this.store.get(id).generation.enabled) {
+                if (this.store.get(id).composition?.enabled) {
+                    visualScenePlan = await this.executeStage(
+                        id,
+                        "scene-direction",
+                        "PLANNING_VISUAL_SCENES",
+                        (current) => {
+                            if (!this.sceneDirector) throw new Error("Scene director is not configured.");
+                            return this.sceneDirector.plan(current);
+                        }
+                    );
+                }
                 generation = await this.executeStage(
                     id,
                     "heygen-generation",
@@ -720,6 +810,17 @@ class VideoJobRunner {
                         return this.heygenManager.generate(current);
                     }
                 );
+                if (this.store.get(id).composition?.enabled) {
+                    subjectTrack = await this.executeStage(
+                        id,
+                        "subject-analysis",
+                        "ANALYZING_SUBJECT",
+                        (current) => {
+                            if (!this.subjectAnalyzer) throw new Error("Subject analyzer is not configured.");
+                            return this.subjectAnalyzer.analyze(current, generation);
+                        }
+                    );
+                }
                 retention = await this.executeStage(
                     id,
                     "retention-plan",
@@ -729,6 +830,41 @@ class VideoJobRunner {
                         return this.retentionPlanner.plan(current, generation);
                     }
                 );
+                if (this.store.get(id).composition?.enabled) {
+                    responsiveLayout = await this.executeStage(
+                        id,
+                        "responsive-layout",
+                        "PLANNING_RESPONSIVE_LAYOUT",
+                        (current) => {
+                            if (!this.responsiveLayoutEngine) throw new Error("Responsive layout engine is not configured.");
+                            return this.responsiveLayoutEngine.build(current, visualScenePlan, subjectTrack, retention);
+                        }
+                    );
+                    compositionAssets = await this.executeStage(
+                        id,
+                        "composition-rendering",
+                        "RENDERING_COMPOSITION_ASSETS",
+                        (current) => {
+                            if (!this.animationGrammarRenderer) throw new Error("Animation grammar renderer is not configured.");
+                            return this.animationGrammarRenderer.render(current, responsiveLayout);
+                        }
+                    );
+                    compositionQa = await this.executeStage(
+                        id,
+                        "composition-qa",
+                        "VALIDATING_COMPOSITION",
+                        (current) => {
+                            if (!this.compositionQa) throw new Error("Composition QA is not configured.");
+                            return this.compositionQa.evaluate(
+                                current,
+                                visualScenePlan,
+                                subjectTrack,
+                                responsiveLayout,
+                                compositionAssets
+                            );
+                        }
+                    );
+                }
                 this.applyGeneratedAssets(id, retention);
             }
             if ((this.store.get(id).showcase?.assetRequests || []).length > 0) {
@@ -813,6 +949,13 @@ class VideoJobRunner {
                 archive,
                 generation,
                 retention,
+                composition: this.store.get(id).composition?.enabled ? {
+                    visualScenePlan,
+                    subjectTrack,
+                    responsiveLayout,
+                    assets: compositionAssets,
+                    qa: compositionQa,
+                } : null,
             };
             this.store.save(job);
             this.store.addEvent(id, approvalRequired ? "APPROVAL_REQUESTED" : "JOB_COMPLETED", {
@@ -926,4 +1069,9 @@ class VideoJobRunner {
     }
 }
 
-module.exports = { VideoJobRunner, WaitingForAssetsError, WorkflowValidationError };
+module.exports = {
+    VideoJobRunner,
+    WaitingForAssetsError,
+    WorkflowValidationError,
+    averageVideoLuma,
+};

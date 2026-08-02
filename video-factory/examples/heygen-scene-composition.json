@@ -1,0 +1,49 @@
+{
+  "composition_id": "heygen-scene-composition-live-20260801",
+  "formats": ["16:9", "9:16"],
+  "base_job": {
+    "campaign_id": "scene-composition-engine",
+    "request": {
+      "topic": "Why autonomous video creation needs a scene plan before generation"
+    },
+    "autonomy": {
+      "mode": "full"
+    },
+    "generation": {
+      "provider": "heygen",
+      "engine": "avatar_v",
+      "resolution": "720p",
+      "output_format": "mp4",
+      "scenes": [
+        {
+          "id": "proof",
+          "script": "Autonomous video gets better when every scene has a visual purpose before the camera starts. Plan the message, protect the face, then let Premiere build the motion."
+        }
+      ]
+    },
+    "retention": {
+      "preset": "social-dynamic",
+      "caption_mode": "native",
+      "hook_text": "PLAN BEFORE GENERATION",
+      "punch_in_scale": 1.08
+    },
+    "composition": {
+      "enabled": true,
+      "layout": {
+        "face_padding": 0.08,
+        "deadband": 0.018,
+        "smoothing_alpha": 0.32,
+        "max_zoom": 1.16
+      },
+      "animation": {
+        "style": "clean-dark-glass",
+        "accent_color": "#20D5C2",
+        "maximum_treatments_per_minute": 7
+      }
+    },
+    "production": {
+      "project_name": "heygen-scene-composition",
+      "render": {}
+    }
+  }
+}

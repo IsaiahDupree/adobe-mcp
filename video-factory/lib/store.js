@@ -83,6 +83,7 @@ class JobStore {
             generation: job.generation,
             retention: job.retention,
             showcase: job.showcase,
+            composition: job.composition,
             archive: job.archive,
         });
     }
