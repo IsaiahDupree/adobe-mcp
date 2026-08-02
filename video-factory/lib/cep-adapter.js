@@ -507,9 +507,14 @@ class CepAdapter {
             var audioOut=new Time();audioOut.seconds=audio.end-audio.start;
             audioItem.setInPoint(audioIn,4);audioItem.setOutPoint(audioOut,4);
             var audioStart=new Time();audioStart.seconds=audio.start;
-            var audioTrackNumber=Number(audio.trackIndex===undefined?1:audio.trackIndex);
+            var requestedAudioTrackNumber=Number(audio.trackIndex===undefined?1:audio.trackIndex);
+            var audioTrackNumber=requestedAudioTrackNumber;
             var audioTrack=sequence.audioTracks[audioTrackNumber];
-            if(!audioTrack)return JSON.stringify({success:false,error:"Missing SFX track "+audioTrackNumber});
+            if(!audioTrack&&sequence.audioTracks.numTracks>0){
+                audioTrackNumber=Math.max(0,sequence.audioTracks.numTracks-1);
+                audioTrack=sequence.audioTracks[audioTrackNumber];
+            }
+            if(!audioTrack)return JSON.stringify({success:false,error:"No audio track is available for SFX"});
             audioTrack.overwriteClip(audioItem,audioStart.ticks);
             var gainDb=Number(audio.gainDb===undefined?-12:audio.gainDb);
             var gainLinear=Math.pow(10,gainDb/20);
@@ -525,7 +530,7 @@ class CepAdapter {
                     }
                 }
             }
-            importedAudio.push({id:audio.id,path:audio.path,start:audio.start,end:audio.end,trackIndex:audioTrackNumber,gainDb:gainDb});
+            importedAudio.push({id:audio.id,path:audio.path,start:audio.start,end:audio.end,requestedTrackIndex:requestedAudioTrackNumber,trackIndex:audioTrackNumber,gainDb:gainDb});
         }
 
         project.save();
