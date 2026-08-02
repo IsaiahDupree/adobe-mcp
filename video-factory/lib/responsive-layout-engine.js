@@ -77,6 +77,40 @@ function smooth(values, alpha, deadband) {
     return output;
 }
 
+function clamp(value, minimum, maximum) {
+    return Math.max(minimum, Math.min(maximum, value));
+}
+
+function constrainSafeFill(requestedTranslation, desiredScale, maxZoom, edgeSafetyMargin) {
+    const zoomCap = Number.isFinite(maxZoom) ? maxZoom : 1.28;
+    const safetyMargin = Number.isFinite(edgeSafetyMargin) ? edgeSafetyMargin : 0.005;
+    const requestedMaximumShift = Math.max(
+        Math.abs(requestedTranslation.x),
+        Math.abs(requestedTranslation.y)
+    );
+    const requiredScale = 1 + 2 * (requestedMaximumShift + safetyMargin);
+    const scale = Math.min(zoomCap, Math.max(desiredScale, requiredScale));
+    const maximumSafeShift = Math.max(0, (scale - 1) / 2 - safetyMargin);
+    const translation = {
+        x: clamp(requestedTranslation.x, -maximumSafeShift, maximumSafeShift),
+        y: clamp(requestedTranslation.y, -maximumSafeShift, maximumSafeShift),
+    };
+    const translationClamped =
+        Math.abs(translation.x - requestedTranslation.x) > 0.0001 ||
+        Math.abs(translation.y - requestedTranslation.y) > 0.0001;
+    return {
+        mode: "safe-fill",
+        scale,
+        translation,
+        requestedTranslation,
+        requiredScale,
+        maximumSafeShift,
+        edgeSafetyMargin: safetyMargin,
+        translationClamped,
+        predictedExposedCanvas: false,
+    };
+}
+
 function captionSafeZone(format) {
     return format === "9:16"
         ? { left: 0.04, top: 0.74, right: 0.96, bottom: 0.91, platformUiBottom: 0.94 }
@@ -137,27 +171,51 @@ class ResponsiveLayoutEngine {
             reason = "taste-rule-clean-face-focus";
         }
         const targetFaceHeight = format === "9:16" ? 0.18 : 0.2;
-        const desiredScale = enabled
+        const faceScale = enabled
             ? Math.min(job.composition.layout.maxZoom, Math.max(1.04, targetFaceHeight / faceHeight))
             : 1;
         const faceCx = centersX.length ? centersX.at(-1) : 0.5;
         const faceCy = centersY.length ? centersY.at(-1) : (format === "9:16" ? 0.32 : 0.4);
         const target = format === "9:16"
-            ? { x: 0.5, y: 0.34 }
-            : { x: faceCx > 0.5 ? 0.68 : 0.32, y: 0.42 };
+            ? { x: 0.5, y: 0.4 }
+            : { x: faceCx > 0.5 ? 0.62 : 0.38, y: 0.44 };
+        const requestedTranslation = enabled
+            ? { x: target.x - faceCx, y: target.y - faceCy }
+            : { x: 0, y: 0 };
+        const coverage = constrainSafeFill(
+            requestedTranslation,
+            faceScale,
+            job.composition.layout.maxZoom,
+            job.composition.layout.edgeSafetyMargin
+        );
+        const desiredScale = enabled ? coverage.scale : 1;
         return {
             enabled,
             reason,
-            method: "smoothed-face-anchor",
+            method: "smoothed-face-anchor-safe-fill",
             confidence: Number(confidence.toFixed(4)),
             detectedFaceHeight: Number(faceHeight.toFixed(4)),
             maximumObservedMotion: Number(movement.toFixed(4)),
             scale: Number(desiredScale.toFixed(4)),
             translation: {
-                x: Number((target.x - faceCx).toFixed(4)),
-                y: Number((target.y - faceCy).toFixed(4)),
+                x: Number(coverage.translation.x.toFixed(4)),
+                y: Number(coverage.translation.y.toFixed(4)),
             },
-            targetAnchor: target,
+            targetAnchor: {
+                requested: target,
+                applied: {
+                    x: Number((faceCx + coverage.translation.x).toFixed(4)),
+                    y: Number((faceCy + coverage.translation.y).toFixed(4)),
+                },
+            },
+            coverage: {
+                mode: coverage.mode,
+                requiredScale: Number(coverage.requiredScale.toFixed(4)),
+                maximumSafeShift: Number(coverage.maximumSafeShift.toFixed(4)),
+                edgeSafetyMargin: coverage.edgeSafetyMargin,
+                translationClamped: coverage.translationClamped,
+                predictedExposedCanvas: coverage.predictedExposedCanvas,
+            },
             phases: [
                 { phase: "context", start: scene.start, end: scene.start + scene.animation.intro_seconds, scale: 1 },
                 { phase: "focus", start: scene.start + scene.animation.intro_seconds, end: scene.end - scene.animation.outro_seconds, scale: Number(desiredScale.toFixed(4)) },
@@ -237,6 +295,8 @@ class ResponsiveLayoutEngine {
                 alpha: job.composition.layout.smoothingAlpha,
                 deadband: job.composition.layout.deadband,
                 maxZoom: job.composition.layout.maxZoom,
+                framingMode: job.composition.layout.framingMode,
+                edgeSafetyMargin: job.composition.layout.edgeSafetyMargin,
             },
             variants,
         };
@@ -250,6 +310,7 @@ module.exports = {
     ResponsiveLayoutEngine,
     captionSafeZone,
     carveFaceSafeBounds,
+    constrainSafeFill,
     formatDimensions,
     smooth,
 };

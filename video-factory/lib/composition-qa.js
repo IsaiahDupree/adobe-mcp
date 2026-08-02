@@ -47,6 +47,22 @@ class CompositionQa {
                 if (scene.camera.enabled && scene.camera.confidence < job.composition.subjectAnalysis.minimumFaceConfidence) {
                     issues.push({ severity: "critical", sceneId: scene.sceneId, problem: "Camera move was enabled below the face-confidence threshold." });
                 }
+                if (scene.camera.enabled) {
+                    const maximumShift = Math.max(
+                        Math.abs(scene.camera.translation.x),
+                        Math.abs(scene.camera.translation.y)
+                    );
+                    const availableCoverage = (scene.camera.scale - 1) / 2 - scene.camera.coverage.edgeSafetyMargin;
+                    if (scene.camera.coverage.predictedExposedCanvas || maximumShift > availableCoverage + 0.0002) {
+                        issues.push({
+                            severity: "critical",
+                            sceneId: scene.sceneId,
+                            problem: "Camera transform can expose canvas outside the video frame.",
+                            maximumShift,
+                            availableCoverage,
+                        });
+                    }
+                }
             }
             const rendered = assets.variants.find((item) => item.format === variant.format)?.graphics || [];
             const expected = variant.scenes.filter((scene) => scene.treatment && scene.grammar !== "clean_aroll");

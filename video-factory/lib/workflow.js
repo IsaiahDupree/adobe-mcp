@@ -22,6 +22,14 @@ class WorkflowValidationError extends Error {
     }
 }
 
+function requestedProjectIsOpen(state, outputPath) {
+    return Boolean(
+        state?.project?.hasProject &&
+        state.project.path &&
+        path.resolve(state.project.path) === path.resolve(outputPath)
+    );
+}
+
 async function averageVideoLuma(filePath) {
     const { stdout } = await run("ffmpeg", [
         "-hide_banner",
@@ -57,7 +65,8 @@ class VideoJobRunner {
         subjectAnalyzer = null,
         responsiveLayoutEngine = null,
         animationGrammarRenderer = null,
-        compositionQa = null
+        compositionQa = null,
+        framingTracker = null
     ) {
         this.store = store;
         this.appManager = appManager;
@@ -75,6 +84,7 @@ class VideoJobRunner {
         this.responsiveLayoutEngine = responsiveLayoutEngine;
         this.animationGrammarRenderer = animationGrammarRenderer;
         this.compositionQa = compositionQa;
+        this.framingTracker = framingTracker;
         this.activeJobId = null;
     }
 
@@ -172,7 +182,7 @@ class VideoJobRunner {
                 existingProjectPath: job.production.existingProjectPath,
             });
             const snapshot = await this.inspectWithRetry(
-                (state) => state.project && state.project.hasProject,
+                (state) => requestedProjectIsOpen(state, outputPath),
                 45000,
                 job.production.sequenceName
             );
@@ -201,7 +211,7 @@ class VideoJobRunner {
         }
 
         const snapshot = await this.inspectWithRetry(
-            (state) => state.project && state.project.hasProject,
+            (state) => requestedProjectIsOpen(state, outputPath),
             45000
         );
         if (!fs.existsSync(outputPath)) {
@@ -785,6 +795,8 @@ class VideoJobRunner {
             let responsiveLayout = null;
             let compositionAssets = null;
             let compositionQa = null;
+            let framingSourceAudit = null;
+            let framingAudit = null;
             if (this.store.get(id).generation.enabled) {
                 if (this.store.get(id).composition?.enabled) {
                     visualScenePlan = await this.executeStage(
@@ -810,6 +822,17 @@ class VideoJobRunner {
                         return this.heygenManager.generate(current);
                     }
                 );
+                if (this.store.get(id).generation.provider === "heygen") {
+                    framingSourceAudit = await this.executeStage(
+                        id,
+                        "framing-source-audit",
+                        "AUDITING_SOURCE_FRAMING",
+                        (current) => {
+                            if (!this.framingTracker) throw new Error("Framing tracker is not configured.");
+                            return this.framingTracker.auditSources(current, generation);
+                        }
+                    );
+                }
                 if (this.store.get(id).composition?.enabled) {
                     subjectTrack = await this.executeStage(
                         id,
@@ -912,6 +935,17 @@ class VideoJobRunner {
             const render = await this.executeStage(id, "render", "EXPORTING", (current) =>
                 this.renderAndValidate(current)
             );
+            if (this.store.get(id).generation.provider === "heygen" && render && !render.skipped) {
+                framingAudit = await this.executeStage(
+                    id,
+                    "framing-final-audit",
+                    "AUDITING_FINAL_FRAMING",
+                    (current) => {
+                        if (!this.framingTracker) throw new Error("Framing tracker is not configured.");
+                        return this.framingTracker.auditFinal(current, render, framingSourceAudit);
+                    }
+                );
+            }
             const archive = this.store.get(id).archive.enabled
                 ? await this.executeStage(id, "archive", "ARCHIVING", (current) => {
                       if (!this.archiveManager) {
@@ -949,6 +983,10 @@ class VideoJobRunner {
                 archive,
                 generation,
                 retention,
+                framing: {
+                    source: framingSourceAudit,
+                    final: framingAudit,
+                },
                 composition: this.store.get(id).composition?.enabled ? {
                     visualScenePlan,
                     subjectTrack,
@@ -1074,4 +1112,5 @@ module.exports = {
     WaitingForAssetsError,
     WorkflowValidationError,
     averageVideoLuma,
+    requestedProjectIsOpen,
 };

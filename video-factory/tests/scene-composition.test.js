@@ -7,15 +7,16 @@ const baseConfig = require("../lib/config");
 const { AnimationGrammarRenderer } = require("../lib/animation-grammar-renderer");
 const { CompositionBatchStore } = require("../lib/composition-batch");
 const { CompositionQa } = require("../lib/composition-qa");
+const { FramingTracker } = require("../lib/framing-tracker");
 const { HeyGenManager } = require("../lib/heygen-manager");
 const { registry, selectHeyGenLook } = require("../lib/heygen-look-selector");
-const { ResponsiveLayoutEngine } = require("../lib/responsive-layout-engine");
+const { ResponsiveLayoutEngine, constrainSafeFill } = require("../lib/responsive-layout-engine");
 const { RetentionPlanner } = require("../lib/retention-planner");
 const { SceneDirector } = require("../lib/scene-director");
 const { JobStore } = require("../lib/store");
 const { SubjectAnalyzer } = require("../lib/subject-analyzer");
 const { run } = require("../lib/util");
-const { averageVideoLuma } = require("../lib/workflow");
+const { averageVideoLuma, requestedProjectIsOpen } = require("../lib/workflow");
 
 function testConfig(root) {
     return {
@@ -23,6 +24,7 @@ function testConfig(root) {
         FACTORY_HOME: root,
         JOBS_DIR: path.join(root, "jobs"),
         COMPOSITIONS_DIR: path.join(root, "compositions"),
+        FRAMING_DIR: path.join(root, "framing"),
         CAMPAIGNS_DIR: path.join(root, "campaigns"),
         PASSPORT_ARCHIVE_ROOT: path.join(root, "passport"),
         HEYGEN_AVATAR_ID: "93a72551393b4a13a7e256a3fa3ca421",
@@ -160,4 +162,85 @@ test("pixel QA distinguishes a visible render from a blank render", async () => 
     ]);
     assert.ok(await averageVideoLuma(visible) > 200);
     assert.ok(await averageVideoLuma(blank) < 20);
+});
+
+test("safe-fill camera math trades excess pan for enough zoom without exposed canvas", () => {
+    const coverage = constrainSafeFill({ x: 0.12, y: -0.055 }, 1.04, 1.16, 0.005);
+    assert.equal(coverage.scale, 1.16);
+    assert.equal(coverage.translationClamped, true);
+    assert.ok(Math.abs(coverage.translation.x) <= coverage.maximumSafeShift);
+    assert.ok(Math.abs(coverage.translation.y) <= coverage.maximumSafeShift);
+    assert.equal(coverage.predictedExposedCanvas, false);
+});
+
+test("project readiness requires the requested Premiere project, not any open project", () => {
+    const requested = "/tmp/portrait-master.prproj";
+    assert.equal(requestedProjectIsOpen({
+        project: { hasProject: true, path: "/tmp/unrelated-project.prproj" },
+    }, requested), false);
+    assert.equal(requestedProjectIsOpen({
+        project: { hasProject: true, path: requested },
+    }, requested), true);
+});
+
+test("framing tracker records every HeyGen source and rejects bars added by editing", async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "premiere-framing-tracker-"));
+    const config = testConfig(root);
+    const source = path.join(root, "source.mp4");
+    const barred = path.join(root, "barred.mp4");
+    await run("ffmpeg", [
+        "-hide_banner", "-loglevel", "error", "-y",
+        "-f", "lavfi", "-i", "color=c=white:s=320x180:d=4",
+        "-c:v", "libx264", "-pix_fmt", "yuv420p", source,
+    ]);
+    await run("ffmpeg", [
+        "-hide_banner", "-loglevel", "error", "-y",
+        "-f", "lavfi", "-i", "color=c=white:s=288x180:d=4",
+        "-vf", "pad=320:180:32:0:black",
+        "-c:v", "libx264", "-pix_fmt", "yuv420p", barred,
+    ]);
+    const workspace = path.join(root, "workspace");
+    fs.mkdirSync(path.join(workspace, "qc"), { recursive: true });
+    const job = {
+        id: "framing-job",
+        campaignId: "framing-tests",
+        parentCompositionId: "framing-batch",
+        workspace,
+        attempts: 1,
+        generation: {
+            enabled: true,
+            provider: "heygen",
+            avatarId: "avatar-real-id",
+            voiceId: "voice-real-id",
+            engine: "avatar_v",
+            aspectRatio: "16:9",
+        },
+        composition: {
+            enabled: true,
+            layout: { framingMode: "safe-fill", maxZoom: 1.16 },
+            framing: { maximumAddedBarAreaRatio: 0.003 },
+        },
+        outputPaths: {
+            framingSourceAudit: path.join(workspace, "qc", "source-framing.json"),
+            framingAudit: path.join(workspace, "qc", "final-framing.json"),
+            responsiveLayout: path.join(workspace, "edit-plans", "layout.json"),
+        },
+    };
+    const tracker = new FramingTracker(config);
+    const sourceAudit = await tracker.auditSources(job, {
+        scenes: [{ sceneId: "proof", videoId: "heygen-video-id", localVideo: source }],
+    });
+    assert.equal(sourceAudit.passed, true);
+    await assert.rejects(
+        () => tracker.auditFinal(job, { outputFile: barred }, sourceAudit),
+        /persistent bars/
+    );
+    await assert.rejects(
+        () => tracker.auditFinal(job, { outputFile: barred }, { maximumBarAreaRatio: 0.1 }),
+        /persistent bars/
+    );
+    const event = tracker.status(job.id);
+    assert.equal(event.sourceAudit.scenes[0].heygenVideoId, "heygen-video-id");
+    assert.equal(event.finalAudit.passed, false);
+    assert.equal(tracker.status().summary.generationsTracked, 1);
 });

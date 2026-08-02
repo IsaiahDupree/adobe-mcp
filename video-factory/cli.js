@@ -29,6 +29,7 @@ const { ResponsiveLayoutEngine } = require("./lib/responsive-layout-engine");
 const { AnimationGrammarRenderer } = require("./lib/animation-grammar-renderer");
 const { CompositionQa } = require("./lib/composition-qa");
 const { CompositionBatchRunner, CompositionBatchStore } = require("./lib/composition-batch");
+const { FramingTracker } = require("./lib/framing-tracker");
 const { JobStore } = require("./lib/store");
 const { VideoJobRunner } = require("./lib/workflow");
 const { createFactoryServer } = require("./lib/server");
@@ -47,6 +48,7 @@ Usage:
   node cli.js composition-submit <composition.json> [--run]
   node cli.js composition-run <composition-id>
   node cli.js composition-status [composition-id]
+  node cli.js framing-status [job-id]
   node cli.js run <job-id>
   node cli.js status [job-id]
   node cli.js tick
@@ -75,6 +77,7 @@ function createRuntime() {
     const showcaseRenderer = new ShowcaseRenderer(config);
     const assetBroker = new ProductionAssetBroker(config);
     const localNarrationManager = new LocalNarrationManager(config);
+    const framingTracker = new FramingTracker(config);
     const runner = new VideoJobRunner(
         store,
         appManager,
@@ -91,7 +94,8 @@ function createRuntime() {
         new SubjectAnalyzer(config),
         new ResponsiveLayoutEngine(),
         new AnimationGrammarRenderer(config),
-        new CompositionQa()
+        new CompositionQa(),
+        framingTracker
     );
     const boardStore = new BoardStore(config);
     const compositionStore = new CompositionBatchStore(config, store);
@@ -119,6 +123,7 @@ function createRuntime() {
         boardRunner,
         compositionStore,
         compositionRunner,
+        framingTracker,
     };
 }
 
@@ -227,6 +232,7 @@ async function main() {
         boardRunner,
         compositionStore,
         compositionRunner,
+        framingTracker,
     } = createRuntime();
 
     if (command === "health") {
@@ -277,6 +283,10 @@ async function main() {
         print(args[1] ? compositionStore.get(args[1]) : { compositions: compositionStore.list() });
         return;
     }
+    if (command === "framing-status") {
+        print(framingTracker.status(args[1] || null));
+        return;
+    }
     if (command === "run") {
         if (!args[1]) throw new Error("run requires a job ID.");
         print(await runner.run(args[1]));
@@ -320,6 +330,7 @@ async function main() {
             boardRunner,
             compositionStore,
             compositionRunner,
+            framingTracker,
         });
         server.listen(port, "127.0.0.1", () => {
             process.stdout.write(`Premiere Video Factory listening on http://127.0.0.1:${port}\n`);

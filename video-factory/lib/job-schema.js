@@ -146,6 +146,12 @@ function normalizeComposition(spec, generation) {
     const analysis = input.subject_analysis || input.subjectAnalysis || {};
     const layout = input.layout || {};
     const animation = input.animation || {};
+    const framing = input.framing || {};
+    const edgeSafetyMargin = layout.edge_safety_margin ?? layout.edgeSafetyMargin ?? 0.005;
+    const maximumAddedBarAreaRatio = framing.maximum_added_bar_area_ratio ?? framing.maximumAddedBarAreaRatio ?? 0.003;
+    const maximumFinalBarAreaRatio = framing.maximum_final_bar_area_ratio ?? framing.maximumFinalBarAreaRatio ?? 0.003;
+    const framingMode = layout.framing_mode || layout.framingMode || "safe-fill";
+    if (framingMode !== "safe-fill") throw new Error("composition.layout.framing_mode must be safe-fill.");
     return {
         enabled: true,
         formats: [...new Set(formats)],
@@ -164,11 +170,21 @@ function normalizeComposition(spec, generation) {
             minimumFaceConfidence: Math.max(0, Math.min(1, Number(analysis.minimum_face_confidence || analysis.minimumFaceConfidence || 0.62))),
         },
         layout: {
+            framingMode,
             facePadding: Math.max(0.02, Math.min(0.25, Number(layout.face_padding || layout.facePadding || 0.08))),
             deadband: Math.max(0, Math.min(0.1, Number(layout.deadband || 0.018))),
             smoothingAlpha: Math.max(0.05, Math.min(0.95, Number(layout.smoothing_alpha || layout.smoothingAlpha || 0.32))),
-            maxZoom: Math.max(1, Math.min(1.25, Number(layout.max_zoom || layout.maxZoom || 1.18))),
+            maxZoom: Math.max(1, Math.min(1.4, Number(layout.max_zoom || layout.maxZoom || 1.28))),
+            edgeSafetyMargin: Math.max(0, Math.min(0.04, Number(edgeSafetyMargin))),
             minSecondsBetweenZooms: Math.max(1, Number(layout.min_seconds_between_zooms || layout.minSecondsBetweenZooms || 6)),
+        },
+        framing: {
+            enabled: framing.enabled !== false,
+            experimentId: framing.experiment_id || framing.experimentId || null,
+            variantId: framing.variant_id || framing.variantId || null,
+            controlId: framing.control_id || framing.controlId || null,
+            maximumAddedBarAreaRatio: Math.max(0, Math.min(0.05, Number(maximumAddedBarAreaRatio))),
+            maximumFinalBarAreaRatio: Math.max(0, Math.min(0.05, Number(maximumFinalBarAreaRatio))),
         },
         animation: {
             style: animation.style || "clean-dark-glass",
@@ -423,6 +439,8 @@ function normalizeJobSpec(
             responsiveLayout: path.join(workspace, "edit-plans", "responsive-layout.json"),
             compositionAssets: path.join(workspace, "edit-plans", "composition-assets.json"),
             compositionQa: path.join(workspace, "qc", "composition-qa.json"),
+            framingSourceAudit: path.join(workspace, "qc", "heygen-source-framing.json"),
+            framingAudit: path.join(workspace, "qc", "final-framing-audit.json"),
         },
     };
 }

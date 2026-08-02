@@ -90,11 +90,15 @@ The composition runner creates independent HeyGen and Premiere masters for lands
 ```bash
 node cli.js composition-submit examples/heygen-scene-composition.json --run
 node cli.js composition-status heygen-scene-composition-live-20260801
+node cli.js framing-status
+node cli.js framing-status heygen-scene-composition-live-20260801-16x9
 ```
 
-Before generation, the Scene Director translates script semantics into an explicit visual-scene plan. After HeyGen returns the real presenter clip, OpenCV samples face position and confidence, ranks free regions, and creates a format-specific responsive layout. Low-confidence or already-tight shots disable camera motion. ImageMagick renders transparent composition layers, Premiere applies timed Motion and Opacity keyframes, and native captions remain editable inside the project.
+Before generation, the Scene Director translates script semantics into an explicit visual-scene plan. After HeyGen returns the real presenter clip, OpenCV samples face position and confidence, ranks free regions, and creates a format-specific responsive layout. Low-confidence or already-tight shots disable camera motion. Safe-fill camera math increases scale whenever a pan would otherwise reveal the canvas, then clamps translation to the remaining covered area. ImageMagick renders panel assets, Premiere applies timed Motion and Opacity keyframes, and native captions remain editable inside the project.
 
-Each child job records `visual-scene-plan.json`, `subject-track.json`, `responsive-layout.json`, `composition-assets.json`, and `composition-qa.json`. Critical face overlap, caption-safe-zone overlap, missing assets, overlong treatments, or camera motion below the confidence threshold stops the workflow before Premiere compilation.
+Each child job records `visual-scene-plan.json`, `subject-track.json`, `responsive-layout.json`, `composition-assets.json`, `composition-qa.json`, `heygen-source-framing.json`, and `final-framing-audit.json`. Critical face overlap, caption-safe-zone overlap, missing assets, overlong treatments, unsafe camera coverage, or camera motion below the confidence threshold stops the workflow before Premiere compilation. A post-export crop audit rejects persistent bars that were introduced during editing.
+
+The framing tracker keeps one fleet event per job under `factory/framing/events`. Events identify the HeyGen video, avatar, voice, engine, format, experiment and variant, camera plans, source-frame coverage, final-frame coverage, retry count, and pass/fail result. `factory/framing/summary.json` provides an aggregate view for agents choosing the next framing variant.
 
 ## Long-form benchmark
 
@@ -121,6 +125,8 @@ node cli.js submit benchmarks/youtube-retention-showcase.json --run
 - `GET /api/compositions` list composition batches
 - `GET /api/compositions/:id` inspect both format jobs and selected looks
 - `POST /api/compositions/:id/run` run or resume both masters sequentially
+- `GET /api/framing` inspect fleet-wide HeyGen framing outcomes
+- `GET /api/framing/:job-id` inspect one generation's framing history
 
 The API binds to `127.0.0.1` only. It is intentionally not exposed to the public internet.
 

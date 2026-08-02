@@ -30,6 +30,7 @@ function createFactoryServer({
     boardRunner = null,
     compositionStore = null,
     compositionRunner = null,
+    framingTracker = null,
 }) {
     let schedulerTimer = null;
 
@@ -50,6 +51,7 @@ function createFactoryServer({
                         total: compositionStore.list().length,
                         activeBatchId: compositionRunner.activeBatchId,
                     } : null,
+                    framing: framingTracker ? framingTracker.writeSummary() : null,
                     queue: {
                         total: jobs.length,
                         due: store.dueJobs().length,
@@ -137,6 +139,16 @@ function createFactoryServer({
                     sendJson(response, 202, { accepted: true, compositionId: id });
                     return;
                 }
+            }
+
+            if (framingTracker && request.method === "GET" && url.pathname === "/api/framing") {
+                sendJson(response, 200, framingTracker.status());
+                return;
+            }
+
+            if (framingTracker && request.method === "GET" && segments[0] === "api" && segments[1] === "framing" && segments[2]) {
+                sendJson(response, 200, framingTracker.status(decodeURIComponent(segments[2])));
+                return;
             }
 
             if (segments[0] === "api" && segments[1] === "jobs" && segments[2]) {

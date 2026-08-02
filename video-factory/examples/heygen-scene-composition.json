@@ -30,10 +30,19 @@
     "composition": {
       "enabled": true,
       "layout": {
+        "framing_mode": "safe-fill",
         "face_padding": 0.08,
         "deadband": 0.018,
         "smoothing_alpha": 0.32,
-        "max_zoom": 1.16
+        "max_zoom": 1.28,
+        "edge_safety_margin": 0.005
+      },
+      "framing": {
+        "experiment_id": "heygen-scene-framing-v1",
+        "variant_id": "safe-fill",
+        "control_id": "native-source",
+        "maximum_added_bar_area_ratio": 0.003,
+        "maximum_final_bar_area_ratio": 0.003
       },
       "animation": {
         "style": "clean-dark-glass",
