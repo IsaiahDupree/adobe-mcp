@@ -30,6 +30,8 @@ const { AnimationGrammarRenderer } = require("./lib/animation-grammar-renderer")
 const { CompositionQa } = require("./lib/composition-qa");
 const { CompositionBatchRunner, CompositionBatchStore } = require("./lib/composition-batch");
 const { FramingTracker } = require("./lib/framing-tracker");
+const { ReviseRunner } = require("./lib/revise-runner");
+const { ReviseStore } = require("./lib/revise-store");
 const { JobStore } = require("./lib/store");
 const { VideoJobRunner } = require("./lib/workflow");
 const { createFactoryServer } = require("./lib/server");
@@ -49,6 +51,13 @@ Usage:
   node cli.js composition-run <composition-id>
   node cli.js composition-status [composition-id]
   node cli.js framing-status [job-id]
+  node cli.js revise-submit <revise.json> [--design] [--run]
+  node cli.js revise-design <revise-id>
+  node cli.js revise-run <revise-id>
+  node cli.js revise-status [revise-id]
+  node cli.js revise-templates
+  node cli.js revise-metrics <revise-id> <metrics.json>
+  node cli.js revise-evaluate <revise-id> [--window 24h]
   node cli.js run <job-id>
   node cli.js status [job-id]
   node cli.js tick
@@ -114,6 +123,13 @@ function createRuntime() {
         releaseArbiter: new ReleaseArbiter(),
         releasePackager: new ReleasePackager(),
     });
+    const reviseStore = new ReviseStore(config);
+    const reviseRunner = new ReviseRunner({
+        reviseStore,
+        boardStore,
+        boardRunner,
+        jobStore: store,
+    });
     return {
         adapter,
         store,
@@ -124,6 +140,8 @@ function createRuntime() {
         compositionStore,
         compositionRunner,
         framingTracker,
+        reviseStore,
+        reviseRunner,
     };
 }
 
@@ -233,6 +251,8 @@ async function main() {
         compositionStore,
         compositionRunner,
         framingTracker,
+        reviseStore,
+        reviseRunner,
     } = createRuntime();
 
     if (command === "health") {
@@ -287,6 +307,44 @@ async function main() {
         print(framingTracker.status(args[1] || null));
         return;
     }
+    if (command === "revise-submit") {
+        if (!args[1]) throw new Error("revise-submit requires a REVISE JSON file.");
+        const spec = JSON.parse(fs.readFileSync(path.resolve(args[1]), "utf8"));
+        const state = reviseStore.submit(spec);
+        if (args.includes("--run")) print(await reviseRunner.run(state.id));
+        else if (args.includes("--design")) print(await reviseRunner.design(state.id));
+        else print(state);
+        return;
+    }
+    if (command === "revise-design") {
+        if (!args[1]) throw new Error("revise-design requires a REVISE ID.");
+        print(await reviseRunner.design(args[1]));
+        return;
+    }
+    if (command === "revise-run") {
+        if (!args[1]) throw new Error("revise-run requires a REVISE ID.");
+        print(await reviseRunner.run(args[1]));
+        return;
+    }
+    if (command === "revise-status") {
+        print(args[1] ? reviseStore.get(args[1]) : { reviseLoops: reviseStore.list() });
+        return;
+    }
+    if (command === "revise-templates") {
+        print(reviseStore.templateLibrary());
+        return;
+    }
+    if (command === "revise-metrics") {
+        if (!args[1] || !args[2]) throw new Error("revise-metrics requires a REVISE ID and metrics JSON file.");
+        const metrics = JSON.parse(fs.readFileSync(path.resolve(args[2]), "utf8"));
+        print(reviseStore.recordMetrics(args[1], metrics));
+        return;
+    }
+    if (command === "revise-evaluate") {
+        if (!args[1]) throw new Error("revise-evaluate requires a REVISE ID.");
+        print(reviseRunner.evaluate(args[1], optionValue(args, "--window", null)));
+        return;
+    }
     if (command === "run") {
         if (!args[1]) throw new Error("run requires a job ID.");
         print(await runner.run(args[1]));
@@ -331,6 +389,8 @@ async function main() {
             compositionStore,
             compositionRunner,
             framingTracker,
+            reviseStore,
+            reviseRunner,
         });
         server.listen(port, "127.0.0.1", () => {
             process.stdout.write(`Premiere Video Factory listening on http://127.0.0.1:${port}\n`);

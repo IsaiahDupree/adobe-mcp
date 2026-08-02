@@ -57,6 +57,9 @@ class Showrunner {
         spec.showcase = { ...(spec.showcase || {}) };
         spec.showcase.asset_requests = [...(spec.showcase.asset_requests || [])];
         spec.retention = { ...(spec.retention || {}) };
+        if (revision > 1 && board.revisions?.[0]?.jobId && spec.generation?.enabled !== false) {
+            spec.generation = { ...(spec.generation || {}), reuse_from_job_id: board.revisions[0].jobId };
+        }
 
         for (const directive of directives) {
             const change = directive.recommendedModification || directive;

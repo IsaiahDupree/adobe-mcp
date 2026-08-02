@@ -164,6 +164,7 @@ test("showrunner applies at most five cumulative structured changes", () => {
         campaignId: "revision-board",
         topic: "Editing",
         baseJob: boardSpec().base_job,
+        revisions: [{ jobId: "revision-board-v1" }],
     };
     const scorecards = [{ findings: Array.from({ length: 8 }, (_, index) => ({
         start: index,
@@ -185,6 +186,7 @@ test("showrunner applies at most five cumulative structured changes", () => {
     assert.equal(spec.showcase.asset_requests.length, 5);
     assert.equal(spec.archive.enabled, false);
     assert.equal(spec.job_id, "revision-board-v2");
+    assert.equal(spec.generation.reuse_from_job_id, "revision-board-v1");
 });
 
 test("local editorial judge returns timecoded actionable evidence", () => {

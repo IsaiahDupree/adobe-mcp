@@ -169,6 +169,48 @@ class VideoJobRunner {
         });
     }
 
+    reuseGeneration(job) {
+        const sourceId = job.generation.reuseFromJobId;
+        const source = this.store.get(sourceId);
+        const checkpoint = source.checkpoints?.["heygen-generation"];
+        if (!checkpoint || checkpoint.status !== "COMPLETE" || !checkpoint.result?.scenes?.length) {
+            throw new WorkflowValidationError(`Generation source job ${sourceId} has no completed generation checkpoint.`);
+        }
+        if (source.generation.provider !== job.generation.provider) {
+            throw new WorkflowValidationError("Generation reuse requires the same provider.");
+        }
+        const sourceScripts = new Map(source.generation.scenes.map((scene) => [scene.id, scene.script]));
+        if (job.generation.scenes.some((scene) => sourceScripts.get(scene.id) !== scene.script)) {
+            throw new WorkflowValidationError("Generation reuse requires identical scene IDs and scripts.");
+        }
+        const folder = job.generation.provider === "heygen" ? "heygen" : "local-narration";
+        const scenes = checkpoint.result.scenes.map((scene) => {
+            const destination = path.join(job.workspace, "generated-assets", folder, scene.sceneId);
+            ensureDir(destination);
+            const copied = { ...scene, reusedFromJobId: sourceId };
+            for (const field of ["localVideo", "localAudio", "localSubtitle"]) {
+                if (!scene[field]) continue;
+                if (!fs.existsSync(scene[field])) {
+                    throw new WorkflowValidationError(`Generation reuse source is missing ${scene[field]}.`);
+                }
+                const target = path.join(destination, path.basename(scene[field]));
+                fs.copyFileSync(scene[field], target);
+                copied[field] = target;
+            }
+            writeJsonAtomic(path.join(destination, "metadata.json"), copied);
+            return copied;
+        });
+        const manifest = {
+            ...checkpoint.result,
+            jobId: job.id,
+            generatedAt: nowIso(),
+            reusedFromJobId: sourceId,
+            scenes,
+        };
+        writeJsonAtomic(job.outputPaths.generationManifest, manifest);
+        return manifest;
+    }
+
     async prepareProject(job) {
         const outputPath = job.outputPaths.project;
         ensureDir(path.dirname(outputPath));
@@ -814,6 +856,7 @@ class VideoJobRunner {
                     "heygen-generation",
                     "GENERATING_AVATAR",
                     (current) => {
+                        if (current.generation.reuseFromJobId) return this.reuseGeneration(current);
                         if (current.generation.provider === "macos_say") {
                             if (!this.localNarrationManager) throw new Error("Local narration manager is not configured.");
                             return this.localNarrationManager.generate(current);

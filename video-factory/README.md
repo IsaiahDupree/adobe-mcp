@@ -151,6 +151,34 @@ Board API:
 - `POST /api/boards/:id/run` run or resume the complete board
 - `POST /api/premiere/open-project` with `{ "project_path": "/absolute/path/project.prproj" }` starts the required apps and opens a packaged project through UXP or CEP
 
+## Nested REVISE loops
+
+The REVISE control plane wraps production boards in a durable outer experiment loop. Each variant uses the existing blind, three-turn board as its inner creative loop. V2 and V3 copy V1's verified generation assets instead of spending another HeyGen generation when the script is unchanged.
+
+```bash
+node cli.js revise-submit examples/revise-controlled-heygen-hook.json --design
+node cli.js revise-run heygen-result-first-hook-20260802
+node cli.js revise-metrics <revise-id> /absolute/path/real-metric-snapshots.json
+node cli.js revise-evaluate <revise-id> --window 24h
+node cli.js revise-status <revise-id>
+node cli.js revise-templates
+```
+
+Every loop writes `research_packet.json`, `experiment_spec.json`, `variant_manifest.json`, `review_bundle.json`, `publication_plan.json`, and `learning_record.json`. Controlled requests are rejected when more than the primary variable changes. After production, asymmetrical non-primary revision directives mark the experiment contaminated and produce no schedule slots. Publication planning is side-effect free: it applies family, platform, near-duplicate, and exact-export cooldowns, but a separate publisher must consume the approved plan.
+
+Metric snapshots require a real platform post ID and one of `1h`, `2h`, `24h`, `72h`, `7d`, `28d`, or `30d`. The evaluator only compares a window shared by every variant and returns `Ship`, `Replicate`, `Segment`, `Hold`, or `Reject`. Template promotion requires sufficient exposure, practical primary-metric improvement, passing guardrails, uncontaminated lineage, and replication across the configured number of content families.
+
+REVISE API:
+
+- `POST /api/revise` submit a loop
+- `GET /api/revise` list loops
+- `GET /api/revise/:id` inspect state and lineage
+- `GET /api/revise/templates` inspect validated production rules
+- `POST /api/revise/:id/design` write the research and experiment gates
+- `POST /api/revise/:id/run` run all inner production boards
+- `POST /api/revise/:id/metrics` record real metric snapshots
+- `POST /api/revise/:id/evaluate` create the learning decision
+
 ## My Passport archival
 
 Finished jobs can be copied or moved into `/Volumes/My Passport/VideoFactory/<campaign>/<job>/`. Every file is copied to a temporary destination, verified by byte size and SHA-256, and recorded in `archive-manifest.json` before move mode removes any local payload.

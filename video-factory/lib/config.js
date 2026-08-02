@@ -31,6 +31,7 @@ module.exports = {
     JOBS_DIR: path.join(FACTORY_HOME, "jobs"),
     COMPOSITIONS_DIR: path.join(FACTORY_HOME, "compositions"),
     FRAMING_DIR: path.join(FACTORY_HOME, "framing"),
+    REVISE_DIR: path.join(FACTORY_HOME, "revise"),
     CAMPAIGNS_DIR: path.join(FACTORY_HOME, "campaigns"),
     BOARDS_DIR: path.join(FACTORY_HOME, "boards"),
     PROXY_URL: process.env.PROXY_URL || "http://127.0.0.1:3031",

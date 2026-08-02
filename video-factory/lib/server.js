@@ -31,6 +31,8 @@ function createFactoryServer({
     compositionStore = null,
     compositionRunner = null,
     framingTracker = null,
+    reviseStore = null,
+    reviseRunner = null,
 }) {
     let schedulerTimer = null;
 
@@ -52,6 +54,15 @@ function createFactoryServer({
                         activeBatchId: compositionRunner.activeBatchId,
                     } : null,
                     framing: framingTracker ? framingTracker.writeSummary() : null,
+                    revise: reviseStore ? {
+                        total: reviseStore.list().length,
+                        activeId: reviseRunner.activeId,
+                        validatedTemplates: reviseStore.templateLibrary().templates.length,
+                        byStatus: reviseStore.list().reduce((out, item) => {
+                            out[item.status] = (out[item.status] || 0) + 1;
+                            return out;
+                        }, {}),
+                    } : null,
                     queue: {
                         total: jobs.length,
                         due: store.dueJobs().length,
@@ -149,6 +160,47 @@ function createFactoryServer({
             if (framingTracker && request.method === "GET" && segments[0] === "api" && segments[1] === "framing" && segments[2]) {
                 sendJson(response, 200, framingTracker.status(decodeURIComponent(segments[2])));
                 return;
+            }
+
+            if (reviseStore && request.method === "GET" && url.pathname === "/api/revise") {
+                sendJson(response, 200, { reviseLoops: reviseStore.list(), activeId: reviseRunner.activeId });
+                return;
+            }
+
+            if (reviseStore && request.method === "POST" && url.pathname === "/api/revise") {
+                sendJson(response, 201, reviseStore.submit(await readBody(request)));
+                return;
+            }
+
+            if (reviseStore && request.method === "GET" && url.pathname === "/api/revise/templates") {
+                sendJson(response, 200, reviseStore.templateLibrary());
+                return;
+            }
+
+            if (reviseStore && segments[0] === "api" && segments[1] === "revise" && segments[2]) {
+                const id = decodeURIComponent(segments[2]);
+                if (request.method === "GET" && segments.length === 3) {
+                    sendJson(response, 200, reviseStore.get(id));
+                    return;
+                }
+                if (request.method === "POST" && segments[3] === "design") {
+                    sendJson(response, 200, await reviseRunner.design(id));
+                    return;
+                }
+                if (request.method === "POST" && segments[3] === "run") {
+                    setImmediate(() => reviseRunner.run(id).catch(() => {}));
+                    sendJson(response, 202, { accepted: true, reviseId: id });
+                    return;
+                }
+                if (request.method === "POST" && segments[3] === "metrics") {
+                    sendJson(response, 201, reviseStore.recordMetrics(id, await readBody(request)));
+                    return;
+                }
+                if (request.method === "POST" && segments[3] === "evaluate") {
+                    const body = await readBody(request);
+                    sendJson(response, 200, reviseRunner.evaluate(id, body.window || null));
+                    return;
+                }
             }
 
             if (segments[0] === "api" && segments[1] === "jobs" && segments[2]) {

@@ -128,6 +128,7 @@ function normalizeGeneration(spec, defaults = {}) {
         voiceSettings: input.voice_settings || input.voiceSettings || { speed: 1.04, locale: "en-US" },
         voiceName: input.voice_name || input.voiceName || "Samantha",
         wordsPerMinute: Number(input.words_per_minute || input.wordsPerMinute || 165),
+        reuseFromJobId: input.reuse_from_job_id || input.reuseFromJobId || null,
         scenes,
         concurrency: Math.max(1, Math.min(4, Number(input.concurrency || 3))),
         pollIntervalMs: Number(input.poll_interval_ms || input.pollIntervalMs || 8000),
