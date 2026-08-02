@@ -21,7 +21,7 @@ async function readBody(request) {
     return JSON.parse(Buffer.concat(chunks).toString("utf8"));
 }
 
-function createFactoryServer({ store, runner, appManager, config }) {
+function createFactoryServer({ store, runner, appManager, config, boardStore = null, boardRunner = null }) {
     let schedulerTimer = null;
 
     const server = http.createServer(async (request, response) => {
@@ -33,6 +33,10 @@ function createFactoryServer({ store, runner, appManager, config }) {
                 sendJson(response, 200, {
                     status: "running",
                     node,
+                    boards: boardStore ? {
+                        total: boardStore.list().length,
+                        activeBoardId: boardRunner.activeBoardId,
+                    } : null,
                     queue: {
                         total: jobs.length,
                         due: store.dueJobs().length,
@@ -51,6 +55,12 @@ function createFactoryServer({ store, runner, appManager, config }) {
                 return;
             }
 
+            if (request.method === "POST" && url.pathname === "/api/premiere/open-project") {
+                const body = await readBody(request);
+                sendJson(response, 200, await appManager.openProject(body.project_path));
+                return;
+            }
+
             if (request.method === "GET" && url.pathname === "/api/jobs") {
                 sendJson(response, 200, {
                     jobs: store.list({ status: url.searchParams.get("status") || undefined }),
@@ -62,6 +72,32 @@ function createFactoryServer({ store, runner, appManager, config }) {
                 const job = store.submit(await readBody(request));
                 sendJson(response, 201, job);
                 return;
+            }
+
+            if (boardStore && request.method === "GET" && url.pathname === "/api/boards") {
+                sendJson(response, 200, {
+                    boards: boardStore.list(),
+                    activeBoardId: boardRunner.activeBoardId,
+                });
+                return;
+            }
+
+            if (boardStore && request.method === "POST" && url.pathname === "/api/boards") {
+                sendJson(response, 201, boardStore.submit(await readBody(request)));
+                return;
+            }
+
+            if (boardStore && segments[0] === "api" && segments[1] === "boards" && segments[2]) {
+                const id = decodeURIComponent(segments[2]);
+                if (request.method === "GET" && segments.length === 3) {
+                    sendJson(response, 200, boardStore.get(id));
+                    return;
+                }
+                if (request.method === "POST" && segments[3] === "run") {
+                    setImmediate(() => boardRunner.run(id).catch(() => {}));
+                    sendJson(response, 202, { accepted: true, boardId: id });
+                    return;
+                }
             }
 
             if (segments[0] === "api" && segments[1] === "jobs" && segments[2]) {

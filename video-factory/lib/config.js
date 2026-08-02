@@ -6,6 +6,7 @@ const REPO_ROOT = path.resolve(__dirname, "../..");
 const FACTORY_HOME = path.resolve(
     process.env.VIDEO_FACTORY_HOME || path.join(REPO_ROOT, "../../premiere-autonomy/factory")
 );
+const FACTORY_PACKAGE_DIR = path.resolve(__dirname, "..");
 
 function envValue(name, fallback = "") {
     if (process.env[name]) return process.env[name];
@@ -25,9 +26,11 @@ function envValue(name, fallback = "") {
 
 module.exports = {
     REPO_ROOT,
+    FACTORY_PACKAGE_DIR,
     FACTORY_HOME,
     JOBS_DIR: path.join(FACTORY_HOME, "jobs"),
     CAMPAIGNS_DIR: path.join(FACTORY_HOME, "campaigns"),
+    BOARDS_DIR: path.join(FACTORY_HOME, "boards"),
     PROXY_URL: process.env.PROXY_URL || "http://127.0.0.1:3031",
     FACTORY_PORT: Number(process.env.VIDEO_FACTORY_PORT || 3032),
     PREMIERE_APP_NAME: process.env.PREMIERE_APP_NAME || "Adobe Premiere Pro 2026",
@@ -62,6 +65,10 @@ module.exports = {
         process.env.PREMIERE_H264_PRESET ||
         "/Applications/Adobe Media Encoder 2026/Adobe Media Encoder 2026.app/Contents/MediaIO/systempresets/4E49434B_48323634/00 - Match Source - High bitrate.epr",
     IMAGEMAGICK_BIN: process.env.IMAGEMAGICK_BIN || "/opt/homebrew/bin/magick",
+    FFMPEG_BIN: process.env.FFMPEG_BIN || "/opt/homebrew/bin/ffmpeg",
+    FFPROBE_BIN: process.env.FFPROBE_BIN || "ffprobe",
+    YT_DLP_BIN: process.env.YT_DLP_BIN || "/opt/homebrew/bin/yt-dlp",
+    CODEX_JUDGE_TIMEOUT_MS: Number(process.env.VIDEO_FACTORY_CODEX_JUDGE_TIMEOUT_MS || 180000),
     CAPTION_FONT:
         process.env.VIDEO_FACTORY_CAPTION_FONT ||
         "/System/Library/Fonts/Supplemental/Arial Bold.ttf",

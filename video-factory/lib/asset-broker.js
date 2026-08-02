@@ -57,12 +57,31 @@ class ProductionAssetBroker {
         this.userAgent = "PremiereVideoFactory/1.0";
     }
 
+    async requestWithRetry(url, options, attempts = 3, timeoutMs = 30000) {
+        let lastError;
+        for (let attempt = 1; attempt <= attempts; attempt += 1) {
+            try {
+                const response = await fetch(url, {
+                    ...options,
+                    signal: AbortSignal.timeout(timeoutMs),
+                });
+                if (response.ok || (response.status < 500 && response.status !== 429)) return response;
+                lastError = new Error(`HTTP ${response.status}`);
+            } catch (error) {
+                lastError = error;
+            }
+            if (attempt < attempts) {
+                await new Promise((resolve) => setTimeout(resolve, attempt * 750));
+            }
+        }
+        throw lastError;
+    }
+
     async fetchJson(url, options = {}) {
-        const response = await fetch(url, {
+        const response = await this.requestWithRetry(url, {
             ...options,
             headers: { "User-Agent": this.userAgent, ...(options.headers || {}) },
-            signal: AbortSignal.timeout(30000),
-        });
+        }, 3, 30000);
         if (!response.ok) {
             const body = await response.text();
             throw new AssetBrokerError(
@@ -172,22 +191,33 @@ class ProductionAssetBroker {
     }
 
     async download(candidate, destination) {
-        const response = await fetch(candidate.url, {
-            headers: { "User-Agent": this.userAgent },
-            redirect: "follow",
-            signal: AbortSignal.timeout(120000),
-        });
-        if (!response.ok || !response.body) {
-            throw new AssetBrokerError(
-                `Could not download ${candidate.provider} asset ${candidate.providerAssetId}.`,
-                "ASSET_DOWNLOAD_FAILED",
-                { status: response.status }
-            );
-        }
         ensureDir(path.dirname(destination));
-        await pipeline(Readable.fromWeb(response.body), fs.createWriteStream(destination));
-        if (fs.statSync(destination).size === 0) {
-            throw new AssetBrokerError(`Downloaded asset is empty: ${destination}`, "ASSET_DOWNLOAD_FAILED");
+        const temporary = `${destination}.partial-${process.pid}`;
+        try {
+            const response = await this.requestWithRetry(candidate.url, {
+                headers: { "User-Agent": this.userAgent },
+                redirect: "follow",
+            }, 3, 120000);
+            if (!response.ok || !response.body) {
+                throw new AssetBrokerError(
+                    `Could not download ${candidate.provider} asset ${candidate.providerAssetId}.`,
+                    "ASSET_DOWNLOAD_FAILED",
+                    { status: response.status }
+                );
+            }
+            await pipeline(Readable.fromWeb(response.body), fs.createWriteStream(temporary));
+            if (fs.statSync(temporary).size === 0) {
+                throw new AssetBrokerError(`Downloaded asset is empty: ${destination}`, "ASSET_DOWNLOAD_FAILED");
+            }
+            fs.renameSync(temporary, destination);
+        } catch (error) {
+            if (fs.existsSync(temporary)) fs.unlinkSync(temporary);
+            if (error instanceof AssetBrokerError) throw error;
+            throw new AssetBrokerError(
+                `Could not download ${candidate.provider} asset ${candidate.providerAssetId} after retries.`,
+                "ASSET_DOWNLOAD_FAILED",
+                { cause: error.message }
+            );
         }
     }
 

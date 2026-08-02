@@ -59,6 +59,17 @@ class CepAdapter {
         return this.executeScript(script, 120000);
     }
 
+    async openProject(filePath) {
+        const script = `(function(){try{
+    var filePath=${JSON.stringify(filePath)};
+    if(!new File(filePath).exists)return JSON.stringify({success:false,error:"Project not found: "+filePath});
+    if(!app.project||app.project.path!==filePath)app.openDocument(filePath);
+    if(!app.project||app.project.path!==filePath)return JSON.stringify({success:false,error:"Premiere did not open the requested project"});
+    return JSON.stringify({success:true,projectPath:app.project.path,projectName:app.project.name});
+}catch(error){return JSON.stringify({success:false,error:String(error)});}})();`;
+        return this.executeScript(script, 120000);
+    }
+
     async importMedia(filePaths) {
         const pathsLiteral = JSON.stringify(filePaths);
         const script = `(function(){try{

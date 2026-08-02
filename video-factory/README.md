@@ -85,7 +85,7 @@ See [docs/retention-engine.md](docs/retention-engine.md) for the researched capa
 
 ## Long-form benchmark
 
-`benchmarks/youtube-retention-showcase.json` produces a 5-8 minute, 16:9 reference video covering the major retention-editing families. It compiles eleven narrated chapters, native captions, timed motion, generated chapter graphics and callouts, owned B-roll, SFX, Premiere structural QC, Adobe H.264 export, and verified My Passport archival.
+`benchmarks/youtube-retention-showcase.json` produces a 5-8 minute, 16:9 reference video covering the major retention-editing families. It compiles eleven narrated chapters, native captions, timed motion, generated chapter graphics and callouts, provider-sourced B-roll, SFX, Premiere structural QC, Adobe H.264 export, and verified My Passport archival.
 
 The benchmark uses the offline `macos_say` generation provider so it remains runnable when a hosted avatar or TTS account has no credits. Switch `generation.provider` to `heygen` when API credits are available and presenter footage is preferred.
 
@@ -106,6 +106,27 @@ node cli.js submit benchmarks/youtube-retention-showcase.json --run
 - `POST /api/worker/tick` execute the next due job
 
 The API binds to `127.0.0.1` only. It is intentionally not exposed to the public internet.
+
+## Closed-loop production boards
+
+A production board coordinates research, performance memory, a strict content brief, immutable Premiere revisions, deterministic technical QA, two independent editorial judges, and a release arbiter. The code owns the three-turn limit and hard release gates; every creative recommendation is structured and timecoded.
+
+The no-key execution path uses installed capabilities: `yt-dlp` for public trend evidence, Premiere and CEP for editing, Pexels/Pixabay for provider-only footage, `ffprobe` plus read-only FFmpeg analysis filters for QA, ImageMagick contact sheets, and deterministic local judges. `codex_cli` is also available as a read-only multimodal judge provider using the machine's existing ChatGPT authentication. No OpenAI API key is required for either path. Codex CLI judging has a bounded timeout and falls back to the deterministic judge so a signed-out or stalled session cannot block the queue.
+
+```bash
+node cli.js board-submit examples/production-board-local.json --run
+node cli.js board-status premiere-production-board-local-20260801-clean
+```
+
+Board deliverables include `final.mp4`, a self-contained and location-rebased `final.prproj`, native captions, generated media, provider footage, animated-caption assets, the content brief, trend evidence, timeline events, technical QA, judge scorecards, revision history, release decision, and the asset/license manifest. Local and My Passport copies receive independent checksum manifests after their project media paths are rebased. The strongest playable revision wins; V3 is not automatically preferred. If no revision reaches the configured threshold, the board packages the strongest version as `needs_review` and stops.
+
+Board API:
+
+- `POST /api/boards` submit a board
+- `GET /api/boards` list boards
+- `GET /api/boards/:id` inspect artifacts, revisions, and release status
+- `POST /api/boards/:id/run` run or resume the complete board
+- `POST /api/premiere/open-project` with `{ "project_path": "/absolute/path/project.prproj" }` starts the required apps and opens a packaged project through UXP or CEP
 
 ## My Passport archival
 

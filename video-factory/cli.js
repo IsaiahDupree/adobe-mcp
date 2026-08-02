@@ -12,6 +12,16 @@ const { HeyGenManager } = require("./lib/heygen-manager");
 const { RetentionPlanner } = require("./lib/retention-planner");
 const { ShowcaseRenderer } = require("./lib/showcase-renderer");
 const { ProductionAssetBroker } = require("./lib/asset-broker");
+const { BoardStore } = require("./lib/board-store");
+const { BriefArchitect } = require("./lib/brief-architect");
+const { ProductionBoardRunner } = require("./lib/board-runner");
+const { MediaAnalyzer } = require("./lib/media-analyzer");
+const { PerformanceMemory } = require("./lib/performance-memory");
+const { ReleaseArbiter } = require("./lib/release-arbiter");
+const { ReleasePackager } = require("./lib/release-packager");
+const { Showrunner } = require("./lib/showrunner");
+const { TechnicalQa } = require("./lib/technical-qa");
+const { TrendScout } = require("./lib/trend-scout");
 const { LocalNarrationManager } = require("./lib/local-narration-manager");
 const { JobStore } = require("./lib/store");
 const { VideoJobRunner } = require("./lib/workflow");
@@ -23,7 +33,11 @@ function usage() {
 
 Usage:
   node cli.js health [--ensure]
+  node cli.js open-project </absolute/path/project.prproj>
   node cli.js submit <job.json> [--run]
+  node cli.js board-submit <board.json> [--run]
+  node cli.js board-run <board-id>
+  node cli.js board-status [board-id]
   node cli.js run <job-id>
   node cli.js status [job-id]
   node cli.js tick
@@ -65,7 +79,22 @@ function createRuntime() {
         localNarrationManager,
         assetBroker
     );
-    return { adapter, store, appManager, runner };
+    const boardStore = new BoardStore(config);
+    const boardRunner = new ProductionBoardRunner({
+        config,
+        boardStore,
+        jobStore: store,
+        jobRunner: runner,
+        trendScout: new TrendScout(config),
+        performanceMemory: new PerformanceMemory(config),
+        briefArchitect: new BriefArchitect(),
+        showrunner: new Showrunner(),
+        technicalQa: new TechnicalQa(config),
+        mediaAnalyzer: new MediaAnalyzer(config),
+        releaseArbiter: new ReleaseArbiter(),
+        releasePackager: new ReleasePackager(),
+    });
+    return { adapter, store, appManager, runner, boardStore, boardRunner };
 }
 
 function optionValue(args, name, fallback) {
@@ -165,10 +194,15 @@ async function main() {
         usage();
         process.exit(command ? 0 : 2);
     }
-    const { store, appManager, runner } = createRuntime();
+    const { store, appManager, runner, boardStore, boardRunner } = createRuntime();
 
     if (command === "health") {
         print(args.includes("--ensure") ? await appManager.ensureReady() : await appManager.health());
+        return;
+    }
+    if (command === "open-project") {
+        if (!args[1]) throw new Error("open-project requires an absolute .prproj path.");
+        print(await appManager.openProject(args[1]));
         return;
     }
     if (command === "submit") {
@@ -176,6 +210,22 @@ async function main() {
         const spec = JSON.parse(fs.readFileSync(path.resolve(args[1]), "utf8"));
         const job = store.submit(spec);
         print(args.includes("--run") ? await runner.run(job.id) : job);
+        return;
+    }
+    if (command === "board-submit") {
+        if (!args[1]) throw new Error("board-submit requires a board JSON file.");
+        const spec = JSON.parse(fs.readFileSync(path.resolve(args[1]), "utf8"));
+        const board = boardStore.submit(spec);
+        print(args.includes("--run") ? await boardRunner.run(board.id) : board);
+        return;
+    }
+    if (command === "board-run") {
+        if (!args[1]) throw new Error("board-run requires a board ID.");
+        print(await boardRunner.run(args[1]));
+        return;
+    }
+    if (command === "board-status") {
+        print(args[1] ? boardStore.get(args[1]) : { boards: boardStore.list() });
         return;
     }
     if (command === "run") {
@@ -217,6 +267,8 @@ async function main() {
             runner,
             appManager,
             config,
+            boardStore,
+            boardRunner,
         });
         server.listen(port, "127.0.0.1", () => {
             process.stdout.write(`Premiere Video Factory listening on http://127.0.0.1:${port}\n`);

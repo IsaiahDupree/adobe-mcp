@@ -302,6 +302,36 @@ class ApplicationManager {
         }
         return this.health();
     }
+
+    async openProject(filePath) {
+        const requested = typeof filePath === "string" ? filePath : "";
+        const resolved = path.resolve(requested);
+        if (!path.isAbsolute(requested) || path.extname(resolved).toLowerCase() !== ".prproj") {
+            throw new AppReadinessError("openProject requires an absolute .prproj path.");
+        }
+        if (!fs.existsSync(resolved)) {
+            throw new AppReadinessError(`Premiere project not found: ${resolved}`);
+        }
+        await this.ensureReady();
+        let bridge;
+        let result;
+        if (await this.adapter.isConnected()) {
+            result = await this.adapter.command("openProject", { filePath: resolved }, 120000);
+            bridge = "uxp";
+        } else if (this.cepAdapter) {
+            result = await this.cepAdapter.openProject(resolved);
+            bridge = "cep";
+        } else {
+            throw new AppReadinessError("No Premiere automation bridge is available.");
+        }
+        const health = await this.waitFor(async () => {
+            const snapshot = await this.health();
+            return snapshot.premiere.responsive && snapshot.premiere.project?.name === path.basename(resolved)
+                ? snapshot
+                : null;
+        }, `Premiere project ${path.basename(resolved)}`, 45000);
+        return { success: true, bridge, projectPath: resolved, result, health };
+    }
 }
 
 module.exports = { ApplicationManager, AppReadinessError };
