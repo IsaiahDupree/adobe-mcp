@@ -13,6 +13,83 @@ function concise(text, limit = 42) {
     return value.length <= limit ? value : `${value.slice(0, limit - 1).trim()}...`;
 }
 
+function normalizedWords(text) {
+    return String(text || "")
+        .toLowerCase()
+        .replace(/[^a-z0-9\s]/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+}
+
+function isCaptionEcho(callout, script) {
+    const normalizedCallout = normalizedWords(callout);
+    const normalizedScript = normalizedWords(script);
+    if (!normalizedCallout || !normalizedScript) return false;
+    return normalizedScript === normalizedCallout || normalizedScript.startsWith(`${normalizedCallout} `);
+}
+
+function semanticCallout(scene = {}) {
+    const explicit = String(scene.calloutText || scene.callout_text || scene.callout || "")
+        .replace(/\s+/g, " ")
+        .trim();
+    if (explicit) {
+        if (explicit.length > 48) throw new Error("Callout text must be 48 characters or fewer.");
+        if (isCaptionEcho(explicit, scene.script)) {
+            throw new Error(`Callout repeats the opening caption: ${explicit}`);
+        }
+        return explicit.toUpperCase();
+    }
+
+    const text = normalizedWords(`${scene.title || ""} ${scene.script || ""}`);
+    const candidates = [
+        [/\b(research|evidence|proof)\b/, "PROTECT THE EVIDENCE"],
+        [/\b(premiere|project|edit|editor)\b/, "KEEP THE PROJECT EDITABLE"],
+        [/\b(quality|check|release|review)\b/, "PROVE IT BEFORE RELEASE"],
+        [/\b(asset|license|provider|provenance)\b/, "TRACK EVERY ASSET"],
+        [/\b(voice|audio|sound|dialogue)\b/, "KEEP DIALOGUE IN FRONT"],
+        [/\b(experiment|test|measure|retention)\b/, "TEST ONE VARIABLE AT A TIME"],
+    ];
+    const match = candidates.find(([pattern]) => pattern.test(text));
+    const derived = match ? match[1] : "THE KEY DECISION";
+    return isCaptionEcho(derived, scene.script) ? "THE KEY DECISION" : derived;
+}
+
+function validateShowcaseTimeline(manifest) {
+    const collections = [
+        ["graphics", manifest.graphics || []],
+        ["videos", manifest.videos || []],
+        ["audio", manifest.audio || []],
+    ];
+    for (const [kind, events] of collections) {
+        for (const event of events) {
+            if (![event.start, event.end, event.trackIndex].every(Number.isFinite)) {
+                throw new Error(`${kind} event ${event.id} has non-finite timing or track data.`);
+            }
+            if (event.start < 0 || event.end <= event.start || event.trackIndex < 0) {
+                throw new Error(`${kind} event ${event.id} has an invalid timeline range.`);
+            }
+        }
+        const byTrack = new Map();
+        for (const event of events) {
+            if (!byTrack.has(event.trackIndex)) byTrack.set(event.trackIndex, []);
+            byTrack.get(event.trackIndex).push(event);
+        }
+        for (const [trackIndex, trackEvents] of byTrack) {
+            const ordered = trackEvents.sort((a, b) => a.start - b.start || a.end - b.end);
+            for (let index = 1; index < ordered.length; index += 1) {
+                const previous = ordered[index - 1];
+                const current = ordered[index];
+                if (current.start < previous.end - 0.001) {
+                    throw new Error(
+                        `${kind} track ${trackIndex} overlaps: ${previous.id} and ${current.id}.`
+                    );
+                }
+            }
+        }
+    }
+    return manifest;
+}
+
 class ShowcaseRenderer {
     constructor(config) {
         this.magickBin = config.IMAGEMAGICK_BIN;
@@ -102,7 +179,7 @@ class ShowcaseRenderer {
             });
 
             const calloutPath = path.join(directory, `callout-${String(index + 1).padStart(2, "0")}.png`);
-            const callout = concise(source.script, 58).toUpperCase();
+            const callout = semanticCallout(source);
             await this.graphic(calloutPath, width, height, [
                 "-fill", "#0b0d10d9", "-draw", `roundrectangle ${Math.round(width * 0.08)},${Math.round(height * 0.12)} ${Math.round(width * 0.67)},${Math.round(height * 0.31)} 8,8`,
                 "-fill", accent, "-draw", `rectangle ${Math.round(width * 0.08)},${Math.round(height * 0.12)} ${Math.round(width * 0.095)},${Math.round(height * 0.31)}`,
@@ -168,7 +245,7 @@ class ShowcaseRenderer {
                 path: output,
                 start,
                 end: Math.min(scene.end - 0.15, start + explainer.placementDurationSeconds),
-                trackIndex: 2,
+                trackIndex: 3,
                 purpose: `semantic-explainer:${explainer.layout}`,
                 points: explainer.points,
             });
@@ -214,9 +291,16 @@ class ShowcaseRenderer {
             videos,
             audio,
         };
+        validateShowcaseTimeline(manifest);
         writeJsonAtomic(job.outputPaths.showcaseManifest, manifest);
         return manifest;
     }
 }
 
-module.exports = { ShowcaseRenderer, frameSize };
+module.exports = {
+    ShowcaseRenderer,
+    frameSize,
+    isCaptionEcho,
+    semanticCallout,
+    validateShowcaseTimeline,
+};

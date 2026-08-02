@@ -94,10 +94,17 @@ function normalizeGeneration(spec, defaults = {}) {
         if (!item.script || !item.script.trim()) {
             throw new Error(`generation.scenes[${index}].script is required.`);
         }
+        const calloutText = String(
+            item.callout_text || item.calloutText || item.callout || ""
+        ).replace(/\s+/g, " ").trim();
+        if (calloutText.length > 48) {
+            throw new Error(`generation.scenes[${index}].callout_text must be 48 characters or fewer.`);
+        }
         return {
             id: slugify(item.id || `scene-${String(index + 1).padStart(3, "0")}`),
             script: item.script.trim(),
             title: item.title || null,
+            calloutText: calloutText || null,
         };
     });
     const avatarId = input.avatar_id || input.avatarId || defaults.avatarId;

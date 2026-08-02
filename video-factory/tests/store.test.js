@@ -74,7 +74,13 @@ test("job schema normalizes a scene-based HeyGen retention job", () => {
         generation: {
             provider: "heygen",
             engine: "avatar_iv",
-            scenes: ["Lead with the result.", "Change the frame on the next beat."],
+            scenes: [
+                {
+                    script: "Lead with the result.",
+                    callout_text: "PROVE VALUE IMMEDIATELY",
+                },
+                "Change the frame on the next beat.",
+            ],
         },
         retention: {
             preset: "social-dynamic",
@@ -92,6 +98,7 @@ test("job schema normalizes a scene-based HeyGen retention job", () => {
 
     assert.equal(job.generation.enabled, true);
     assert.equal(job.generation.scenes.length, 2);
+    assert.equal(job.generation.scenes[0].calloutText, "PROVE VALUE IMMEDIATELY");
     assert.equal(job.generation.avatarId, "avatar-real-id");
     assert.equal(job.generation.voiceProvider, "elevenlabs");
     assert.equal(job.generation.elevenLabsVoiceId, "elevenlabs-real-id");
@@ -101,6 +108,25 @@ test("job schema normalizes a scene-based HeyGen retention job", () => {
     assert.equal(job.showcase.enabled, true);
     assert.equal(job.showcase.minimumDurationSeconds, 300);
     assert.match(job.outputPaths.combinedCaptions, /combined-captions\.srt$/);
+});
+
+test("job schema rejects callouts that cannot fit the graphic contract", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "premiere-factory-callout-schema-"));
+    const store = new JobStore({
+        JOBS_DIR: path.join(root, "jobs"),
+        CAMPAIGNS_DIR: path.join(root, "campaigns"),
+        HEYGEN_AVATAR_ID: "avatar-real-id",
+        ELEVENLABS_VOICE_ID: "elevenlabs-real-id",
+    });
+    assert.throws(() => store.submit({
+        request: { topic: "Invalid callout" },
+        generation: {
+            scenes: [{
+                script: "A valid spoken sentence.",
+                callout_text: "This takeaway is deliberately much too long to fit the bounded callout graphic",
+            }],
+        },
+    }), /48 characters or fewer/);
 });
 
 test("job schema accepts offline narration without HeyGen credentials", () => {

@@ -51,9 +51,11 @@ Premiere 26.3 can create single-word captions in the UI. The automation equivale
 
 Set `showcase.asset_policy.mode` to `provider-only` to reject all pre-existing local B-roll and SFX paths. GitHub projects in `config/creative-reference-registry.json` contribute engineering and editorial patterns only; their bundled media never becomes an implicit production asset.
 
+Each scripted generation scene can define a `callout_text` of up to 48 characters. A callout is a semantic takeaway, not a duplicate caption: the compiler rejects text that repeats the opening spoken phrase, refuses ellipsized overflow, and derives a deterministic topic-based takeaway when the field is omitted. Before Premiere assembly, the showcase manifest also rejects invalid time ranges and overlapping events on the same logical track. Full-screen explainers request a separate overlay track and the CEP bridge records any safe fallback to the highest available track.
+
 ## Benchmark production
 
-The reusable `benchmarks/youtube-retention-showcase.json` job targets 5-8 minutes and fails QC outside that range. Its eleven chapters cover hooks, pacing, motion, proof, layouts, captions, transitions, graphics, sound/color, and workflow. The compiler places generated graphics on V3, provenance-tracked Pexels/Pixabay B-roll on V2, native captions on C1, and narration on A1. The portable My Passport archive includes the stock source package and asset registry.
+The reusable `benchmarks/youtube-retention-showcase.json` job targets 5-8 minutes and fails QC outside that range. Its eleven chapters cover hooks, pacing, motion, proof, layouts, captions, transitions, graphics, sound/color, and workflow. The compiler places chapter cards and callouts on V3, requests V4 for full-screen explainers, places provenance-tracked Pexels/Pixabay B-roll on V2, native captions on C1, and narration on A1. The portable My Passport archive includes the stock source package and asset registry.
 
 Long-form narration can use `generation.provider: "macos_say"` for a credential-free offline run. The provider creates real AIFF narration, 16:9 source graphics, and sentence-timed SRT cues; Premiere remains responsible for assembly, motion, overlays, captions, audio placement, project save, and H.264 export.
 

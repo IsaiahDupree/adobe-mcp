@@ -2,6 +2,12 @@ const fs = require("fs");
 const path = require("path");
 const { ensureDir, nowIso, readJson, sleep, writeJsonAtomic } = require("./util");
 
+function premiereDbToLevel(db) {
+    const value = Number(db);
+    if (!Number.isFinite(value)) throw new Error("Premiere gain must be a finite dB value.");
+    return Math.min(1, Math.max(0, Math.pow(10, (value - 15) / 20)));
+}
+
 class CepAdapter {
     constructor(config) {
         this.tempDir = config.PREMIERE_CEP_TEMP_DIR;
@@ -245,6 +251,7 @@ class CepAdapter {
         const captionAssetsLiteral = JSON.stringify(captionAssets);
         const showcaseAssetsLiteral = JSON.stringify(showcaseAssets);
         const dialogueGainDbLiteral = JSON.stringify(Number(dialogueGainDb || 0));
+        const dialogueGainLevelLiteral = JSON.stringify(premiereDbToLevel(dialogueGainDb || 0));
         const script = `(function () {
     try {
         var project = app.project;
@@ -280,7 +287,7 @@ class CepAdapter {
                 }
             }
         }
-        var dialogueGainLinear=Math.min(1,Math.max(0,Math.pow(10,(dialogueGainDb-15)/20)));
+        var dialogueGainLinear=${dialogueGainLevelLiteral};
         var dialogueAdjusted=0;
         if(sequence.audioTracks.numTracks>0){
             var dialogueTrack=sequence.audioTracks[0];
@@ -390,6 +397,22 @@ class CepAdapter {
         }
         var graphicAnimations=[];
         var graphicAssets=captionAssets.concat(showcaseAssets.graphics||[]);
+        var mappedGraphicRanges=[];
+        for(var graphicRangeIndex=0;graphicRangeIndex<graphicAssets.length;graphicRangeIndex++){
+            var graphicRange=graphicAssets[graphicRangeIndex];
+            var graphicRequestedTrack=Number(graphicRange.trackIndex===undefined?1:graphicRange.trackIndex);
+            var graphicMappedTrack=sequence.videoTracks[graphicRequestedTrack]
+                ? graphicRequestedTrack
+                : Math.max(1,sequence.videoTracks.numTracks-1);
+            if(!sequence.videoTracks[graphicMappedTrack])return JSON.stringify({success:false,error:"No video overlay track is available"});
+            for(var priorRangeIndex=0;priorRangeIndex<mappedGraphicRanges.length;priorRangeIndex++){
+                var priorRange=mappedGraphicRanges[priorRangeIndex];
+                if(priorRange.trackIndex===graphicMappedTrack&&Number(graphicRange.start)<priorRange.end-0.001&&Number(graphicRange.end)>priorRange.start+0.001){
+                    return JSON.stringify({success:false,error:"Mapped graphic overlap on track "+graphicMappedTrack+": "+priorRange.id+" and "+(graphicRange.id||graphicRange.text)});
+                }
+            }
+            mappedGraphicRanges.push({id:graphicRange.id||graphicRange.text,start:Number(graphicRange.start),end:Number(graphicRange.end),trackIndex:graphicMappedTrack});
+        }
         for (var captionIndex = 0; captionIndex < graphicAssets.length; captionIndex++) {
             var caption = graphicAssets[captionIndex];
             var captionItem = findProjectItemByPath(project.rootItem, caption.path);
@@ -409,9 +432,14 @@ class CepAdapter {
             captionItem.setOutPoint(captionOut, 4);
             var captionStart = new Time();
             captionStart.seconds = caption.start;
-            var targetTrackIndex=Number(caption.trackIndex===undefined?1:caption.trackIndex);
+            var requestedTrackIndex=Number(caption.trackIndex===undefined?1:caption.trackIndex);
+            var targetTrackIndex=requestedTrackIndex;
             var targetTrack = sequence.videoTracks[targetTrackIndex];
-            if(!targetTrack)return JSON.stringify({success:false,error:"Missing video overlay track "+targetTrackIndex});
+            if(!targetTrack&&sequence.videoTracks.numTracks>1){
+                targetTrackIndex=Math.max(1,sequence.videoTracks.numTracks-1);
+                targetTrack=sequence.videoTracks[targetTrackIndex];
+            }
+            if(!targetTrack)return JSON.stringify({success:false,error:"No video overlay track is available"});
             targetTrack.overwriteClip(captionItem, captionStart.ticks);
             var animation=caption.animation||null;
             if(animation){
@@ -466,7 +494,7 @@ class CepAdapter {
                     break;
                 }
             }
-            importedCaptions.push({text:caption.text,start:caption.start,end:caption.end,trackIndex:targetTrackIndex,purpose:caption.purpose||"animated-caption"});
+            importedCaptions.push({text:caption.text,start:caption.start,end:caption.end,requestedTrackIndex:requestedTrackIndex,trackIndex:targetTrackIndex,purpose:caption.purpose||"animated-caption"});
         }
 
         var importedVideos=[];
@@ -669,4 +697,4 @@ class CepAdapter {
 
 }
 
-module.exports = { CepAdapter };
+module.exports = { CepAdapter, premiereDbToLevel };

@@ -3,7 +3,7 @@ const assert = require("node:assert/strict");
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
-const { CepAdapter } = require("../lib/cep-adapter");
+const { CepAdapter, premiereDbToLevel } = require("../lib/cep-adapter");
 const { writeJsonAtomic } = require("../lib/util");
 
 test("native caption receipt makes caption-track creation idempotent", async () => {
@@ -71,6 +71,41 @@ test("retention script falls back to an available SFX track and records the mapp
     assert.match(capturedScript, /requestedTrackIndex:requestedAudioTrackNumber/);
 });
 
+test("retention script safely maps requested graphic tracks to an available overlay track", async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "premiere-graphic-track-"));
+    const adapter = new CepAdapter({
+        PREMIERE_CEP_TEMP_DIR: root,
+        PREMIERE_CEP_TIMEOUT_MS: 100,
+        PREMIERE_H264_PRESET: path.join(root, "unused.epr"),
+    });
+    let capturedScript = "";
+    adapter.executeScript = async (script) => {
+        capturedScript = script;
+        return { success: true };
+    };
+
+    await adapter.applyRetentionPlan({
+        sequenceName: "MASTER",
+        plan: { scenes: [], frame: { width: 1280, height: 720 } },
+        showcaseAssets: {
+            graphics: [{
+                id: "semantic-explainer",
+                path: path.join(root, "explainer.png"),
+                start: 4,
+                end: 7,
+                trackIndex: 3,
+            }],
+            videos: [],
+            audio: [],
+        },
+    });
+
+    assert.match(capturedScript, /requestedTrackIndex/);
+    assert.match(capturedScript, /sequence\.videoTracks\.numTracks-1/);
+    assert.match(capturedScript, /requestedTrackIndex:requestedTrackIndex/);
+    assert.match(capturedScript, /Mapped graphic overlap on track/);
+});
+
 test("CEP project close saves and closes only the requested active project", async () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "premiere-cep-close-"));
     const adapter = new CepAdapter({
@@ -89,4 +124,11 @@ test("CEP project close saves and closes only the requested active project", asy
     assert.equal(result.bridge, "cep");
     assert.match(capturedScript, /different-project/);
     assert.match(capturedScript, /closeDocument\(1,0\)/);
+});
+
+test("Premiere dB conversion accounts for the Level property's +15 dB ceiling", () => {
+    assert.equal(premiereDbToLevel(15), 1);
+    assert.ok(Math.abs(premiereDbToLevel(6.9) - 0.3935500755) < 1e-9);
+    assert.ok(Math.abs(premiereDbToLevel(-12) - 0.0446683592) < 1e-9);
+    assert.throws(() => premiereDbToLevel("not-a-level"), /finite dB value/);
 });

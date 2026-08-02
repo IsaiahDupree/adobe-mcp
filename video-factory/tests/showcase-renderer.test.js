@@ -3,7 +3,12 @@ const assert = require("node:assert/strict");
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
-const { ShowcaseRenderer } = require("../lib/showcase-renderer");
+const {
+    ShowcaseRenderer,
+    isCaptionEcho,
+    semanticCallout,
+    validateShowcaseTimeline,
+} = require("../lib/showcase-renderer");
 
 test("showcase renderer creates chapter graphics and a coverage manifest", async () => {
     const workspace = fs.mkdtempSync(path.join(os.tmpdir(), "premiere-showcase-"));
@@ -19,8 +24,18 @@ test("showcase renderer creates chapter graphics and a coverage manifest", async
         generation: {
             aspectRatio: "16:9",
             scenes: [
-                { id: "hook", title: "Hook systems", script: "Open with the result." },
-                { id: "proof", title: "Show proof", script: "Show the production receipt." },
+                {
+                    id: "hook",
+                    title: "Hook systems",
+                    calloutText: "PROVE VALUE IMMEDIATELY",
+                    script: "Open with the result.",
+                },
+                {
+                    id: "proof",
+                    title: "Show proof",
+                    calloutText: "KEEP THE RECEIPT EDITABLE",
+                    script: "Show the production receipt.",
+                },
             ],
         },
         showcase: {
@@ -75,5 +90,49 @@ test("showcase renderer creates chapter graphics and a coverage manifest", async
     });
     assert.ok(result.graphics.every((asset) => fs.statSync(asset.path).size > 1000));
     assert.equal(result.graphics.find((asset) => asset.id === "proof-flow").start, 43);
+    assert.equal(result.graphics.find((asset) => asset.id === "proof-flow").trackIndex, 3);
+    assert.equal(result.graphics.find((asset) => asset.id === "callout-1").text, "PROVE VALUE IMMEDIATELY");
+    assert.ok(result.graphics
+        .filter((asset) => asset.purpose === "retention-callout")
+        .every((asset) => !asset.text.includes("...") && !isCaptionEcho(
+            asset.text,
+            job.generation.scenes.find((scene) => asset.id === `callout-${job.generation.scenes.indexOf(scene) + 1}`).script
+        )));
+    assert.equal(validateShowcaseTimeline(result), result);
     assert.ok(fs.existsSync(job.outputPaths.showcaseManifest));
+});
+
+test("semantic callouts use takeaways and reject opening-caption duplication", () => {
+    assert.equal(
+        semanticCallout({ title: "Asset provenance", script: "Every asset needs a receipt." }),
+        "TRACK EVERY ASSET"
+    );
+    assert.equal(
+        semanticCallout({ title: "Research", script: "Protect the evidence before release." }),
+        "THE KEY DECISION"
+    );
+    assert.equal(isCaptionEcho("Open with the result", "Open with the result and show proof."), true);
+    assert.throws(
+        () => semanticCallout({
+            calloutText: "Open with the result",
+            script: "Open with the result and show proof.",
+        }),
+        /repeats the opening caption/
+    );
+});
+
+test("timeline validation rejects same-track collisions and invalid ranges", () => {
+    assert.throws(
+        () => validateShowcaseTimeline({
+            graphics: [
+                { id: "a", start: 1, end: 4, trackIndex: 2 },
+                { id: "b", start: 3.5, end: 5, trackIndex: 2 },
+            ],
+        }),
+        /overlaps: a and b/
+    );
+    assert.throws(
+        () => validateShowcaseTimeline({ videos: [{ id: "bad", start: 4, end: 4, trackIndex: 1 }] }),
+        /invalid timeline range/
+    );
 });
