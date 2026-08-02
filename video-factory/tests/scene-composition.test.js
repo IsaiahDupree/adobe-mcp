@@ -29,6 +29,7 @@ function testConfig(root) {
         PASSPORT_ARCHIVE_ROOT: path.join(root, "passport"),
         HEYGEN_AVATAR_ID: "93a72551393b4a13a7e256a3fa3ca421",
         HEYGEN_VOICE_ID: "configured-voice",
+        ELEVENLABS_VOICE_ID: "configured-elevenlabs-voice",
     };
 }
 
@@ -64,6 +65,15 @@ test("HeyGen v3 request respects output format and engine capability limits", ()
     assert.equal(body.background, undefined);
     assert.equal(body.motion_prompt, undefined);
     assert.equal(body.expressiveness, undefined);
+    assert.equal(body.script, "A real request body.");
+    assert.equal(body.voice_id, "configured-voice");
+    assert.equal(body.audio_asset_id, undefined);
+
+    const audioBody = manager.requestBody(job, { script: "Do not send this text.", id: "scene-002" }, "audio-asset-id");
+    assert.equal(audioBody.audio_asset_id, "audio-asset-id");
+    assert.equal(audioBody.script, undefined);
+    assert.equal(audioBody.voice_id, undefined);
+    assert.equal(audioBody.voice_settings, undefined);
 });
 
 test("scene composition pipeline produces analyzed, face-safe, rendered QA evidence", async () => {

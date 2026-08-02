@@ -8,20 +8,23 @@ const FACTORY_HOME = path.resolve(
 );
 const FACTORY_PACKAGE_DIR = path.resolve(__dirname, "..");
 
-function envValue(name, fallback = "") {
+function envValue(name, fallback = "", additionalFiles = []) {
     if (process.env[name]) return process.env[name];
-    const envPath = path.join(process.env.HOME || "", ".env");
-    try {
-        const line = fs
-            .readFileSync(envPath, "utf8")
-            .split(/\r?\n/)
-            .find((item) => item.startsWith(`${name}=`));
-        if (!line) return fallback;
-        const value = line.slice(name.length + 1).trim();
-        return value.replace(/^(['"])(.*)\1$/, "$2");
-    } catch {
-        return fallback;
+    const envPaths = [path.join(process.env.HOME || "", ".env"), ...additionalFiles];
+    for (const envPath of envPaths) {
+        try {
+            const line = fs
+                .readFileSync(envPath, "utf8")
+                .split(/\r?\n/)
+                .find((item) => item.startsWith(`${name}=`));
+            if (!line) continue;
+            const value = line.slice(name.length + 1).trim();
+            return value.replace(/^(['"])(.*)\1$/, "$2");
+        } catch {
+            // Continue through the local credential registry paths.
+        }
     }
+    return fallback;
 }
 
 module.exports = {
@@ -79,6 +82,10 @@ module.exports = {
     MIN_DISK_FREE_GB: Number(process.env.VIDEO_FACTORY_MIN_DISK_FREE_GB || 5),
     HEYGEN_API_URL: process.env.HEYGEN_API_URL || "https://api.heygen.com",
     HEYGEN_API_KEY: envValue("HEYGEN_API_KEY"),
+    ELEVENLABS_API_URL: process.env.ELEVENLABS_API_URL || "https://api.elevenlabs.io",
+    ELEVENLABS_API_KEY: envValue("ELEVENLABS_API_KEY", "", [
+        path.join(REPO_ROOT, "../../Remotion/.env.local"),
+    ]),
     PEXELS_API_KEY: envValue("PEXELS_API_KEY"),
     PIXABAY_API_KEY: envValue("PIXABAY_API_KEY"),
     HEYGEN_AVATAR_ID: envValue(
@@ -87,7 +94,11 @@ module.exports = {
     ),
     HEYGEN_VOICE_ID: envValue(
         "HEYGEN_VOICE_ID",
-        "e40f41c567924222a60ed3e1d557fc77"
+        "32ebf1506d7f4b9d93fbcfdda958721c"
+    ),
+    ELEVENLABS_VOICE_ID: envValue(
+        "ELEVENLABS_VOICE_ID",
+        "k0HDiJKO5QdXkGN6NSLI"
     ),
     PASSPORT_MOUNT:
         process.env.VIDEO_FACTORY_PASSPORT_MOUNT || "/Volumes/My Passport",

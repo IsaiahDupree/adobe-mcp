@@ -67,6 +67,7 @@ test("job schema normalizes a scene-based HeyGen retention job", () => {
         CAMPAIGNS_DIR: path.join(root, "campaigns"),
         HEYGEN_AVATAR_ID: "avatar-real-id",
         HEYGEN_VOICE_ID: "voice-real-id",
+        ELEVENLABS_VOICE_ID: "elevenlabs-real-id",
     });
     const job = store.submit({
         request: { topic: "Retention test" },
@@ -92,6 +93,8 @@ test("job schema normalizes a scene-based HeyGen retention job", () => {
     assert.equal(job.generation.enabled, true);
     assert.equal(job.generation.scenes.length, 2);
     assert.equal(job.generation.avatarId, "avatar-real-id");
+    assert.equal(job.generation.voiceProvider, "elevenlabs");
+    assert.equal(job.generation.elevenLabsVoiceId, "elevenlabs-real-id");
     assert.equal(job.retention.hookText, "STOP THE SCROLL");
     assert.equal(job.retention.captionMode, "native");
     assert.equal(job.retention.preset, "social-dynamic");
@@ -138,6 +141,14 @@ test("job schema normalizes provider-only semantic asset requests", () => {
                 query: "professional video editor",
                 providers: ["pexels", "pixabay"],
                 orientation: "landscape",
+                timeline_offset_seconds: 11,
+            }],
+            explainer_assets: [{
+                id: "workflow-proof",
+                scene_id: "camera-motion",
+                title: "A useful visual explanation",
+                points: ["Research", "Premiere", "QA"],
+                timeline_offset_seconds: 16,
             }],
         },
     });
@@ -145,6 +156,9 @@ test("job schema normalizes provider-only semantic asset requests", () => {
     assert.equal(job.showcase.assetPolicy.mode, "provider-only");
     assert.equal(job.showcase.assetRequests[0].sceneId, "camera-motion");
     assert.deepEqual(job.showcase.assetRequests[0].providers, ["pexels", "pixabay"]);
+    assert.equal(job.showcase.assetRequests[0].timelineOffsetSeconds, 11);
+    assert.equal(job.showcase.explainerAssets[0].timelineOffsetSeconds, 16);
+    assert.deepEqual(job.showcase.explainerAssets[0].points, ["Research", "Premiere", "QA"]);
     assert.match(job.outputPaths.assetRegistry, /source-assets\/asset-registry\.json$/);
 });
 

@@ -286,6 +286,7 @@ class ProductionAssetBroker {
                 attribution: `${selected.creator} via ${selected.provider === "pexels" ? "Pexels" : "Pixabay"}`,
                 localPath,
                 sourceStart: request.sourceStart,
+                timelineOffsetSeconds: request.timelineOffsetSeconds,
                 placementDurationSeconds: request.placementDurationSeconds,
                 scale: request.scale,
                 width: selected.width,

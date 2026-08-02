@@ -760,6 +760,7 @@ class VideoJobRunner {
             plan,
             captionAssets,
             showcaseAssets: showcase,
+            dialogueGainDb: job.retention.dialogueGainDb,
         });
         const nativeCaptionTrack = useNativeCaptions
             ? await this.cepAdapter.createNativeCaptionTrack({
@@ -790,6 +791,7 @@ class VideoJobRunner {
             path: asset.localPath,
             sceneId: asset.sceneId,
             sourceStart: asset.sourceStart,
+            timelineOffsetSeconds: asset.timelineOffsetSeconds,
             placementDurationSeconds: asset.placementDurationSeconds,
             scale: asset.scale,
             purpose: asset.purpose,

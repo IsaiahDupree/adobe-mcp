@@ -9,6 +9,7 @@ const { CaptionRenderer } = require("./lib/caption-renderer");
 const { ApplicationManager } = require("./lib/app-manager");
 const { ArchiveManager } = require("./lib/archive-manager");
 const { HeyGenManager } = require("./lib/heygen-manager");
+const { ElevenLabsManager } = require("./lib/elevenlabs-manager");
 const { RetentionPlanner } = require("./lib/retention-planner");
 const { ShowcaseRenderer } = require("./lib/showcase-renderer");
 const { ProductionAssetBroker } = require("./lib/asset-broker");
@@ -42,6 +43,7 @@ function usage() {
 
 Usage:
   node cli.js health [--ensure]
+  node cli.js voices-sync [--output /absolute/path/voices.json]
   node cli.js open-project </absolute/path/project.prproj>
   node cli.js submit <job.json> [--run]
   node cli.js board-submit <board.json> [--run]
@@ -81,7 +83,8 @@ function createRuntime() {
     const store = new JobStore(config);
     const appManager = new ApplicationManager(config, adapter, cepAdapter);
     const archiveManager = new ArchiveManager(config, adapter, cepAdapter);
-    const heygenManager = new HeyGenManager(config);
+    const elevenLabsManager = new ElevenLabsManager(config);
+    const heygenManager = new HeyGenManager(config, elevenLabsManager);
     const retentionEditor = new RetentionPlanner();
     const showcaseRenderer = new ShowcaseRenderer(config);
     const assetBroker = new ProductionAssetBroker(config);
@@ -132,6 +135,8 @@ function createRuntime() {
     });
     return {
         adapter,
+        heygenManager,
+        elevenLabsManager,
         store,
         appManager,
         runner,
@@ -243,6 +248,8 @@ async function main() {
         process.exit(command ? 0 : 2);
     }
     const {
+        heygenManager,
+        elevenLabsManager,
         store,
         appManager,
         runner,
@@ -257,6 +264,54 @@ async function main() {
 
     if (command === "health") {
         print(args.includes("--ensure") ? await appManager.ensureReady() : await appManager.health());
+        return;
+    }
+    if (command === "voices-sync") {
+        const output = optionValue(args, "--output", path.join(config.FACTORY_HOME, "voice-registry", "heygen-voices.json"));
+        ensureDir(path.dirname(output));
+        const voices = [];
+        for (const type of ["private", "public"]) {
+            let token = null;
+            do {
+                const response = await heygenManager.listVoices({ type, language: "English", limit: 100, token });
+                const data = response.data || [];
+                voices.push(...data.map((voice) => ({ ...voice, type })));
+                token = response.has_more ? response.next_token : null;
+            } while (token);
+        }
+        const elevenLabsVoices = await elevenLabsManager.listVoices();
+        const registry = {
+            schemaVersion: 1,
+            generatedAt: new Date().toISOString(),
+            defaults: {
+                voiceProvider: "elevenlabs",
+                elevenLabsVoiceId: config.ELEVENLABS_VOICE_ID,
+                heygenVoiceId: config.HEYGEN_VOICE_ID,
+            },
+            requestedCandidates: [{
+                provider: "unknown",
+                voiceId: "e40f41c567924222a60ed3e1d557fc77",
+                validation: "invalid-for-elevenlabs-and-not-present-in-heygen-catalog",
+            }],
+            heygen: { voices },
+            elevenlabs: {
+                voices: elevenLabsVoices.map((voice) => ({
+                    voice_id: voice.voice_id,
+                    name: voice.name,
+                    category: voice.category,
+                    labels: voice.labels || {},
+                })),
+            },
+        };
+        fs.writeFileSync(output, `${JSON.stringify(registry, null, 2)}\n`, "utf8");
+        print({
+            output,
+            heygenVoiceCount: voices.length,
+            elevenLabsVoiceCount: elevenLabsVoices.length,
+            defaultProvider: registry.defaults.voiceProvider,
+            selectedHeyGenVoiceId: config.HEYGEN_VOICE_ID,
+            selectedElevenLabsVoiceId: config.ELEVENLABS_VOICE_ID,
+        });
         return;
     }
     if (command === "open-project") {

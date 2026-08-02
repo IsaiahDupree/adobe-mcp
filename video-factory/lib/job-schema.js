@@ -7,6 +7,7 @@ const creativeReferenceRegistry = require("../config/creative-reference-registry
 const AUTONOMY_MODES = new Set(["supervised", "guarded", "full"]);
 const HEYGEN_ENGINES = new Set(["avatar_iii", "avatar_iv", "avatar_v"]);
 const GENERATION_PROVIDERS = new Set(["heygen", "macos_say"]);
+const VOICE_PROVIDERS = new Set(["elevenlabs", "heygen"]);
 const ASPECT_RATIOS = new Set(["16:9", "9:16", "4:5", "5:4", "1:1", "auto"]);
 const CAPTION_MODES = new Set(["native", "animated", "both"]);
 const RETENTION_PRESETS = new Set(["social-dynamic", "social-accessible", "youtube-explainer"]);
@@ -101,6 +102,11 @@ function normalizeGeneration(spec, defaults = {}) {
     });
     const avatarId = input.avatar_id || input.avatarId || defaults.avatarId;
     const voiceId = input.voice_id || input.voiceId || defaults.voiceId;
+    const voiceProvider = input.voice_provider || input.voiceProvider || "elevenlabs";
+    if (!VOICE_PROVIDERS.has(voiceProvider)) {
+        throw new Error(`generation.voice_provider must be one of: ${Array.from(VOICE_PROVIDERS).join(", ")}.`);
+    }
+    const elevenLabsVoiceId = input.elevenlabs_voice_id || input.elevenLabsVoiceId || defaults.elevenLabsVoiceId;
     const outputFormat = input.output_format || input.outputFormat || "mp4";
     if (!["mp4", "webm"].includes(outputFormat)) {
         throw new Error("generation.output_format must be mp4 or webm.");
@@ -110,12 +116,29 @@ function normalizeGeneration(spec, defaults = {}) {
         throw new Error("generation.fit must be contain or cover.");
     }
     if (provider === "heygen" && !avatarId) throw new Error("generation.avatar_id is required.");
-    if (provider === "heygen" && !voiceId) throw new Error("generation.voice_id is required.");
+    if (provider === "heygen" && voiceProvider === "heygen" && !voiceId) {
+        throw new Error("generation.voice_id is required when generation.voice_provider is heygen.");
+    }
+    if (provider === "heygen" && voiceProvider === "elevenlabs" && !elevenLabsVoiceId) {
+        throw new Error("generation.elevenlabs_voice_id is required when generation.voice_provider is elevenlabs.");
+    }
     return {
         enabled: true,
         provider,
         avatarId,
         voiceId,
+        voiceProvider,
+        elevenLabsVoiceId,
+        elevenLabsModelId: input.elevenlabs_model_id || input.elevenLabsModelId || "eleven_multilingual_v2",
+        elevenLabsOutputFormat: input.elevenlabs_output_format || input.elevenLabsOutputFormat || "mp3_44100_128",
+        elevenLabsVoiceSettings: input.elevenlabs_voice_settings || input.elevenLabsVoiceSettings || {
+            stability: 0.48,
+            similarity_boost: 0.82,
+            style: 0.2,
+            use_speaker_boost: true,
+        },
+        voiceExperimentId: input.voice_experiment_id || input.voiceExperimentId || null,
+        voiceVariantId: input.voice_variant_id || input.voiceVariantId || null,
         engine,
         aspectRatio,
         resolution: input.resolution || "720p",
@@ -222,6 +245,9 @@ function normalizeRetention(spec) {
         nativeCaptionTrackName:
             input.native_caption_track_name || input.nativeCaptionTrackName || "C1_ACCESSIBILITY_EN",
         punchInScale: Number(input.punch_in_scale || input.punchInScale || 1.08),
+        dialogueGainDb: Math.max(-12, Math.min(12, Number(
+            input.dialogue_gain_db ?? input.dialogueGainDb ?? 0
+        ))),
         creativeReferences: [...new Set(creativeReferences)],
     };
 }
@@ -317,11 +343,41 @@ function normalizeShowcase(spec) {
                 ),
                 candidateCount: Math.max(3, Math.min(40, Number(request.candidate_count || request.candidateCount || 15))),
                 sourceStart: Math.max(0, Number(request.source_start || request.sourceStart || 0)),
+                timelineOffsetSeconds: Math.max(0, Number(
+                    request.timeline_offset_seconds || request.timelineOffsetSeconds || 0
+                )),
                 placementDurationSeconds: Math.max(
                     2,
                     Math.min(12, Number(request.placement_duration_seconds || request.placementDurationSeconds || 5))
                 ),
                 scale: Number(request.scale || 0) || null,
+            };
+        });
+    const normalizeExplainers = (items) =>
+        (items || []).map((item, index) => {
+            const explainer = { ...item };
+            const title = String(explainer.title || "").trim();
+            const points = (explainer.points || explainer.items || [])
+                .map((point) => String(point).trim())
+                .filter(Boolean)
+                .slice(0, 5);
+            if (!title) throw new Error(`showcase.explainer_assets[${index}].title is required.`);
+            if (points.length < 2) {
+                throw new Error(`showcase.explainer_assets[${index}].points requires at least two items.`);
+            }
+            return {
+                id: slugify(explainer.id || `explainer-${String(index + 1).padStart(2, "0")}`),
+                sceneId: slugify(explainer.scene_id || explainer.sceneId || `scene-${index + 1}`),
+                title,
+                eyebrow: String(explainer.eyebrow || "VISUAL EXPLAINER").trim(),
+                points,
+                layout: explainer.layout || "process",
+                timelineOffsetSeconds: Math.max(0, Number(
+                    explainer.timeline_offset_seconds || explainer.timelineOffsetSeconds || 0
+                )),
+                placementDurationSeconds: Math.max(2.5, Math.min(10, Number(
+                    explainer.placement_duration_seconds || explainer.placementDurationSeconds || 5
+                ))),
             };
         });
     const minimumDurationSeconds = Number(
@@ -336,6 +392,7 @@ function normalizeShowcase(spec) {
     const brollSources = normalizeBroll(input.broll_sources || input.brollSources);
     const sfxSources = normalizeSfx(input.sfx_sources || input.sfxSources);
     const assetRequests = normalizeAssetRequests(input.asset_requests || input.assetRequests);
+    const explainerAssets = normalizeExplainers(input.explainer_assets || input.explainerAssets);
     const policyInput = input.asset_policy || input.assetPolicy || {};
     const assetPolicy = {
         mode: policyInput.mode || (assetRequests.length > 0 ? "provider-only" : "local-allowed"),
@@ -354,6 +411,7 @@ function normalizeShowcase(spec) {
         brollSources,
         sfxSources,
         assetRequests,
+        explainerAssets,
         assetPolicy,
     };
 }

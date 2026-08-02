@@ -14,9 +14,10 @@ class HeyGenError extends Error {
 }
 
 class HeyGenManager {
-    constructor(config) {
+    constructor(config, elevenLabsManager = null) {
         this.apiUrl = config.HEYGEN_API_URL.replace(/\/$/, "");
         this.apiKey = config.HEYGEN_API_KEY;
+        this.elevenLabsManager = elevenLabsManager;
     }
 
     headers(json = false) {
@@ -77,6 +78,42 @@ class HeyGenManager {
         return destination;
     }
 
+    async uploadAsset(filePath) {
+        const file = fs.statSync(filePath);
+        if (file.size > 32 * 1024 * 1024) {
+            throw new HeyGenError("HeyGen assets must be 32 MB or smaller.", "HEYGEN_ASSET_TOO_LARGE");
+        }
+        const form = new FormData();
+        form.append("file", new Blob([fs.readFileSync(filePath)]), path.basename(filePath));
+        const response = await fetch(`${this.apiUrl}/v3/assets`, {
+            method: "POST",
+            headers: this.headers(false),
+            body: form,
+            signal: AbortSignal.timeout(120000),
+        });
+        const text = await response.text();
+        const body = text ? JSON.parse(text) : {};
+        if (!response.ok) {
+            throw new HeyGenError(
+                `HeyGen asset upload failed: ${body.error?.message || body.message || `HTTP ${response.status}`}`,
+                "HEYGEN_ASSET_UPLOAD_FAILED",
+                { status: response.status }
+            );
+        }
+        const data = body.data || body;
+        const assetId = data.asset_id || data.id;
+        if (!assetId) throw new HeyGenError("HeyGen asset upload returned no asset ID.", "HEYGEN_INVALID_RESPONSE");
+        return { assetId, url: data.url || null, mimeType: data.mime_type || null, sizeBytes: data.size_bytes || file.size };
+    }
+
+    async listVoices(filters = {}) {
+        const params = new URLSearchParams();
+        for (const [key, value] of Object.entries(filters)) {
+            if (value !== undefined && value !== null && value !== "") params.set(key, String(value));
+        }
+        return this.request(`/v3/voices?${params}`);
+    }
+
     scenePaths(job, scene) {
         const directory = path.join(job.workspace, "generated-assets", "heygen", scene.id);
         const extension = job.generation.outputFormat === "webm" ? "webm" : "mp4";
@@ -88,21 +125,25 @@ class HeyGenManager {
         };
     }
 
-    requestBody(job, scene) {
+    requestBody(job, scene, audioAssetId = null) {
         const generation = job.generation;
         const body = {
             type: "avatar",
             avatar_id: generation.avatarId,
-            voice_id: generation.voiceId,
             engine: { type: generation.engine },
-            script: scene.script,
             title: scene.title || `${job.campaignId} / ${scene.id}`,
             aspect_ratio: generation.aspectRatio,
             resolution: generation.resolution,
-            voice_settings: generation.voiceSettings,
             caption: { file_format: "srt" },
             output_format: generation.outputFormat,
         };
+        if (audioAssetId) {
+            body.audio_asset_id = audioAssetId;
+        } else {
+            body.voice_id = generation.voiceId;
+            body.script = scene.script;
+            body.voice_settings = generation.voiceSettings;
+        }
         if (generation.background) body.background = generation.background;
         if (generation.fit) body.fit = generation.fit;
         if (generation.removeBackground) body.remove_background = true;
@@ -151,7 +192,26 @@ class HeyGenManager {
 
         let videoId = metadata && metadata.videoId;
         if (!videoId) {
-            const body = this.requestBody(job, scene);
+            let narration = null;
+            let audioAsset = null;
+            if (job.generation.voiceProvider === "elevenlabs") {
+                if (!this.elevenLabsManager) {
+                    throw new HeyGenError("ElevenLabs narration manager is not configured.", "ELEVENLABS_NOT_CONFIGURED");
+                }
+                const localAudio = path.join(paths.directory, "narration.mp3");
+                narration = fs.existsSync(localAudio) && fs.statSync(localAudio).size > 0
+                    ? readJson(`${localAudio}.json`)
+                    : await this.elevenLabsManager.generateSpeech({
+                        text: scene.script,
+                        voiceId: job.generation.elevenLabsVoiceId,
+                        modelId: job.generation.elevenLabsModelId,
+                        outputFormat: job.generation.elevenLabsOutputFormat,
+                        voiceSettings: job.generation.elevenLabsVoiceSettings,
+                        destination: localAudio,
+                    });
+                audioAsset = await this.uploadAsset(localAudio);
+            }
+            const body = this.requestBody(job, scene, audioAsset?.assetId || null);
             const response = await this.request("/v3/videos", {
                 method: "POST",
                 body: JSON.stringify(body),
@@ -168,8 +228,10 @@ class HeyGenManager {
                 submittedAt: nowIso(),
                 request: {
                     ...body,
-                    script: scene.script,
+                    script: audioAsset ? undefined : scene.script,
                 },
+                narration,
+                heygenAudioAsset: audioAsset,
             };
             writeJsonAtomic(paths.metadata, metadata);
         }
@@ -235,6 +297,12 @@ class HeyGenManager {
             generatedAt: nowIso(),
             avatarId: job.generation.avatarId,
             voiceId: job.generation.voiceId,
+            voiceProvider: job.generation.voiceProvider,
+            elevenLabsVoiceId: job.generation.voiceProvider === "elevenlabs"
+                ? job.generation.elevenLabsVoiceId
+                : null,
+            voiceExperimentId: job.generation.voiceExperimentId,
+            voiceVariantId: job.generation.voiceVariantId,
             engine: job.generation.engine,
             aspectRatio: job.generation.aspectRatio,
             outputFormat: job.generation.outputFormat,

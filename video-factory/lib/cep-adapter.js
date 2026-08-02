@@ -239,17 +239,19 @@ class CepAdapter {
         return receipt;
     }
 
-    async applyRetentionPlan({ sequenceName, plan, captionAssets = [], showcaseAssets = {} }) {
+    async applyRetentionPlan({ sequenceName, plan, captionAssets = [], showcaseAssets = {}, dialogueGainDb = 0 }) {
         const sequenceLiteral = JSON.stringify(sequenceName);
         const planLiteral = JSON.stringify(plan);
         const captionAssetsLiteral = JSON.stringify(captionAssets);
         const showcaseAssetsLiteral = JSON.stringify(showcaseAssets);
+        const dialogueGainDbLiteral = JSON.stringify(Number(dialogueGainDb || 0));
         const script = `(function () {
     try {
         var project = app.project;
         var plan = ${planLiteral};
         var captionAssets = ${captionAssetsLiteral};
         var showcaseAssets = ${showcaseAssetsLiteral};
+        var dialogueGainDb = ${dialogueGainDbLiteral};
         var sequence = null;
         for (var s = 0; s < project.sequences.numSequences; s++) {
             if (project.sequences[s].name === ${sequenceLiteral}) sequence = project.sequences[s];
@@ -275,6 +277,24 @@ class CepAdapter {
                 for(var audioItemIndex=overlayAudioTrack.clips.numItems-1;audioItemIndex>=0;audioItemIndex--){
                     overlayAudioTrack.clips[audioItemIndex].remove(false,false);
                     removed++;
+                }
+            }
+        }
+        var dialogueGainLinear=Math.pow(10,dialogueGainDb/20);
+        var dialogueAdjusted=0;
+        if(sequence.audioTracks.numTracks>0){
+            var dialogueTrack=sequence.audioTracks[0];
+            for(var dialogueIndex=0;dialogueIndex<dialogueTrack.clips.numItems;dialogueIndex++){
+                var dialogueClip=dialogueTrack.clips[dialogueIndex];
+                for(var dialogueComponentIndex=0;dialogueComponentIndex<dialogueClip.components.numItems;dialogueComponentIndex++){
+                    var dialogueComponent=dialogueClip.components[dialogueComponentIndex];
+                    for(var dialoguePropertyIndex=0;dialoguePropertyIndex<dialogueComponent.properties.numItems;dialoguePropertyIndex++){
+                        var dialogueProperty=dialogueComponent.properties[dialoguePropertyIndex];
+                        if(dialogueComponent.matchName.indexOf("Internal Volume")===0&&dialogueProperty.displayName==="Level"){
+                            dialogueProperty.setValue(dialogueGainLinear,true);
+                            dialogueAdjusted++;
+                        }
+                    }
                 }
             }
         }
@@ -554,7 +574,9 @@ class CepAdapter {
             overlays:importedCaptions,
             graphicAnimations:graphicAnimations,
             broll:importedVideos,
-            audio:importedAudio
+            audio:importedAudio,
+            dialogueGainDb:dialogueGainDb,
+            dialogueClipsAdjusted:dialogueAdjusted
         });
     } catch (error) {
         return JSON.stringify({success:false,error:String(error)});

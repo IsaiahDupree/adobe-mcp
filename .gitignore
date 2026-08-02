@@ -66,3 +66,6 @@ htmlcov/
 
 # Claude Code session tracking
 claude-progress.txt
+
+# Live provider inventories (regenerated with video-factory voices-sync)
+video-factory/config/*-live.json

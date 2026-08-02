@@ -28,6 +28,16 @@ test("showcase renderer creates chapter graphics and a coverage manifest", async
             minimumDurationSeconds: 300,
             maximumDurationSeconds: 480,
             brollSources: [],
+            explainerAssets: [{
+                id: "proof-flow",
+                sceneId: "proof",
+                title: "Evidence to editable master",
+                eyebrow: "Visual explainer",
+                points: ["Evidence", "Edit", "QA"],
+                layout: "process",
+                timelineOffsetSeconds: 8,
+                placementDurationSeconds: 5,
+            }],
             sfxSources: [{
                 id: "receipt-confirmation",
                 path: sfxPath,
@@ -50,7 +60,7 @@ test("showcase renderer creates chapter graphics and a coverage manifest", async
     });
 
     assert.equal(result.frameSize.width, 1280);
-    assert.equal(result.graphics.length, 4);
+    assert.equal(result.graphics.length, 5);
     assert.equal(result.coverage.length, 2);
     assert.deepEqual(result.audio[0], {
         id: "receipt-confirmation",
@@ -64,5 +74,6 @@ test("showcase renderer creates chapter graphics and a coverage manifest", async
         license: "owner-generated",
     });
     assert.ok(result.graphics.every((asset) => fs.statSync(asset.path).size > 1000));
+    assert.equal(result.graphics.find((asset) => asset.id === "proof-flow").start, 43);
     assert.ok(fs.existsSync(job.outputPaths.showcaseManifest));
 });

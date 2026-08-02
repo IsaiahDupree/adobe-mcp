@@ -1,0 +1,185 @@
+{
+  "job_id": "ops-campaign-2-premiere-agent-factory-v2-elevenlabs",
+  "campaign_id": "2026-08-02-premiere-agent-factory-v2",
+  "priority": 99,
+  "request": {
+    "topic": "How an autonomous agent builds an editable Premiere video with receipts",
+    "audience": "Creators, operators, and agent engineers",
+    "viewer_problem": "Most AI video systems generate footage without explaining their decisions or preserving an editable production trail.",
+    "core_promise": "Show the complete research-to-Premiere production system with the evidence, assets, captions, framing, and revision logic visible.",
+    "cta": "Judge the system by the finished project and the receipts behind it."
+  },
+  "autonomy": {
+    "mode": "guarded",
+    "script_approval": "automatic",
+    "rough_cut_approval": "automatic_if_qc_passes",
+    "final_publish_approval": "required"
+  },
+  "production": {
+    "project_name": "premiere-agent-factory-v2-elevenlabs",
+    "sequence_name": "YOUTUBE_16X9_MASTER_V2",
+    "render": {
+      "timeout_ms": 1800000,
+      "export_type": "IMMEDIATELY"
+    }
+  },
+  "generation": {
+    "enabled": true,
+    "provider": "heygen",
+    "voice_provider": "elevenlabs",
+    "elevenlabs_voice_id": "k0HDiJKO5QdXkGN6NSLI",
+    "elevenlabs_model_id": "eleven_multilingual_v2",
+    "elevenlabs_output_format": "mp3_44100_128",
+    "voice_experiment_id": "voice-provider-retention-001",
+    "voice_variant_id": "elevenlabs-isaiah-v2",
+    "avatar_id": "93a72551393b4a13a7e256a3fa3ca421",
+    "voice_id": "32ebf1506d7f4b9d93fbcfdda958721c",
+    "engine": "avatar_iii",
+    "aspect_ratio": "16:9",
+    "resolution": "720p",
+    "fit": "cover",
+    "output_format": "mp4",
+    "concurrency": 3,
+    "scenes": [
+      {
+        "id": "live-signal",
+        "title": "A live signal becomes a production",
+        "script": "This video started as a live signal in my operations console. The system checked what my businesses actually do, who the audience is, what is timely, and what I can prove. It did not begin by opening a generator. It began by deciding whether this idea deserved production."
+      },
+      {
+        "id": "production-receipt",
+        "title": "The machine and its receipts",
+        "script": "Then it selected the topic, wrote the production brief, found licensed footage, designed the sound cues, and prepared an editable Premiere project with captions and quality checks. The interesting part is not that AI can generate another video. The interesting part is whether the whole production remains coherent, editable, and accountable. So I am going to show you the machine and its receipts."
+      },
+      {
+        "id": "creative-agent",
+        "title": "Why professional editing still matters",
+        "script": "Adobe recently introduced a creative agent in Premiere that can organize source media, rename clips, identify interview questions, and assemble a working starting point. That validates the direction. Editors want repetitive setup work handled inside the professional tool they already use. The autonomous layer should accelerate the edit without flattening it into an unchangeable export."
+      },
+      {
+        "id": "quality-shift",
+        "title": "Generation is not the advantage",
+        "script": "At the same time, YouTube is being direct about low-quality, repetitive AI content. More generated footage is not automatically more useful content. The advantage shifts to the operator who can connect evidence, taste, editing, and quality control. That is the problem this factory is designed to solve."
+      },
+      {
+        "id": "research-questions",
+        "title": "Research before generation",
+        "script": "My Ops Console has a Research Institution and a Marketing Institution. They are separate on purpose. Research answers four questions: who is this for, what should it say, why now, and what proof is required. Marketing cannot change those answers just because a trend looks exciting. The evidence has to survive the campaign decision."
+      },
+      {
+        "id": "niche-decision",
+        "title": "The rejected alternatives matter",
+        "script": "For this video, the system compared five current niches. Creative agents inside professional tools ranked first. Receipt-backed AI production ranked second. Generic AI-tool lists were rejected because they would borrow authority instead of showing something I actually run. The winning decision, rejected alternatives, and evidence links are stored with the campaign."
+      },
+      {
+        "id": "presenter-plan",
+        "title": "Use the presenter where a face helps",
+        "script": "The plan uses the presenter where a human face helps: the opening, major transitions, and the close. The rest of the edit should explain the current sentence with real footage or a useful visual. That means the operations console, campaign brief, asset registry, Premiere sequence, caption track, framing report, and release decision all become part of the story."
+      },
+      {
+        "id": "cost-and-edit",
+        "title": "Spend on the voice, earn value in the edit",
+        "script": "For high-volume videos, the factory uses HeyGen Avatar Three at seven-twenty-p and now feeds it the Isaiah v2 voice generated by ElevenLabs. Premiere supplies the value around those presenter seconds: evidence, licensed B-roll, generated explainers, captions, motion, and pacing. The result is not one talking-head render stretched across five minutes. Every visual event has to clarify the idea being spoken at that moment."
+      },
+      {
+        "id": "asset-broker",
+        "title": "Every visual has provenance",
+        "script": "Visual assets come through a broker, not a random downloads folder. Each request names the spoken scene, explanatory purpose, orientation, timing offset, target duration, and allowed providers. The broker searches Pexels and Pixabay, downloads the selected rendition, and records the creator, source page, license, file hash, and placement. That makes a visual replaceable without making its origin mysterious."
+      },
+      {
+        "id": "sound-and-mix",
+        "title": "The voice stays in front",
+        "script": "Sound follows the same production logic. ElevenLabs generates the Isaiah v2 narration before HeyGen performs the lip sync. Premiere keeps dialogue on the primary track and raises the raw narration to a practical delivery level. Effects belong on separate tracks and support visible events. The target is clear speech near minus sixteen LUFS, with enough true-peak headroom to avoid clipping after export."
+      },
+      {
+        "id": "premiere-assembly",
+        "title": "Premiere builds the editable master",
+        "script": "Premiere opens the project, imports the generated scenes, places timecoded B-roll, adds the generated two-dimensional explainers, creates the native caption track, applies face-safe punch-ins, and exports the review file. The project remains the master. Agents can reopen it, inspect the sequence, replace an asset, adjust timing, and render a new review without rebuilding the production from zero."
+      },
+      {
+        "id": "quality-gates",
+        "title": "Technical and editorial judges",
+        "script": "Then the judges inspect the result. Technical checks look for black frames, frozen sections, missing audio, clipping, caption coverage, persistent bars, and the correct frame size. Editorial checks score the hook, clarity, visual proof, pacing, sound design, and call to action. A render does not become publishable simply because the export command succeeded."
+      },
+      {
+        "id": "revision-economics",
+        "title": "Revise without buying the same footage twice",
+        "script": "If a revision only changes captions, B-roll, crop, sound, or motion, the factory reuses the paid presenter footage. It buys another generation only when the spoken hook, script, avatar look, voice, or performance changes. Every revision gets its own manifest and comparison record. Nothing silently replaces the previous result, and the reason for a new generation stays auditable."
+      },
+      {
+        "id": "creator-journey",
+        "title": "A creator journey made of proof",
+        "script": "This is the creator journey I want the channel to document: not a collection of claims about autonomous systems, but systems you can watch becoming real. First, Premiere and the plugin connected. Then presenter footage rendered without black bars. Then native captions, licensed visuals, generated explainers, voice control, and repeatable revision logic joined the same project. The evidence gets stronger one working layer at a time."
+      },
+      {
+        "id": "next-experiment",
+        "title": "Let viewer evidence choose the next default",
+        "script": "The next step is evidence from viewers. The voice experiment will compare Isaiah v2 from ElevenLabs with the verified Isaiah voice inside HeyGen while matching topic, duration, thumbnail style, and publication timing. The system will preserve winning variables and retire what does not earn another iteration. That is the operating system: research before generation, judgment before release, and receipts after every run."
+      }
+    ]
+  },
+  "retention": {
+    "enabled": true,
+    "preset": "youtube-explainer",
+    "caption_mode": "native",
+    "native_caption_track_name": "C1_ACCESSIBILITY_EN",
+    "hook_text": "THE MACHINE AND ITS RECEIPTS",
+    "pattern_interrupt_text": "SHOW THE PROOF",
+    "punch_in_scale": 1.06,
+    "dialogue_gain_db": 9,
+    "creative_reference_ids": [
+      "heygen-hyperframes-launch",
+      "remotion-overlay",
+      "remotion-tiktok-captions"
+    ]
+  },
+  "showcase": {
+    "enabled": true,
+    "minimum_duration_seconds": 300,
+    "maximum_duration_seconds": 480,
+    "asset_policy": {
+      "mode": "provider-only",
+      "record_provenance": true
+    },
+    "asset_requests": [
+      {"id":"ops-console-signal","scene_id":"live-signal","query":"software operations dashboard computer screen","purpose":"Show a real operational signal entering a system.","providers":["pexels","pixabay"],"orientation":"landscape","timeline_offset_seconds":5,"placement_duration_seconds":5},
+      {"id":"production-planning","scene_id":"production-receipt","query":"video production planning storyboard team","purpose":"Show the production brief becoming a concrete plan.","providers":["pexels","pixabay"],"orientation":"landscape","timeline_offset_seconds":7,"placement_duration_seconds":5},
+      {"id":"video-editor-timeline","scene_id":"creative-agent","query":"professional video editor editing timeline computer","purpose":"Show professional editing software while the creative agent is discussed.","providers":["pexels","pixabay"],"orientation":"landscape","timeline_offset_seconds":6,"placement_duration_seconds":6},
+      {"id":"creator-quality-review","scene_id":"quality-shift","query":"content creator reviewing video analytics computer","purpose":"Connect quality control to a creator evaluating real output.","providers":["pexels","pixabay"],"orientation":"landscape","timeline_offset_seconds":5,"placement_duration_seconds":5},
+      {"id":"research-data","scene_id":"research-questions","query":"research analyst data dashboard office","purpose":"Illustrate evidence gathering while the four research questions are spoken.","providers":["pexels","pixabay"],"orientation":"landscape","timeline_offset_seconds":4,"placement_duration_seconds":5},
+      {"id":"marketing-analysis","scene_id":"research-questions","query":"marketing strategy data analysis team","purpose":"Contrast marketing decisions with protected research evidence.","providers":["pexels","pixabay"],"orientation":"landscape","timeline_offset_seconds":13,"placement_duration_seconds":5},
+      {"id":"ranking-options","scene_id":"niche-decision","query":"business team ranking ideas sticky notes","purpose":"Visualize multiple niche options being compared and rejected.","providers":["pexels","pixabay"],"orientation":"landscape","timeline_offset_seconds":7,"placement_duration_seconds":5},
+      {"id":"presenter-production","scene_id":"presenter-plan","query":"presenter recording video camera studio","purpose":"Show where the human presenter belongs in a mixed-media production.","providers":["pexels","pixabay"],"orientation":"landscape","timeline_offset_seconds":4,"placement_duration_seconds":5},
+      {"id":"editing-evidence","scene_id":"cost-and-edit","query":"video editing workstation multiple monitors timeline","purpose":"Show editorial value being added around presenter footage.","providers":["pexels","pixabay"],"orientation":"landscape","timeline_offset_seconds":10,"placement_duration_seconds":6},
+      {"id":"stock-footage-search","scene_id":"asset-broker","query":"searching stock video footage computer","purpose":"Show provider footage discovery while the broker is explained.","providers":["pexels","pixabay"],"orientation":"landscape","timeline_offset_seconds":5,"placement_duration_seconds":5},
+      {"id":"file-provenance","scene_id":"asset-broker","query":"digital asset management files computer","purpose":"Explain asset records, provenance, and replaceability.","providers":["pexels","pixabay"],"orientation":"landscape","timeline_offset_seconds":14,"placement_duration_seconds":5},
+      {"id":"audio-mixing","scene_id":"sound-and-mix","query":"sound engineer audio mixing console studio","purpose":"Show dialogue and effects being balanced on separate channels.","providers":["pexels","pixabay"],"orientation":"landscape","timeline_offset_seconds":9,"placement_duration_seconds":6},
+      {"id":"caption-editing","scene_id":"premiere-assembly","query":"video editor adding subtitles captions computer","purpose":"Show captions and timeline assembly inside an editable workflow.","providers":["pexels","pixabay"],"orientation":"landscape","timeline_offset_seconds":8,"placement_duration_seconds":5},
+      {"id":"quality-monitor","scene_id":"quality-gates","query":"video quality control monitors editing suite","purpose":"Visualize technical review of an exported video.","providers":["pexels","pixabay"],"orientation":"landscape","timeline_offset_seconds":5,"placement_duration_seconds":6},
+      {"id":"version-comparison","scene_id":"revision-economics","query":"designer comparing two video versions computer","purpose":"Show a controlled revision comparison rather than replacement.","providers":["pexels","pixabay"],"orientation":"landscape","timeline_offset_seconds":8,"placement_duration_seconds":5},
+      {"id":"external-archive","scene_id":"revision-economics","query":"external hard drive video files backup","purpose":"Show durable project and asset archival.","providers":["pexels","pixabay"],"orientation":"landscape","timeline_offset_seconds":17,"placement_duration_seconds":5},
+      {"id":"creator-build","scene_id":"creator-journey","query":"creator building software project workstation","purpose":"Connect the creator journey to visible systems becoming real.","providers":["pexels","pixabay"],"orientation":"landscape","timeline_offset_seconds":7,"placement_duration_seconds":6},
+      {"id":"ab-test-analytics","scene_id":"next-experiment","query":"A B testing analytics dashboard team","purpose":"Explain the controlled voice and publishing experiment.","providers":["pexels","pixabay"],"orientation":"landscape","timeline_offset_seconds":8,"placement_duration_seconds":6}
+    ],
+    "explainer_assets": [
+      {"id":"signal-to-master","scene_id":"live-signal","eyebrow":"FROM SIGNAL TO MASTER","title":"THE AUTONOMOUS PRODUCTION PATH","points":["SIGNAL","RESEARCH","BRIEF","PREMIERE","QA"],"layout":"process","timeline_offset_seconds":13,"placement_duration_seconds":5},
+      {"id":"research-four","scene_id":"research-questions","eyebrow":"RESEARCH GATE","title":"FOUR QUESTIONS BEFORE GENERATION","points":["WHO","WHAT","WHY NOW","PROOF"],"layout":"process","timeline_offset_seconds":15,"placement_duration_seconds":6},
+      {"id":"niche-ranking","scene_id":"niche-decision","eyebrow":"DECISION RECEIPT","title":"RANK, REJECT, AND RECORD","points":["RANK","COMPARE","REJECT","STORE"],"layout":"ranking","timeline_offset_seconds":14,"placement_duration_seconds":5},
+      {"id":"edit-value","scene_id":"cost-and-edit","eyebrow":"VALUE AROUND THE PRESENTER","title":"THE EDIT EXPLAINS THE SENTENCE","points":["EVIDENCE","B-ROLL","DIAGRAMS","CAPTIONS","PACING"],"layout":"process","timeline_offset_seconds":20,"placement_duration_seconds":6},
+      {"id":"provenance-chain","scene_id":"asset-broker","eyebrow":"ASSET RECEIPT","title":"EVERY VISUAL KEEPS ITS ORIGIN","points":["QUERY","PROVIDER","LICENSE","HASH","PLACEMENT"],"layout":"process","timeline_offset_seconds":20,"placement_duration_seconds":6},
+      {"id":"audio-priority","scene_id":"sound-and-mix","eyebrow":"AUDIO HIERARCHY","title":"KEEP THE VOICE IN FRONT","points":["VOICE","MIX","HEADROOM","EXPORT"],"layout":"process","timeline_offset_seconds":18,"placement_duration_seconds":5},
+      {"id":"qa-gates","scene_id":"quality-gates","eyebrow":"RELEASE GATES","title":"EXPORT SUCCESS IS NOT APPROVAL","points":["FRAMES","AUDIO","CAPTIONS","PACING","CTA"],"layout":"checklist","timeline_offset_seconds":15,"placement_duration_seconds":6},
+      {"id":"revision-decision","scene_id":"revision-economics","eyebrow":"REVISION ECONOMICS","title":"REUSE OR REGENERATE?","points":["CAPTIONS","B-ROLL","CROP","SCRIPT","VOICE"],"layout":"decision","timeline_offset_seconds":22,"placement_duration_seconds":6},
+      {"id":"voice-experiment","scene_id":"next-experiment","eyebrow":"CONTROLLED EXPERIMENT","title":"LET VIEWER RETENTION PICK THE VOICE","points":["MATCH","POST","MEASURE","PROMOTE"],"layout":"experiment","timeline_offset_seconds":18,"placement_duration_seconds":6}
+    ]
+  },
+  "composition": {
+    "enabled": false
+  },
+  "archive": {
+    "enabled": true,
+    "mode": "move",
+    "destination_root": "/Volumes/My Passport/VideoFactory",
+    "include_source_assets": false
+  }
+}

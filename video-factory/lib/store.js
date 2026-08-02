@@ -22,6 +22,7 @@ class JobStore {
             {
                 avatarId: this.config.HEYGEN_AVATAR_ID,
                 voiceId: this.config.HEYGEN_VOICE_ID,
+                elevenLabsVoiceId: this.config.ELEVENLABS_VOICE_ID,
             }
         );
         if (fs.existsSync(this.jobPath(normalized.id))) {

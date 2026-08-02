@@ -27,6 +27,47 @@ class ShowcaseRenderer {
         );
     }
 
+    async explainerGraphic(output, width, height, explainer, accent) {
+        const pointSize = Math.round(height * 0.034);
+        const titleSize = Math.round(height * 0.06);
+        const cardWidth = Math.round((width - 180) / explainer.points.length);
+        const cards = explainer.points.map((point, index) => {
+            const left = 70 + index * cardWidth;
+            const right = left + cardWidth - 18;
+            const top = Math.round(height * 0.43);
+            const bottom = Math.round(height * 0.76);
+            return [
+                "-fill", index === 0 ? "#17222bea" : "#111820e8",
+                "-stroke", index === 0 ? accent : "#63718066",
+                "-strokewidth", "2",
+                "-draw", `roundrectangle ${left},${top} ${right},${bottom} 8,8`,
+                "-fill", accent,
+                "-stroke", "none",
+                "-draw", `circle ${left + 34},${top + 34} ${left + 45},${top + 34}`,
+                "-font", this.font,
+                "-fill", "#091015",
+                "-pointsize", String(Math.round(pointSize * 0.72)),
+                "-gravity", "northwest",
+                "-annotate", `+${left + 26}+${top + 22}`, String(index + 1),
+                "-fill", "white",
+                "-pointsize", String(pointSize),
+                "-annotate", `+${left + 20}+${top + 88}`, concise(point, 24).toUpperCase(),
+            ];
+        }).flat();
+        await this.graphic(output, width, height, [
+            "-fill", "#071016f2", "-draw", `rectangle 0,0 ${width},${height}`,
+            "-fill", accent, "-draw", `rectangle 0,0 14,${height}`,
+            "-font", this.font, "-gravity", "northwest",
+            "-fill", accent, "-pointsize", String(Math.round(height * 0.025)),
+            "-annotate", "+70+70", concise(explainer.eyebrow, 34).toUpperCase(),
+            "-fill", "white", "-pointsize", String(titleSize),
+            "-annotate", "+70+112", concise(explainer.title, 42).toUpperCase(),
+            ...cards,
+            "-fill", "#94a3b8", "-pointsize", String(Math.round(height * 0.022)),
+            "-gravity", "southwest", "-annotate", "+70+42", "PREMIERE VIDEO FACTORY / AUDITABLE PRODUCTION",
+        ]);
+    }
+
     async render(job, plan) {
         if (!job.showcase || !job.showcase.enabled) {
             return { enabled: false, graphics: [], videos: [], audio: [] };
@@ -87,7 +128,10 @@ class ShowcaseRenderer {
             if (!fs.existsSync(source)) throw new Error(`Showcase B-roll does not exist: ${source}`);
             const scene = plan.scenes.find((item) => item.sceneId === requestedSceneId) ||
                 brollScenes[index] || plan.scenes[Math.min(index, plan.scenes.length - 1)];
-            const start = scene.start + Math.min(7, scene.duration * 0.28);
+            const requestedOffset = typeof entry === "string" ? null : entry.timelineOffsetSeconds;
+            const start = scene.start + (Number.isFinite(requestedOffset)
+                ? Math.min(requestedOffset, Math.max(0, scene.duration - 2.5))
+                : Math.min(7, scene.duration * 0.28));
             return {
                 id: entry.id || `broll-${index + 1}`,
                 path: source,
@@ -107,6 +151,28 @@ class ShowcaseRenderer {
                 sha256: entry.sha256 || null,
             };
         });
+
+        for (const [index, explainer] of (job.showcase.explainerAssets || []).entries()) {
+            const scene = plan.scenes.find((item) => item.sceneId === explainer.sceneId);
+            if (!scene) throw new Error(`Explainer scene does not exist: ${explainer.sceneId}`);
+            const accent = ACCENTS[(index + 1) % ACCENTS.length];
+            const output = path.join(directory, `${explainer.id}.png`);
+            await this.explainerGraphic(output, width, height, explainer, accent);
+            const start = scene.start + Math.min(
+                explainer.timelineOffsetSeconds,
+                Math.max(0, scene.duration - 2.5)
+            );
+            graphics.push({
+                id: explainer.id,
+                text: explainer.title,
+                path: output,
+                start,
+                end: Math.min(scene.end - 0.15, start + explainer.placementDurationSeconds),
+                trackIndex: 2,
+                purpose: `semantic-explainer:${explainer.layout}`,
+                points: explainer.points,
+            });
+        }
 
         const audioScenes = plan.scenes.length > 1 ? plan.scenes.slice(1) : plan.scenes;
         const audio = job.showcase.sfxSources.map((entry, index) => {
@@ -141,7 +207,8 @@ class ShowcaseRenderer {
             coverage: plan.scenes.map((scene, index) => ({
                 sceneId: scene.sceneId,
                 chapter: index + 1,
-                graphicEvents: 2,
+                graphicEvents: 2 + (job.showcase.explainerAssets || [])
+                    .filter((item) => item.sceneId === scene.sceneId).length,
             })),
             graphics,
             videos,
