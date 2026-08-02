@@ -48,6 +48,29 @@ async function averageVideoLuma(filePath) {
     return values.reduce((sum, value) => sum + value, 0) / values.length;
 }
 
+function parseEbur128Summary(text) {
+    const integrated = [...String(text).matchAll(/I:\s+(-?\d+(?:\.\d+)?)\s+LUFS/g)];
+    const peaks = [...String(text).matchAll(/Peak:\s+(-?\d+(?:\.\d+)?)\s+dBFS/g)];
+    if (!integrated.length || !peaks.length) {
+        throw new WorkflowValidationError("Audio loudness QA could not parse the FFmpeg EBU R128 summary.");
+    }
+    return {
+        integratedLufs: Number(integrated.at(-1)[1]),
+        truePeakDb: Number(peaks.at(-1)[1]),
+    };
+}
+
+async function measureAudioLoudness(filePath) {
+    const { stderr } = await run("ffmpeg", [
+        "-hide_banner", "-nostats", "-i", filePath,
+        "-filter_complex", "ebur128=peak=true", "-f", "null", "-",
+    ], { timeout: 5 * 60 * 1000, maxBuffer: 8 * 1024 * 1024 });
+    return {
+        provider: "ffmpeg-ebur128-read-only",
+        ...parseEbur128Summary(stderr),
+    };
+}
+
 class VideoJobRunner {
     constructor(
         store,
@@ -614,16 +637,43 @@ class VideoJobRunner {
                 passed: renderAverageLuma >= minimumLuma,
             };
         }
+        let audioQa = null;
+        if (job.retention?.loudnessQa?.enabled !== false) {
+            const measured = await measureAudioLoudness(render.output_file);
+            const target = job.retention.loudnessQa.targetIntegratedLufs;
+            const tolerance = job.retention.loudnessQa.toleranceLufs;
+            const minimumIntegratedLufs = target - tolerance;
+            const maximumIntegratedLufs = target + tolerance;
+            audioQa = {
+                ...measured,
+                targetIntegratedLufs: target,
+                toleranceLufs: tolerance,
+                minimumIntegratedLufs,
+                maximumIntegratedLufs,
+                maximumTruePeakDb: job.retention.loudnessQa.maximumTruePeakDb,
+                passed:
+                    measured.integratedLufs >= minimumIntegratedLufs &&
+                    measured.integratedLufs <= maximumIntegratedLufs &&
+                    measured.truePeakDb <= job.retention.loudnessQa.maximumTruePeakDb,
+            };
+        }
         const report = {
             outputFile: render.output_file,
             bytes,
             durationSeconds: Number(probe.format.duration),
             streams: probe.streams,
             pixelQa,
+            audioQa,
         };
         writeJsonAtomic(path.join(job.workspace, "qc", "render-validation.json"), report);
         if (pixelQa && !pixelQa.passed) {
             throw new WorkflowValidationError("Rendered video is materially darker than its source and may be blank.", pixelQa);
+        }
+        if (audioQa && !audioQa.passed) {
+            throw new WorkflowValidationError(
+                "Rendered audio is outside the configured loudness or true-peak limits.",
+                audioQa
+            );
         }
         if (
             job.showcase &&
@@ -1157,5 +1207,7 @@ module.exports = {
     WaitingForAssetsError,
     WorkflowValidationError,
     averageVideoLuma,
+    measureAudioLoudness,
+    parseEbur128Summary,
     requestedProjectIsOpen,
 };

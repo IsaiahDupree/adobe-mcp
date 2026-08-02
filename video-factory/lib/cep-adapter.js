@@ -280,7 +280,7 @@ class CepAdapter {
                 }
             }
         }
-        var dialogueGainLinear=Math.pow(10,dialogueGainDb/20);
+        var dialogueGainLinear=Math.min(1,Math.max(0,Math.pow(10,(dialogueGainDb-15)/20)));
         var dialogueAdjusted=0;
         if(sequence.audioTracks.numTracks>0){
             var dialogueTrack=sequence.audioTracks[0];
@@ -548,7 +548,7 @@ class CepAdapter {
             if(!audioTrack)return JSON.stringify({success:false,error:"No audio track is available for SFX"});
             audioTrack.overwriteClip(audioItem,audioStart.ticks);
             var gainDb=Number(audio.gainDb===undefined?-12:audio.gainDb);
-            var gainLinear=Math.pow(10,gainDb/20);
+            var gainLinear=Math.min(1,Math.max(0,Math.pow(10,(gainDb-15)/20)));
             for(var placedAudioIndex=0;placedAudioIndex<audioTrack.clips.numItems;placedAudioIndex++){
                 var placedAudio=audioTrack.clips[placedAudioIndex];
                 if(Math.abs(Number(placedAudio.start.seconds)-Number(audio.start))<0.1){

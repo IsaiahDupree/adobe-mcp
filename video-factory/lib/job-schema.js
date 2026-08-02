@@ -248,6 +248,22 @@ function normalizeRetention(spec) {
         dialogueGainDb: Math.max(-12, Math.min(12, Number(
             input.dialogue_gain_db ?? input.dialogueGainDb ?? 0
         ))),
+        loudnessQa: {
+            enabled: input.loudness_qa?.enabled !== false && input.loudnessQa?.enabled !== false,
+            targetIntegratedLufs: Number(
+                input.loudness_qa?.target_integrated_lufs ??
+                input.loudnessQa?.targetIntegratedLufs ??
+                -16
+            ),
+            toleranceLufs: Math.max(0.5, Number(
+                input.loudness_qa?.tolerance_lufs ?? input.loudnessQa?.toleranceLufs ?? 3
+            )),
+            maximumTruePeakDb: Number(
+                input.loudness_qa?.maximum_true_peak_db ??
+                input.loudnessQa?.maximumTruePeakDb ??
+                -1
+            ),
+        },
         creativeReferences: [...new Set(creativeReferences)],
     };
 }

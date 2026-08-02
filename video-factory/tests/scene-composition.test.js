@@ -16,7 +16,7 @@ const { SceneDirector } = require("../lib/scene-director");
 const { JobStore } = require("../lib/store");
 const { SubjectAnalyzer } = require("../lib/subject-analyzer");
 const { run } = require("../lib/util");
-const { averageVideoLuma, requestedProjectIsOpen } = require("../lib/workflow");
+const { averageVideoLuma, parseEbur128Summary, requestedProjectIsOpen } = require("../lib/workflow");
 
 function testConfig(root) {
     return {
@@ -74,6 +74,17 @@ test("HeyGen v3 request respects output format and engine capability limits", ()
     assert.equal(audioBody.script, undefined);
     assert.equal(audioBody.voice_id, undefined);
     assert.equal(audioBody.voice_settings, undefined);
+});
+
+test("audio QA reads the final EBU R128 summary", () => {
+    const result = parseEbur128Summary(`
+      I: -70.0 LUFS
+      Peak: -20.0 dBFS
+      Summary:
+      I: -16.2 LUFS
+      Peak: -1.4 dBFS
+    `);
+    assert.deepEqual(result, { integratedLufs: -16.2, truePeakDb: -1.4 });
 });
 
 test("scene composition pipeline produces analyzed, face-safe, rendered QA evidence", async () => {

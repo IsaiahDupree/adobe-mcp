@@ -126,7 +126,12 @@
     "hook_text": "THE MACHINE AND ITS RECEIPTS",
     "pattern_interrupt_text": "SHOW THE PROOF",
     "punch_in_scale": 1.06,
-    "dialogue_gain_db": 9,
+    "dialogue_gain_db": 6.9,
+    "loudness_qa": {
+      "target_integrated_lufs": -16,
+      "tolerance_lufs": 3,
+      "maximum_true_peak_db": -1
+    },
     "creative_reference_ids": [
       "heygen-hyperframes-launch",
       "remotion-overlay",
@@ -180,6 +185,6 @@
     "enabled": true,
     "mode": "move",
     "destination_root": "/Volumes/My Passport/VideoFactory",
-    "include_source_assets": false
+    "include_source_assets": true
   }
 }
