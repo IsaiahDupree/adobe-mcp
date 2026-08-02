@@ -108,18 +108,24 @@ class ShowcaseRenderer {
             };
         });
 
-        const audioScenes = plan.scenes.slice(1);
-        const audio = job.showcase.sfxSources.map((source, index) => {
+        const audioScenes = plan.scenes.length > 1 ? plan.scenes.slice(1) : plan.scenes;
+        const audio = job.showcase.sfxSources.map((entry, index) => {
+            const source = typeof entry === "string" ? entry : entry.path;
             if (!fs.existsSync(source)) throw new Error(`Showcase SFX does not exist: ${source}`);
             const scene = audioScenes[(index * 3) % audioScenes.length];
+            const requestedStart = typeof entry === "string" ? null : entry.timelineSeconds;
+            const start = Number.isFinite(requestedStart) ? requestedStart : scene.start;
+            const duration = typeof entry === "string" ? 1.5 : entry.durationSeconds;
             return {
-                id: `sfx-${index + 1}`,
+                id: typeof entry === "string" ? `sfx-${index + 1}` : entry.id,
                 path: source,
-                start: scene.start,
-                end: Math.min(scene.end, scene.start + 1.5),
-                trackIndex: 1 + index,
-                purpose: "chapter-transition-sfx",
-                license: "owner-supplied",
+                start,
+                end: start + duration,
+                trackIndex: typeof entry === "string" ? 1 + index : entry.trackIndex,
+                gainDb: typeof entry === "string" ? -12 : entry.gainDb,
+                purpose: typeof entry === "string" ? "chapter-transition-sfx" : entry.purpose,
+                provider: typeof entry === "string" ? null : entry.provider,
+                license: typeof entry === "string" ? "owner-supplied" : entry.license,
             };
         });
 

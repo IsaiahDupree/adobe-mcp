@@ -148,6 +148,43 @@ test("job schema normalizes provider-only semantic asset requests", () => {
     assert.match(job.outputPaths.assetRegistry, /source-assets\/asset-registry\.json$/);
 });
 
+test("job schema preserves timecoded Premiere SFX gain instructions", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "premiere-factory-sfx-schema-"));
+    const sfxPath = path.join(root, "receipt.mp3");
+    const store = new JobStore({
+        JOBS_DIR: path.join(root, "jobs"),
+        CAMPAIGNS_DIR: path.join(root, "campaigns"),
+    });
+    const job = store.submit({
+        request: { topic: "Measured sound design" },
+        showcase: {
+            enabled: true,
+            asset_policy: { mode: "local-allowed" },
+            sfx_sources: [{
+                id: "receipt-confirmation",
+                path: sfxPath,
+                timeline_seconds: 2.2,
+                duration_seconds: 2,
+                track_index: 3,
+                gain_db: -12,
+                provider: "elevenlabs",
+            }],
+        },
+    });
+
+    assert.deepEqual(job.showcase.sfxSources[0], {
+        id: "receipt-confirmation",
+        path: sfxPath,
+        timelineSeconds: 2.2,
+        durationSeconds: 2,
+        trackIndex: 3,
+        gainDb: -12,
+        purpose: "chapter-transition-sfx",
+        provider: "elevenlabs",
+        license: "owner-supplied",
+    });
+});
+
 test("provider-only jobs reject pre-existing local creative assets", () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "premiere-factory-provider-policy-"));
     const localClip = path.join(root, "old-broll.mp4");

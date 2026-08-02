@@ -511,7 +511,21 @@ class CepAdapter {
             var audioTrack=sequence.audioTracks[audioTrackNumber];
             if(!audioTrack)return JSON.stringify({success:false,error:"Missing SFX track "+audioTrackNumber});
             audioTrack.overwriteClip(audioItem,audioStart.ticks);
-            importedAudio.push({id:audio.id,path:audio.path,start:audio.start,end:audio.end,trackIndex:audioTrackNumber});
+            var gainDb=Number(audio.gainDb===undefined?-12:audio.gainDb);
+            var gainLinear=Math.pow(10,gainDb/20);
+            for(var placedAudioIndex=0;placedAudioIndex<audioTrack.clips.numItems;placedAudioIndex++){
+                var placedAudio=audioTrack.clips[placedAudioIndex];
+                if(Math.abs(Number(placedAudio.start.seconds)-Number(audio.start))<0.1){
+                    for(var audioComponentIndex=0;audioComponentIndex<placedAudio.components.numItems;audioComponentIndex++){
+                        var audioComponent=placedAudio.components[audioComponentIndex];
+                        for(var audioPropertyIndex=0;audioPropertyIndex<audioComponent.properties.numItems;audioPropertyIndex++){
+                            var audioProperty=audioComponent.properties[audioPropertyIndex];
+                            if(audioComponent.matchName.indexOf("Internal Volume")===0&&audioProperty.displayName==="Level")audioProperty.setValue(gainLinear,true);
+                        }
+                    }
+                }
+            }
+            importedAudio.push({id:audio.id,path:audio.path,start:audio.start,end:audio.end,trackIndex:audioTrackNumber,gainDb:gainDb});
         }
 
         project.save();

@@ -229,13 +229,43 @@ function normalizeRetention(spec) {
 function normalizeShowcase(spec) {
     const input = spec.showcase || (spec.production && spec.production.showcase);
     if (!input || input.enabled === false) return { enabled: false };
-    const normalizePaths = (items, field) =>
+    const normalizeSfx = (items) =>
         (items || []).map((item, index) => {
-            const value = typeof item === "string" ? item : item.path;
+            const inputItem = typeof item === "string" ? { path: item } : { ...item };
+            const value = inputItem.path;
             if (!value || !path.isAbsolute(value)) {
-                throw new Error(`showcase.${field}[${index}] requires an absolute path.`);
+                throw new Error(`showcase.sfx_sources[${index}] requires an absolute path.`);
             }
-            return path.normalize(value);
+            const timelineSeconds = inputItem.timeline_seconds ?? inputItem.timelineSeconds;
+            const parsedTimelineSeconds = timelineSeconds === null || timelineSeconds === undefined
+                ? null
+                : Number(timelineSeconds);
+            const parsedDurationSeconds = Number(inputItem.duration_seconds || inputItem.durationSeconds || 1.5);
+            const parsedTrackIndex = Number(inputItem.track_index || inputItem.trackIndex || index + 1);
+            const parsedGainDb = Number(inputItem.gain_db ?? inputItem.gainDb ?? -12);
+            if (parsedTimelineSeconds !== null && (!Number.isFinite(parsedTimelineSeconds) || parsedTimelineSeconds < 0)) {
+                throw new Error(`showcase.sfx_sources[${index}].timeline_seconds must be zero or greater.`);
+            }
+            if (!Number.isFinite(parsedDurationSeconds) || parsedDurationSeconds <= 0) {
+                throw new Error(`showcase.sfx_sources[${index}].duration_seconds must be greater than zero.`);
+            }
+            if (!Number.isFinite(parsedTrackIndex) || parsedTrackIndex < 1) {
+                throw new Error(`showcase.sfx_sources[${index}].track_index must be one or greater.`);
+            }
+            if (!Number.isFinite(parsedGainDb) || parsedGainDb < -96 || parsedGainDb > 12) {
+                throw new Error(`showcase.sfx_sources[${index}].gain_db must be between -96 and 12.`);
+            }
+            return {
+                id: inputItem.id || `sfx-${index + 1}`,
+                path: path.normalize(value),
+                timelineSeconds: parsedTimelineSeconds,
+                durationSeconds: parsedDurationSeconds,
+                trackIndex: Math.floor(parsedTrackIndex),
+                gainDb: parsedGainDb,
+                purpose: inputItem.purpose || "chapter-transition-sfx",
+                provider: inputItem.provider || null,
+                license: inputItem.license || "owner-supplied",
+            };
         });
     const normalizeBroll = (items) =>
         (items || []).map((item, index) => {
@@ -304,7 +334,7 @@ function normalizeShowcase(spec) {
         throw new Error("showcase duration range is invalid.");
     }
     const brollSources = normalizeBroll(input.broll_sources || input.brollSources);
-    const sfxSources = normalizePaths(input.sfx_sources || input.sfxSources, "sfx_sources");
+    const sfxSources = normalizeSfx(input.sfx_sources || input.sfxSources);
     const assetRequests = normalizeAssetRequests(input.asset_requests || input.assetRequests);
     const policyInput = input.asset_policy || input.assetPolicy || {};
     const assetPolicy = {
