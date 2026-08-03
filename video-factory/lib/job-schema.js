@@ -549,6 +549,7 @@ function normalizeDerivativeCampaign(spec, generation, defaultArchiveRoot) {
         startAt: new Date(startAt).toISOString(),
         schedule: { ...(input.schedule || {}) },
         experiment: { ...(input.experiment || {}) },
+        headlines: Object.fromEntries(Object.entries(input.headlines || {}).map(([styleId, value]) => [styleId, String(value)])),
         archive: {
             enabled: input.archive?.enabled !== false,
             mode: input.archive?.mode || "copy",

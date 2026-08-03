@@ -1,0 +1,79 @@
+{
+  "schemaVersion": 1,
+  "corpusSize": 20,
+  "styleAnchorIncluded": true,
+  "durationSeconds": {
+    "mean": 35.503,
+    "median": 33.378,
+    "minimum": 11.912,
+    "maximum": 66.502
+  },
+  "pacing": {
+    "meanWordsPerMinute": 214.06,
+    "medianWordsPerMinute": 223.85,
+    "meanSecondsPerDetectedCut": 2.842,
+    "meanDetectedHardCuts": 13.05,
+    "meanPauseCountOver250ms": 11.75
+  },
+  "composition": {
+    "meanPresenterFacePresenceRatio": 0.917,
+    "meanNonPresenterVisualProxyRatio": 0.083,
+    "medianFaceCenterX": 0.487,
+    "medianFaceCenterY": 0.449
+  },
+  "audio": {
+    "meanIntegratedLufs": -14.295,
+    "meanTruePeakDbfs": -0.36,
+    "meanSilenceSeconds": 0.089
+  },
+  "formatFamilies": {
+    "comparison-or-test": 11,
+    "rating-list-or-taxonomy": 5,
+    "story-or-identity": 2,
+    "teaching-demonstration": 2
+  },
+  "formatFamilyPerformance": {
+    "comparison-or-test": {
+      "reels": 11,
+      "meanViews": 1163182,
+      "medianViews": 1050000,
+      "meanVisibleEngagementRate": 0.0297
+    },
+    "rating-list-or-taxonomy": {
+      "reels": 5,
+      "meanViews": 1422000,
+      "medianViews": 732000,
+      "meanVisibleEngagementRate": 0.0329
+    },
+    "story-or-identity": {
+      "reels": 2,
+      "meanViews": 992000,
+      "medianViews": 992000,
+      "meanVisibleEngagementRate": 0.0675
+    },
+    "teaching-demonstration": {
+      "reels": 2,
+      "meanViews": 1480000,
+      "medianViews": 1480000,
+      "meanVisibleEngagementRate": 0.0271
+    }
+  },
+  "ctaFamilies": {
+    "follow": 15,
+    "keyword-comment": 1,
+    "none-or-implicit": 4
+  },
+  "hookFamilies": {
+    "comparison-or-contrast": 9,
+    "direct-claim-or-instruction": 2,
+    "list-or-taxonomy": 4,
+    "personal-story": 2,
+    "question-or-prediction": 3
+  },
+  "methodology": {
+    "hardCuts": "Six-frame-per-second robust luminance-difference detector; editorial review still required for subtle jump cuts.",
+    "bRoll": "Presenter face absence is reported as a proxy and is not treated as semantic ground truth.",
+    "speech": "OpenAI Whisper word timestamps measured from locally acquired public renditions.",
+    "audio": "FFmpeg EBU R128 integrated loudness, true peak, and -35 dB silence detection."
+  }
+}

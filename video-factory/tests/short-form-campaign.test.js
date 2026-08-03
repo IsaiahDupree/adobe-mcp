@@ -92,6 +92,19 @@ test("HeyGen style campaign preset keeps all three editing styles active", () =>
     assert.equal(new Set(campaignPresets.presets.map((item) => item.id)).size, campaignPresets.presets.length);
 });
 
+test("creator benchmark campaign exposes four independently measurable format families", () => {
+    const preset = campaignPreset("authority-benchmark-matrix-v1");
+    assert.deepEqual(preset.styles, [
+        "benchmark-comparison-ladder",
+        "benchmark-hook-test",
+        "benchmark-rating-list",
+        "benchmark-story-authority",
+    ]);
+    assert.equal(preset.benchmarkProfileId, "authority-education-v1");
+    assert.equal(preset.experiment.primaryVariable, "benchmark_format_family");
+    assert.ok(preset.experiment.guardrails.includes("engagement_rate"));
+});
+
 test("job schema accepts autonomous derivatives only for HeyGen generation", () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "premiere-campaign-schema-"));
     const config = configFor(root);

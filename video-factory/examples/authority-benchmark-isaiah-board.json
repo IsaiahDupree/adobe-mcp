@@ -1,0 +1,177 @@
+{
+  "board_id": "isaiah-tool-stack-vs-content-system-v1",
+  "campaign_id": "isaiah-authority-benchmark-v1",
+  "topic": "An AI tool stack is not an autonomous content system",
+  "objective": "Teach creators the difference between disconnected AI tools and a traceable production system using an original comparison-led short.",
+  "max_revisions": 3,
+  "minimum_revisions": 2,
+  "agents": {"provider": "local", "judge_count": 2},
+  "trend": {
+    "enabled": true,
+    "query": "AI content automation creator workflow 2026",
+    "limit": 8,
+    "max_age_days": 30,
+    "region": "US"
+  },
+  "content_benchmark": {
+    "profile_id": "authority-education-v1",
+    "format_family": "benchmark-comparison-ladder",
+    "written_hook": "TOOL STACK VS. CONTENT SYSTEM",
+    "visual_hook": "Disconnected tool tiles snap into one traced production line while Isaiah points between both sides.",
+    "cta_goal": "lead-magnet"
+  },
+  "claims_and_sources": [
+    {
+      "claim": "The production system stores research, generation, edit, publication, and performance receipts.",
+      "source": "Local Video Factory manifests and project artifacts",
+      "proofType": "first-party product demonstration"
+    }
+  ],
+  "prohibited_patterns": [
+    "copied competitor wording",
+    "caption text reused as the callout",
+    "decorative B-roll unrelated to the spoken phrase",
+    "gray lower caption bar",
+    "unlicensed media",
+    "unsupported performance promise"
+  ],
+  "base_job": {
+    "job_id": "isaiah-tool-stack-vs-content-system-heygen-v1",
+    "campaign_id": "isaiah-authority-benchmark-v1",
+    "priority": 99,
+    "request": {
+      "topic": "An AI tool stack is not an autonomous content system",
+      "audience": "Creators and small teams trying to scale AI-assisted content",
+      "viewer_problem": "They keep adding tools but cannot trace what worked, what failed, or what to change next.",
+      "core_promise": "Understand the five receipts that turn disconnected automations into a learning content system.",
+      "cta": "Comment SYSTEM and I will share the production map I am building."
+    },
+    "autonomy": {
+      "mode": "guarded",
+      "script_approval": "automatic",
+      "rough_cut_approval": "automatic_if_qc_passes",
+      "final_publish_approval": "required"
+    },
+    "production": {
+      "project_name": "isaiah-tool-stack-vs-content-system-v1",
+      "sequence_name": "VERTICAL_9X16_BENCHMARK_V1",
+      "render": {"timeout_ms": 1800000, "export_type": "IMMEDIATELY"}
+    },
+    "generation": {
+      "enabled": true,
+      "provider": "heygen",
+      "voice_provider": "elevenlabs",
+      "elevenlabs_voice_id": "k0HDiJKO5QdXkGN6NSLI",
+      "elevenlabs_model_id": "eleven_multilingual_v2",
+      "elevenlabs_output_format": "mp3_44100_128",
+      "voice_variant_id": "elevenlabs-isaiah-v2",
+      "avatar_id": "3583ef262c2c4b779989de0a79ec14dd",
+      "voice_id": "32ebf1506d7f4b9d93fbcfdda958721c",
+      "engine": "avatar_iii",
+      "aspect_ratio": "9:16",
+      "resolution": "720p",
+      "fit": "cover",
+      "output_format": "mp4",
+      "concurrency": 3,
+      "words_per_minute": 178,
+      "scenes": [
+        {
+          "id": "tool-stack",
+          "title": "A pile of tools is not a system",
+          "callout_text": "TOOL STACK VS. CONTENT SYSTEM",
+          "script": "Most creators are not building an AI content system. They are stacking tools. One writes, one generates, one edits, and none of them know why the last post worked."
+        },
+        {
+          "id": "five-receipts",
+          "title": "The five connected receipts",
+          "callout_text": "FIVE RECEIPTS. ONE FEEDBACK LOOP.",
+          "script": "A real system connects five receipts: the audience problem, the script decision, every licensed visual, the Premiere edit, and the retention result. When one part fails, the next run knows exactly what to change."
+        },
+        {
+          "id": "autonomy",
+          "title": "Automation versus autonomy",
+          "callout_text": "AUTONOMY PRESERVES THE CHAIN",
+          "script": "That is the difference between automation and autonomy. Automation saves a click. Autonomy preserves the decision chain. Comment SYSTEM and I will share the production map I am building."
+        }
+      ]
+    },
+    "retention": {
+      "enabled": true,
+      "preset": "social-dynamic",
+      "caption_mode": "both",
+      "native_caption_track_name": "C1_ACCESSIBILITY_EN",
+      "hook_text": "Most creators are stacking AI tools, not building a content system.",
+      "pattern_interrupt_text": "FOLLOW THE RECEIPTS",
+      "punch_in_scale": 1.07,
+      "dialogue_gain_db": 1,
+      "loudness_qa": {"target_integrated_lufs": -16, "tolerance_lufs": 2, "maximum_true_peak_db": -1},
+      "creative_reference_ids": ["remotion-overlay", "remotion-tiktok-captions"]
+    },
+    "showcase": {
+      "enabled": true,
+      "minimum_duration_seconds": 30,
+      "maximum_duration_seconds": 60,
+      "asset_policy": {"mode": "provider-only", "record_provenance": true},
+      "asset_requests": [
+        {
+          "id": "disconnected-tools",
+          "scene_id": "tool-stack",
+          "query": "creator using multiple software apps workflow computer vertical",
+          "purpose": "Illustrate disconnected tools while the failure mode is spoken.",
+          "providers": ["pexels", "pixabay"],
+          "orientation": "portrait",
+          "timeline_offset_seconds": 4,
+          "placement_duration_seconds": 3
+        },
+        {
+          "id": "premiere-proof",
+          "scene_id": "five-receipts",
+          "query": "professional video editor timeline computer vertical",
+          "purpose": "Show the editable Premiere receipt when the edit stage is named.",
+          "providers": ["pexels", "pixabay"],
+          "orientation": "portrait",
+          "timeline_offset_seconds": 8,
+          "placement_duration_seconds": 3
+        },
+        {
+          "id": "analytics-feedback",
+          "scene_id": "autonomy",
+          "query": "creator analytics retention dashboard computer vertical",
+          "purpose": "Show performance evidence returning to the next production decision.",
+          "providers": ["pexels", "pixabay"],
+          "orientation": "portrait",
+          "timeline_offset_seconds": 4,
+          "placement_duration_seconds": 3
+        }
+      ],
+      "explainer_assets": [
+        {
+          "id": "five-receipt-loop",
+          "scene_id": "five-receipts",
+          "eyebrow": "ONE LEARNING SYSTEM",
+          "title": "FIVE RECEIPTS, ONE FEEDBACK LOOP",
+          "points": ["PROBLEM", "SCRIPT", "ASSETS", "EDIT", "RETENTION"],
+          "layout": "process",
+          "timeline_offset_seconds": 2,
+          "placement_duration_seconds": 3.5
+        }
+      ]
+    },
+    "derivative_campaign": {
+      "enabled": true,
+      "preset": "authority-benchmark-matrix-v1",
+      "styles": ["benchmark-comparison-ladder", "benchmark-hook-test", "benchmark-rating-list", "benchmark-story-authority"],
+      "clips_per_source": 1,
+      "platforms": ["youtube", "instagram", "tiktok"],
+      "headlines": {
+        "benchmark-comparison-ladder": "TOOLS VS. SYSTEM",
+        "benchmark-hook-test": "WHY TOOL STACKS FAIL",
+        "benchmark-rating-list": "AI STACK: 3 OUT OF 10",
+        "benchmark-story-authority": "I BUILT THE WRONG THING"
+      },
+      "archive": {"enabled": true, "mode": "copy", "destination_root": "/Volumes/My Passport/VideoFactory/ShortForm"}
+    },
+    "archive": {"enabled": true, "mode": "move", "destination_root": "/Volumes/My Passport/VideoFactory"}
+  },
+  "archive": {"enabled": true, "destination_root": "/Volumes/My Passport/VideoFactory/ProductionBoards"}
+}

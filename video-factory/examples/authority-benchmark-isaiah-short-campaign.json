@@ -1,0 +1,27 @@
+{
+  "campaign_id": "isaiah-authority-benchmark-style-matrix-v4",
+  "preset": "authority-benchmark-matrix-v1",
+  "source_job_ids": ["isaiah-tool-stack-vs-content-system-v1-v1"],
+  "clips_per_source": 1,
+  "styles": [
+    "benchmark-comparison-ladder",
+    "benchmark-hook-test",
+    "benchmark-rating-list",
+    "benchmark-story-authority"
+  ],
+  "headlines": {
+    "benchmark-comparison-ladder": "TOOLS VS. SYSTEM",
+    "benchmark-hook-test": "WHY TOOL STACKS FAIL",
+    "benchmark-rating-list": "AI STACK: 3 OUT OF 10",
+    "benchmark-story-authority": "I BUILT THE WRONG THING"
+  },
+  "platforms": ["youtube", "instagram", "tiktok"],
+  "schedule": {
+    "approvalRequired": true
+  },
+  "archive": {
+    "enabled": true,
+    "mode": "copy",
+    "destination_root": "/Volumes/My Passport/VideoFactory/ShortForm"
+  }
+}

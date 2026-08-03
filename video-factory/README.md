@@ -74,6 +74,26 @@ node cli.js short-campaign-presets
 
 New HeyGen jobs can include `derivative_campaign.enabled: true`, as shown in `examples/heygen-retention-job.json`. `submit --run`, API job runs, and scheduler ticks then continue from the approved master into the derivative campaign automatically. The matrix uses average percentage viewed as its primary metric, completion and three-second retention as guardrails, balanced style ordering across source families, minimum exposure gates, and practical-significance checks before promoting a preferred style preset. Dialogue gain is locked across style variants; an out-of-bounds render triggers a bounded Premiere gain correction and selective project/QC/export retry with an audit receipt. Every post stays approval-gated until `short-campaign-approve` explicitly releases its publisher payload.
 
+### Creator benchmark presets
+
+The private `@personalbrandlaunch` study measures 20 ranked public reels plus one user-selected reference reel without checking source media into Git. Its portable production grammar is stored in `config/content-benchmark-profiles.json`; its source list, aggregate measurements, and detailed report live under `benchmarks/personalbrandlaunch-top20-*`.
+
+`authority-benchmark-matrix-v1` creates four original Isaiah variants from one completed HeyGen source: comparison ladder, hook A/B test, rating/list, and story/authority. Each format enforces a non-duplicative spoken/written/visual triple hook, stable no-flicker captions, semantic-only inserts, face-safe vertical framing, an unobstructed platform UI reserve, and a goal-matched CTA.
+
+```bash
+python3 scripts/analyze_creator_benchmark.py \
+  --manifest benchmarks/personalbrandlaunch-top20-source.json \
+  --source-dir /absolute/private/corpus/source \
+  --transcript-dir /absolute/private/corpus/transcripts \
+  --output-dir /absolute/private/corpus/analysis \
+  --frames-dir /absolute/private/corpus/frames
+
+node cli.js board-submit examples/authority-benchmark-isaiah-board.json --run
+node cli.js board-status isaiah-tool-stack-vs-content-system-v1
+```
+
+The benchmark is an editorial reference, not a media library or script source. Generated posts use original Isaiah topics, claims, language, footage, graphics, colors, and offers.
+
 ## HeyGen retention pipeline
 
 Submit `examples/heygen-retention-job.json` to run the complete presenter workflow. The factory generates each script beat independently through HeyGen v3, downloads the clean MP4 and SRT, and records a resumable generation manifest. Premiere creates the semantic cuts, applies Motion reframes, builds a native editable caption track, and exports the finished sequence. Animated caption graphics remain available through `caption_mode: "animated"` or `"both"`.

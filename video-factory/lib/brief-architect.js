@@ -1,4 +1,5 @@
 const { nowIso } = require("./util");
+const { executionContract, profileById } = require("./content-benchmark");
 
 function estimateDuration(script, wordsPerMinute) {
     const words = String(script || "").trim().split(/\s+/).filter(Boolean).length;
@@ -31,6 +32,15 @@ class BriefArchitect {
         });
         const hookText = board.baseJob.retention?.hook_text || board.baseJob.retention?.hookText ||
             scenes[0]?.script || scenes[0] || board.topic;
+        const benchmark = board.contentBenchmark?.enabled
+            ? executionContract(profileById(board.contentBenchmark.profileId), {
+                  spoken: hookText,
+                  written: board.contentBenchmark.writtenHook,
+                  visual: board.contentBenchmark.visualHook,
+                  formatFamily: board.contentBenchmark.formatFamily,
+                  ctaGoal: board.contentBenchmark.ctaGoal,
+              })
+            : null;
         const assetRequests = board.baseJob.showcase?.asset_requests || [];
         return {
             schemaVersion: 1,
@@ -52,6 +62,7 @@ class BriefArchitect {
                 { type: "problem-first", text: board.baseJob.request?.viewer_problem || board.topic },
             ],
             selectedHook: { type: "result-first", text: hookText, start: 0, targetProofBySeconds: 12 },
+            benchmarkExecution: benchmark,
             script: scenes.map((scene, index) => ({
                 sceneId: typeof scene === "string" ? `scene-${index + 1}` : scene.id,
                 text: typeof scene === "string" ? scene : scene.script,
@@ -75,6 +86,7 @@ class BriefArchitect {
             cta: {
                 text: board.baseJob.request?.cta || scenes.at(-1)?.script || "",
                 requiredInFinalBeat: true,
+                benchmarkRule: benchmark?.cta || null,
             },
             successTargets: board.release,
             experiments: [{ id: "revision-comparison", variants: board.maxRevisions, measure: "blind editorial score" }],

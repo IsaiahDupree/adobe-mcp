@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 1,
+  "profiles": [
+    {
+      "id": "authority-education-v1",
+      "status": "active",
+      "sourceAttribution": {
+        "creator": "@personalbrandlaunch",
+        "analysisScope": "Top-20 current-year reel benchmark plus one user-selected style anchor",
+        "sourceManifest": "../benchmarks/personalbrandlaunch-top20-source.json",
+        "adaptationPolicy": "Reproduce production grammar only. Use original Isaiah topics, wording, claims, footage, graphics, colors, and calls to action."
+      },
+      "portablePrinciples": [
+        "Open with simultaneous verbal, visual, and written hooks.",
+        "The written hook condenses or reframes the spoken hook; it never transcribes it.",
+        "Deliver a useful distinction, framework, rating, or test before asking for action.",
+        "Reset the visual approximately every two seconds without cutting away from meaning.",
+        "Reuse proven idea structures with new evidence and angles instead of cloning scripts.",
+        "Match the call to action to the business goal: follow for audience growth, keyword comment for a relevant asset, or no CTA when trust is the only goal."
+      ],
+      "researchRules": {
+        "ideaSources": ["audience questions", "search questions", "creator analytics", "customer objections", "product proof"],
+        "requiredEvidence": ["viewer problem", "one concrete distinction", "one proof point or demonstration", "one platform-native promise"],
+        "angleTests": ["comparison", "contrarian rating", "result-first", "question", "list or taxonomy"],
+        "readingLevelMaximum": 6,
+        "reusePolicy": "Re-angle a validated idea only when the hook, proof, or audience problem changes."
+      },
+      "scriptRules": {
+        "hookWindowSeconds": 2,
+        "writtenHookWords": {"minimum": 3, "maximum": 8},
+        "spokenWordsPerMinute": {"minimum": 150, "target": 178, "maximum": 205},
+        "sentenceWordsMaximum": 16,
+        "structure": ["scroll stop", "clear distinction", "three useful beats", "proof or example", "goal-matched CTA"],
+        "forbidden": ["copied creator phrasing", "unsupported growth claims", "caption-as-callout", "generic follow for more before value"]
+      },
+      "editingRules": {
+        "visualChangeIntervalSeconds": {"minimum": 1.5, "target": 2.0, "maximum": 2.6},
+        "transitionDefault": "hard-cut",
+        "presenterPriority": "Presenter remains the narrative spine; B-roll appears only when it explains the current phrase.",
+        "bRollPolicy": "Prefer short semantic inserts, screen demonstrations, diagrams, comparison labels, and proof captures over decorative stock footage.",
+        "captionPolicy": "One continuous alpha overlay, frame-aligned cues, stable word groups, one highlighted keyword, and no gray lower bar.",
+        "headlinePolicy": "Three to eight words above the face; preserve a separate center-lower caption lane and bottom platform UI reserve.",
+        "soundPolicy": "Dialogue first; music supports emotion at low level; sound effects mark visual events rather than every cut."
+      },
+      "ctaRules": {
+        "audience-growth": {"mode": "follow", "placement": "final beat", "requireDeliveredValue": true},
+        "lead-magnet": {"mode": "keyword-comment", "placement": "after proof", "requireDeliveredValue": true},
+        "authority": {"mode": "none-or-soft-follow", "placement": "optional final beat", "requireDeliveredValue": true},
+        "client-conversion": {"mode": "keyword-comment", "placement": "after qualification", "requireDeliveredValue": true}
+      },
+      "formatFamilies": [
+        {"id": "benchmark-comparison-ladder", "bestFor": ["framework choices", "tool comparisons", "before and after", "good better best"]},
+        {"id": "benchmark-hook-test", "bestFor": ["A/B hooks", "editing demonstrations", "creative experiments"]},
+        {"id": "benchmark-rating-list", "bestFor": ["myth ratings", "tool lists", "content taxonomies"]},
+        {"id": "benchmark-story-authority", "bestFor": ["founder lessons", "build in public", "identity and belief shifts"]}
+      ]
+    }
+  ]
+}

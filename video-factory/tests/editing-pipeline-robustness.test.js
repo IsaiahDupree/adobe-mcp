@@ -10,11 +10,32 @@ const {
     isCaptionEcho,
     validateShowcaseTimeline,
 } = require("../lib/showcase-renderer");
-const { VideoJobRunner } = require("../lib/workflow");
+const { retentionLoudnessCorrection, VideoJobRunner } = require("../lib/workflow");
 const { readJson, run } = require("../lib/util");
 
 const MAGICK = "/opt/homebrew/bin/magick";
 const FONT = "/System/Library/Fonts/Supplemental/Arial Bold.ttf";
+
+test("retention loudness recovery raises dialogue within true-peak headroom", () => {
+    const correction = retentionLoudnessCorrection({
+        generation: { enabled: true },
+        retention: { dialogueGainDb: 1, loudnessQa: { targetIntegratedLufs: -16 } },
+    }, {
+        provider: "ffmpeg-ebur128-read-only",
+        integratedLufs: -24.2,
+        truePeakDb: -8.5,
+        targetIntegratedLufs: -16,
+        maximumTruePeakDb: -1,
+    });
+    assert.deepEqual(correction, {
+        provider: "premiere-retention-dialogue-gain-recovery",
+        measured: { integratedLufs: -24.2, truePeakDb: -8.5 },
+        target: { integratedLufs: -16, maximumTruePeakDb: -1, safetyMarginDb: 0.2 },
+        previousDialogueGainDb: 1,
+        appliedDeltaDb: 7.3,
+        dialogueGainDb: 8.3,
+    });
+});
 
 async function createMediaFixture(output, color, frequency) {
     await run("ffmpeg", [

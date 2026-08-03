@@ -62,6 +62,14 @@ function normalizeBoardSpec(spec, boardsDir, defaultArchiveRoot) {
         claimsAndSources: Array.isArray(spec.claims_and_sources) ? spec.claims_and_sources : [],
         historicalEvidence: Array.isArray(spec.historical_evidence) ? spec.historical_evidence : [],
         prohibitedPatterns: Array.isArray(spec.prohibited_patterns) ? spec.prohibited_patterns : [],
+        contentBenchmark: spec.content_benchmark ? {
+            enabled: spec.content_benchmark.enabled !== false,
+            profileId: spec.content_benchmark.profile_id || spec.content_benchmark.profileId || "authority-education-v1",
+            formatFamily: spec.content_benchmark.format_family || spec.content_benchmark.formatFamily || "benchmark-comparison-ladder",
+            writtenHook: spec.content_benchmark.written_hook || spec.content_benchmark.writtenHook || null,
+            visualHook: spec.content_benchmark.visual_hook || spec.content_benchmark.visualHook || null,
+            ctaGoal: spec.content_benchmark.cta_goal || spec.content_benchmark.ctaGoal || "authority",
+        } : { enabled: false },
         workspace: path.join(boardsDir, id),
         createdAt: nowIso(),
     };

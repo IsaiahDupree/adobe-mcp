@@ -263,21 +263,21 @@ class CepAdapter {
     var settings=sequence.getSettings();
     if(Number(settings.videoFrameWidth)>=Number(settings.videoFrameHeight))return JSON.stringify({success:false,error:"Short-form sequence is not vertical"});
     if(!sequence.videoTracks.numTracks||!sequence.videoTracks[0].clips.numItems)return JSON.stringify({success:false,error:"Short-form sequence has no base clip"});
-    var clip=sequence.videoTracks[0].clips[0];
-    var audioClip=sequence.audioTracks.numTracks&&sequence.audioTracks[0].clips.numItems?sequence.audioTracks[0].clips[0]:null;
     var baseScale=Number(plan.transform.scalePercent);
     var position=plan.transform.position;
     var introMultiplier=Number(plan.motion.introScaleMultiplier||1);
     var outroMultiplier=Number(plan.motion.outroScaleMultiplier||1);
     var introSeconds=Math.max(0.1,Number(plan.motion.introSeconds||0.6));
-    var clipStart=Number(clip.start.seconds);
-    var clipEnd=Number(clip.end.seconds);
     var scaleReceipt=[];
-    var positionReceipt=null;
-    var dialogueGainReceipt=null;
+    var positionReceipt=[];
+    var dialogueGainReceipt=[];
     var semanticVisualsFramed=0;
     var overlayAudioRemoved=0;
-    for(var componentIndex=0;componentIndex<clip.components.numItems;componentIndex++){
+    for(var baseClipIndex=0;baseClipIndex<sequence.videoTracks[0].clips.numItems;baseClipIndex++){
+      var clip=sequence.videoTracks[0].clips[baseClipIndex];
+      var clipStart=Number(clip.start.seconds);
+      var clipEnd=Number(clip.end.seconds);
+      for(var componentIndex=0;componentIndex<clip.components.numItems;componentIndex++){
         var component=clip.components[componentIndex];
         if(component.matchName==="AE.ADBE Motion"||component.displayName==="Motion"){
             var componentNormalized=null;
@@ -301,7 +301,7 @@ class CepAdapter {
                         [Number(position.x)/targetWidth,Number(position.y)/targetHeight]:
                         [Number(position.x),Number(position.y)];
                     property.setValue(premierePosition,true);
-                    positionReceipt={value:premierePosition,coordinateMode:normalizedPosition?"normalized":"pixels"};
+                    positionReceipt.push({clipIndex:baseClipIndex,value:premierePosition,coordinateMode:normalizedPosition?"normalized":"pixels"});
                 }
                 if(property.displayName==="Scale"){
                     var times=[clipStart,Math.min(clipEnd,clipStart+introSeconds),clipEnd];
@@ -313,15 +313,16 @@ class CepAdapter {
                         for(var scaleIndex=0;scaleIndex<times.length;scaleIndex++){
                             property.addKey(times[scaleIndex]);
                             property.setValueAtKey(times[scaleIndex],values[scaleIndex],true);
-                            scaleReceipt.push({time:times[scaleIndex],value:values[scaleIndex]});
+                            scaleReceipt.push({clipIndex:baseClipIndex,time:times[scaleIndex],value:values[scaleIndex]});
                         }
                     }else{
                         property.setValue(baseScale,true);
-                        scaleReceipt.push({mode:"static",value:baseScale});
+                        scaleReceipt.push({clipIndex:baseClipIndex,mode:"static",value:baseScale});
                     }
                 }
             }
         }
+      }
     }
     for(var visualTrackIndex=1;visualTrackIndex<sequence.videoTracks.numTracks;visualTrackIndex++){
         var visualTrack=sequence.videoTracks[visualTrackIndex];
@@ -340,8 +341,10 @@ class CepAdapter {
             overlayAudioRemoved++;
         }
     }
-    if(audioClip){
+    if(sequence.audioTracks.numTracks){
         var gainDb=Number(plan.editing.dialogueGainDb||0);
+      for(var baseAudioIndex=0;baseAudioIndex<sequence.audioTracks[0].clips.numItems;baseAudioIndex++){
+        var audioClip=sequence.audioTracks[0].clips[baseAudioIndex];
         for(var audioComponentIndex=0;audioComponentIndex<audioClip.components.numItems;audioComponentIndex++){
             var audioComponent=audioClip.components[audioComponentIndex];
             if(audioComponent.matchName==="AE.ADBE Audio Volume"||audioComponent.displayName==="Volume"){
@@ -350,18 +353,19 @@ class CepAdapter {
                     if(audioProperty.displayName==="Level"){
                         var levelValue=Math.min(1,Math.max(0,Math.pow(10,(gainDb-15)/20)));
                         audioProperty.setValue(levelValue,true);
-                        dialogueGainReceipt={gainDb:gainDb,levelValue:levelValue};
+                        dialogueGainReceipt.push({clipIndex:baseAudioIndex,gainDb:gainDb,levelValue:levelValue});
                     }
                 }
             }
         }
+      }
     }
     app.project.save();
     return JSON.stringify({
         success:true,
         sequenceName:sequence.name,
         frameSize:{width:Number(settings.videoFrameWidth),height:Number(settings.videoFrameHeight)},
-        clipDurationSeconds:Number(clip.duration.seconds),
+        baseClipCount:Number(sequence.videoTracks[0].clips.numItems),
         sourceRange:plan.sourceRange,
         styleId:plan.styleId,
         scale:scaleReceipt,

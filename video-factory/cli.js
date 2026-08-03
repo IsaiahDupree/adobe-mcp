@@ -130,27 +130,6 @@ function createRuntime() {
     const boardStore = new BoardStore(config);
     const compositionStore = new CompositionBatchStore(config, store);
     const compositionRunner = new CompositionBatchRunner(compositionStore, store, runner);
-    const boardRunner = new ProductionBoardRunner({
-        config,
-        boardStore,
-        jobStore: store,
-        jobRunner: runner,
-        trendScout: new TrendScout(config),
-        performanceMemory: new PerformanceMemory(config),
-        briefArchitect: new BriefArchitect(),
-        showrunner: new Showrunner(),
-        technicalQa: new TechnicalQa(config),
-        mediaAnalyzer: new MediaAnalyzer(config),
-        releaseArbiter: new ReleaseArbiter(),
-        releasePackager: new ReleasePackager(),
-    });
-    const reviseStore = new ReviseStore(config);
-    const reviseRunner = new ReviseRunner({
-        reviseStore,
-        boardStore,
-        boardRunner,
-        jobStore: store,
-    });
     const shortFormStore = new ShortFormBatchStore(config, store, boardStore, compositionStore);
     const shortFormRunner = new ShortFormBatchRunner(shortFormStore, store, runner);
     const shortFormCampaignStore = new ShortFormCampaignStore(config, store, shortFormStore);
@@ -166,6 +145,28 @@ function createRuntime() {
         shortFormCampaignStore,
         shortFormCampaignRunner
     );
+    const boardRunner = new ProductionBoardRunner({
+        config,
+        boardStore,
+        jobStore: store,
+        jobRunner: runner,
+        trendScout: new TrendScout(config),
+        performanceMemory: new PerformanceMemory(config),
+        briefArchitect: new BriefArchitect(),
+        showrunner: new Showrunner(),
+        technicalQa: new TechnicalQa(config),
+        mediaAnalyzer: new MediaAnalyzer(config),
+        releaseArbiter: new ReleaseArbiter(),
+        releasePackager: new ReleasePackager(),
+        productionCoordinator: productionRunner,
+    });
+    const reviseStore = new ReviseStore(config);
+    const reviseRunner = new ReviseRunner({
+        reviseStore,
+        boardStore,
+        boardRunner,
+        jobStore: store,
+    });
     return {
         adapter,
         heygenManager,

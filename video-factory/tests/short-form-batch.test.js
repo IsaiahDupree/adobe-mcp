@@ -16,7 +16,9 @@ const {
     createHeadlineGraphic,
     createStableCaptionOverlay,
     captionContinuityReport,
+    clippedCleanTimeline,
     createStableHighlightCaptions,
+    inheritedSemanticVisuals,
     loudnessCorrection,
     styleById,
     styleRegistry,
@@ -88,11 +90,15 @@ test("short-form style registry contains distinct, bounded editing contracts", (
         "clean-authority",
         "rapid-explainer",
         "semantic-focus",
+        "benchmark-comparison-ladder",
+        "benchmark-hook-test",
+        "benchmark-rating-list",
+        "benchmark-story-authority",
     ]);
     assert.ok(new Set(styleRegistry.styles.map((style) => style.editing.visualChangeIntervalSeconds)).size >= 3);
     assert.equal(new Set(styleRegistry.styles.map((style) => style.editing.dialogueGainDb)).size, 1);
     assert.ok(styleRegistry.styles.every((style) =>
-        style.duration.minimumSeconds >= 15 &&
+        style.duration.minimumSeconds >= 12 &&
         style.duration.maximumSeconds <= 60 &&
         style.captions.mode === "stable-keyword-highlight" &&
         style.layout.platformUiReserveBottomRatio >= 0.18 &&
@@ -166,6 +172,37 @@ test("caption trimming rebases intersecting cues and clips them to the selected 
     assert.deepEqual(captionCues(output), cues);
 });
 
+test("clean scene reuse clips source timing and inherits only overlapping semantic visuals", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "premiere-clean-short-"));
+    const sceneA = path.join(root, "scene-a.mp4");
+    const sceneB = path.join(root, "scene-b.mp4");
+    const broll = path.join(root, "broll.mp4");
+    const explainer = path.join(root, "explainer.png");
+    for (const filePath of [sceneA, sceneB, broll, explainer]) fs.writeFileSync(filePath, "real fixture", "utf8");
+    const source = {
+        cleanTimeline: [
+            { asset_path: sceneA, insertion_time_ticks: 0, duration_seconds: 9 },
+            { asset_path: sceneB, insertion_time_ticks: 9 * 254016000000, duration_seconds: 12 },
+        ],
+        showcaseManifest: {
+            videos: [{ id: "proof", path: broll, start: 4, end: 7, purpose: "Show proof", provider: "pexels" }],
+            graphics: [{ id: "map", path: explainer, start: 11, end: 14, purpose: "semantic-explainer:process" }],
+        },
+    };
+    const selection = { start: 5, end: 16, duration: 11 };
+    const clean = clippedCleanTimeline(source, selection);
+    assert.equal(clean.timeline.length, 2);
+    assert.equal(clean.timeline[0].source_start_seconds, 5);
+    assert.equal(clean.timeline[0].duration_seconds, 4);
+    assert.equal(clean.timeline[1].insertion_time_ticks, 4 * 254016000000);
+    assert.equal(clean.timeline[1].duration_seconds, 7);
+    const visuals = inheritedSemanticVisuals(source, selection);
+    assert.deepEqual(visuals.map((visual) => ({ id: visual.id, start: visual.start, end: visual.end, provider: visual.provider })), [
+        { id: "proof", start: 0, end: 2, provider: "pexels" },
+        { id: "map", start: 6, end: 9, provider: "generated-2d" },
+    ]);
+});
+
 test("semantic layout creates stable frame-aligned captions without flicker or a bottom bar", () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "premiere-short-layout-"));
     const headline = createHeadlineGraphic(
@@ -211,6 +248,24 @@ test("stable captions bridge sub-200ms SRT holes that would blink on screen", ()
     assert.equal(captions[0].endFrame, 32);
     assert.equal(captionContinuityReport(captions).passed, true);
     assert.deepEqual(captionContinuityReport(captions).microGaps, []);
+});
+
+test("stable captions expand brief single-word cues without changing the sequence length", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "premiere-caption-minimum-"));
+    const captions = createStableHighlightCaptions(
+        root,
+        [
+            { start: 0, end: 1.2, text: "This is the setup" },
+            { start: 1.2, end: 1.567, text: "System" },
+            { start: 1.567, end: 2.4, text: "This is the result" },
+        ],
+        { frameRate: 30, minimumVisibleFrames: 18, bridgeGapFrames: 6 },
+        { magickBin: baseConfig.IMAGEMAGICK_BIN, font: baseConfig.CAPTION_FONT }
+    );
+    assert.ok(captions.every((caption) => caption.visibleFrames >= 12));
+    assert.equal(captions[0].startFrame, 0);
+    assert.equal(captions.at(-1).endFrame, 72);
+    assert.equal(captionContinuityReport(captions).passed, true);
 });
 
 test("stable captions compile to one continuous alpha overlay with no clip boundaries", () => {
@@ -317,6 +372,57 @@ test("all-styles mode creates controlled style variants from the same source ran
     assert.equal(new Set(batch.childJobs.map((child) =>
         jobStore.get(child.jobId).shortForm.motion.introScaleMultiplier
     )).size, 3);
+});
+
+test("completed HeyGen-style jobs rebuild derivatives from clean scenes with stable captions and inherited B-roll", async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "premiere-short-clean-source-"));
+    const config = testConfig(root);
+    const fixture = await sourceFixture(root, "clean-source-master");
+    const showcasePath = path.join(root, "showcase.json");
+    fs.writeFileSync(showcasePath, `${JSON.stringify({
+        videos: [{ id: "proof", path: fixture.render_path, start: 0, end: 66, purpose: "Show the proof", provider: "pexels" }],
+        graphics: [],
+    })}\n`, "utf8");
+    const jobStore = new JobStore(config);
+    const sourceJob = jobStore.submit({
+        job_id: fixture.id,
+        request: { topic: fixture.title },
+        production: { render: {} },
+    });
+    sourceJob.status = "APPROVAL_REQUIRED";
+    sourceJob.result = { projectPath: fixture.project_path, render: { outputFile: fixture.render_path } };
+    sourceJob.outputPaths.editManifest = fixture.edit_manifest_path;
+    sourceJob.outputPaths.showcaseManifest = showcasePath;
+    sourceJob.outputPaths.combinedCaptions = fixture.captions_path;
+    sourceJob.generation.scenes = fixture.scenes;
+    sourceJob.production.editPlan = { timeline: [{
+        asset_path: fixture.render_path,
+        insertion_time_ticks: 0,
+        duration_seconds: 70,
+    }] };
+    sourceJob.checkpoints["retention-edit"] = {
+        status: "COMPLETE",
+        result: { nativeCaptionTrack: { success: true } },
+    };
+    jobStore.save(sourceJob);
+
+    const batch = new ShortFormBatchStore(config, jobStore).submit({
+        short_form_id: "clean-source-derivative",
+        source_job_ids: [fixture.id],
+        clips_per_source: 1,
+        styles: ["benchmark-comparison-ladder"],
+        headlines: { "benchmark-comparison-ladder": "TOOLS VS SYSTEM" },
+        archive: { enabled: false },
+    });
+    const child = jobStore.get(batch.childJobs[0].jobId);
+    assert.equal(child.shortForm.captions.mode, "stable-keyword-highlight");
+    assert.equal(child.shortForm.captions.cleanSource, true);
+    assert.equal(child.shortForm.headline.text, "TOOLS VS SYSTEM");
+    assert.ok(child.shortForm.captions.graphics.length > 0);
+    assert.equal(child.shortForm.captions.overlay.timelineClipCount, 1);
+    assert.equal(child.shortForm.semanticVisuals.length, 1);
+    assert.equal(child.production.sourceAssets.some((asset) => asset.role === "clean-source-scene"), true);
+    assert.equal(child.production.sourceAssets.some((asset) => asset.role === "semantic-b-roll"), true);
 });
 
 test("resumed batches invalidate Premiere stages when a style contract changes", async () => {

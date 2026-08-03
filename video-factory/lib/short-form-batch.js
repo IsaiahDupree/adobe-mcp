@@ -89,6 +89,7 @@ function createHeadlineGraphic(filePath, text, layout = {}, options = {}) {
     const font = options.font || "/System/Library/Fonts/Supplemental/Impact.ttf";
     const y = Math.round(1920 * Number(layout.headlineYRatio ?? 0.12));
     const safeWidth = 900;
+    const fill = options.fill || "white";
     const layer = `${filePath}.text.png`;
     const words = String(text).trim().toUpperCase().split(/\s+/);
     const splitAt = words.length > 3 ? Math.ceil(words.length / 2) : words.length;
@@ -96,7 +97,7 @@ function createHeadlineGraphic(filePath, text, layout = {}, options = {}) {
         ? `${words.slice(0, splitAt).join(" ")}\n${words.slice(splitAt).join(" ")}`
         : words.join(" ");
     execFileSync(magickBin, [
-        "-background", "none", "-fill", "white", "-stroke", "#0A0D10", "-strokewidth", "3",
+        "-background", "none", "-fill", fill, "-stroke", "#0A0D10", "-strokewidth", "3",
         "-font", font, "-pointsize", "82", "-gravity", "center", "-interline-spacing", "4", "-size", `${safeWidth}x300`,
         `caption:${displayText}`, "-trim", "+repage", layer,
     ]);
@@ -204,6 +205,30 @@ function createStableHighlightCaptions(directory, cues, captions = {}, options =
             previous.visibleFrames = previous.endFrame - previous.startFrame;
             previous.end = previous.endFrame / previous.frameRate;
         }
+    }
+    for (let index = 0; index < assets.length; index += 1) {
+        const current = assets[index];
+        const minimumFrames = 12;
+        if (current.endFrame - current.startFrame >= minimumFrames) continue;
+        const missing = minimumFrames - (current.endFrame - current.startFrame);
+        const previous = assets[index - 1];
+        const next = assets[index + 1];
+        if (previous && previous.endFrame === current.startFrame && previous.visibleFrames - missing >= minimumFrames) {
+            previous.endFrame -= missing;
+            previous.visibleFrames = previous.endFrame - previous.startFrame;
+            previous.end = previous.endFrame / previous.frameRate;
+            current.startFrame -= missing;
+        } else if (next && next.startFrame === current.endFrame && next.visibleFrames - missing >= minimumFrames) {
+            next.startFrame += missing;
+            next.visibleFrames = next.endFrame - next.startFrame;
+            next.start = next.startFrame / next.frameRate;
+            next.startTicks = Math.round(next.start * TICKS_PER_SECOND);
+            current.endFrame += missing;
+        }
+        current.visibleFrames = current.endFrame - current.startFrame;
+        current.start = current.startFrame / current.frameRate;
+        current.end = current.endFrame / current.frameRate;
+        current.startTicks = Math.round(current.start * TICKS_PER_SECOND);
     }
     return assets;
 }
@@ -404,6 +429,55 @@ function validateSelections(selections, sources) {
     return selections;
 }
 
+function clippedCleanTimeline(source, selection) {
+    const assets = [];
+    const timeline = [];
+    for (const [index, item] of (source.cleanTimeline || []).entries()) {
+        const itemStart = Number(item.insertion_time_ticks || 0) / TICKS_PER_SECOND;
+        const itemDuration = Number(item.duration_seconds || 0);
+        const itemEnd = itemStart + itemDuration;
+        const overlapStart = Math.max(selection.start, itemStart);
+        const overlapEnd = Math.min(selection.end, itemEnd);
+        const assetPath = path.normalize(item.asset_path || "");
+        if (overlapEnd <= overlapStart || !path.isAbsolute(assetPath) || !fs.existsSync(assetPath)) continue;
+        assets.push({
+            id: `clean-source-${index + 1}`,
+            path: assetPath,
+            role: "clean-source-scene",
+            order: assets.length,
+        });
+        timeline.push({
+            asset_path: assetPath,
+            order: timeline.length,
+            video_track_index: 0,
+            audio_track_index: 0,
+            insertion_time_ticks: Math.round((overlapStart - selection.start) * TICKS_PER_SECOND),
+            source_start_seconds: Number(item.source_start_seconds || 0) + overlapStart - itemStart,
+            duration_seconds: Number((overlapEnd - overlapStart).toFixed(3)),
+            overwrite: false,
+        });
+    }
+    return { assets, timeline };
+}
+
+function inheritedSemanticVisuals(source, selection) {
+    const showcase = source.showcaseManifest || {};
+    return [...(showcase.videos || []), ...(showcase.graphics || []).filter((item) =>
+        String(item.purpose || "").startsWith("semantic-explainer")
+    )]
+        .filter((item) => Number(item.end) > selection.start && Number(item.start) < selection.end)
+        .map((item) => ({
+            id: item.id,
+            path: item.path,
+            start: Number((Math.max(Number(item.start), selection.start) - selection.start).toFixed(3)),
+            end: Number((Math.min(Number(item.end), selection.end) - selection.start).toFixed(3)),
+            sourceStart: Number(item.sourceStart || 0) + Math.max(0, selection.start - Number(item.start)),
+            provider: item.provider || (String(item.purpose || "").startsWith("semantic-explainer") ? "generated-2d" : null),
+            query: item.purpose || null,
+        }))
+        .filter((item) => item.end > item.start && path.isAbsolute(path.normalize(item.path || "")) && fs.existsSync(item.path));
+}
+
 class ShortFormBatchStore {
     constructor(config, jobStore, boardStore = null, compositionStore = null) {
         this.config = config;
@@ -447,7 +521,9 @@ class ShortFormBatchStore {
             projectPath,
             renderPath,
             editManifestPath: job.outputPaths?.editManifest,
+            showcaseManifestPath: job.outputPaths?.showcaseManifest,
             captionsPath: job.outputPaths?.combinedCaptions,
+            cleanTimeline: job.production?.editPlan?.timeline || [],
             scenes: job.generation?.scenes || [],
             captionsEmbedded: Boolean(
                 job.checkpoints?.["retention-edit"]?.result?.nativeCaptionTrack?.success ||
@@ -467,6 +543,7 @@ class ShortFormBatchStore {
             throw new Error(`Short-form source ${id} requires an existing absolute render path.`);
         }
         const editManifestPath = input.edit_manifest_path || input.editManifestPath || null;
+        const showcaseManifestPath = input.showcase_manifest_path || input.showcaseManifestPath || null;
         const captionsPath = input.captions_path || input.captionsPath || null;
         const media = probeVideo(renderPath, this.config.FFPROBE_BIN || "ffprobe");
         return {
@@ -479,6 +556,8 @@ class ShortFormBatchStore {
             captionsPath: captionsPath && fs.existsSync(captionsPath) ? path.normalize(captionsPath) : null,
             captionsEmbedded: Boolean(input.captions_embedded || input.captionsEmbedded),
             editManifest: editManifestPath && fs.existsSync(editManifestPath) ? readJson(editManifestPath) : null,
+            showcaseManifest: showcaseManifestPath && fs.existsSync(showcaseManifestPath) ? readJson(showcaseManifestPath) : null,
+            cleanTimeline: (input.clean_timeline || input.cleanTimeline || []).map((item) => ({ ...item })),
             scenes: input.scenes || [],
             media,
         };
@@ -568,26 +647,37 @@ class ShortFormBatchStore {
                 anchorY: sourceFocus.anchorY ?? layout.faceAnchor?.y ?? 0.35,
                 zoomMultiplier: sourceFocus.zoomMultiplier ?? layout.faceZoomMultiplier ?? 1,
             });
-            const captionMode = source.captionsEmbedded ? "source-embedded" : style.captions.mode;
+            const cleanSource = clippedCleanTimeline(source, selection);
+            const usesCleanSource = cleanSource.timeline.length > 0;
+            const captionMode = usesCleanSource || !source.captionsEmbedded
+                ? style.captions.mode
+                : "source-embedded";
             const captionPath = path.join(workspace, "transcripts", "combined-captions.srt");
             const cues = source.captionsPath ? trimCaptions(source.captionsPath, captionPath, selection) : [];
             const headlineText = condensedHeadline(
-                spec.headline || selection.title || source.title,
+                (spec.headlines || {})[style.id] || spec.headline || selection.title || source.title,
                 Number(spec.headline_max_words || spec.headlineMaxWords || 7)
             );
-            const sourceAssets = [{ id: "source-master", path: source.renderPath, role: "source-master", order: 0 }];
-            const timeline = [{
-                asset_path: source.renderPath,
-                order: 0,
-                video_track_index: 0,
-                audio_track_index: 0,
-                insertion_time_ticks: 0,
-                source_start_seconds: selection.start,
-                duration_seconds: selection.duration,
-                overwrite: true,
-            }];
+            const sourceAssets = usesCleanSource
+                ? cleanSource.assets
+                : [{ id: "source-master", path: source.renderPath, role: "source-master", order: 0 }];
+            const timeline = usesCleanSource
+                ? cleanSource.timeline
+                : [{
+                    asset_path: source.renderPath,
+                    order: 0,
+                    video_track_index: 0,
+                    audio_track_index: 0,
+                    insertion_time_ticks: 0,
+                    source_start_seconds: selection.start,
+                    duration_seconds: selection.duration,
+                    overwrite: true,
+                }];
 
-            const semanticVisuals = (spec.semantic_visuals || spec.semanticVisuals || [])
+            const requestedSemanticVisuals = spec.semantic_visuals || spec.semanticVisuals || [];
+            const semanticVisuals = (requestedSemanticVisuals.length
+                ? requestedSemanticVisuals
+                : inheritedSemanticVisuals(source, selection))
                 .slice(0, Number(style.editing.maximumVisualInserts || 4));
             for (const [visualIndex, visual] of semanticVisuals.entries()) {
                 const visualPath = path.normalize(visual.path || visual.localPath || "");
@@ -629,6 +719,7 @@ class ShortFormBatchStore {
                     {
                         magickBin: this.config.IMAGEMAGICK_BIN || this.config.MAGICK_BIN || "magick",
                         font: this.config.HEADLINE_FONT || this.config.CAPTION_FONT,
+                        fill: style.graphics?.headlineAccent || "white",
                     }
                 );
             }
@@ -731,6 +822,7 @@ class ShortFormBatchStore {
                         required: requireCaptions,
                         mode: captionMode,
                         sourceEmbedded: source.captionsEmbedded,
+                        cleanSource: usesCleanSource,
                         graphics: captionGraphics,
                         continuity: captionContinuityReport(captionGraphics),
                         overlay: captionOverlay,
@@ -786,6 +878,7 @@ class ShortFormBatchStore {
                 renderPath: source.renderPath,
                 captionsPath: source.captionsPath,
                 captionsEmbedded: source.captionsEmbedded,
+                cleanSourceAvailable: source.cleanTimeline.length > 0,
                 media: source.media,
             })),
             childJobs,
@@ -926,6 +1019,8 @@ module.exports = {
     createHeadlineGraphic,
     createStableCaptionOverlay,
     createStableHighlightCaptions,
+    clippedCleanTimeline,
+    inheritedSemanticVisuals,
     loudnessCorrection,
     probeVideo,
     styleById,

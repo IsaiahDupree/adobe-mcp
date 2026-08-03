@@ -17,6 +17,7 @@ class ProductionBoardRunner {
         mediaAnalyzer,
         releaseArbiter,
         releasePackager,
+        productionCoordinator = null,
     }) {
         Object.assign(this, {
             config,
@@ -31,6 +32,7 @@ class ProductionBoardRunner {
             mediaAnalyzer,
             releaseArbiter,
             releasePackager,
+            productionCoordinator,
         });
         this.activeBoardId = null;
     }
@@ -209,6 +211,14 @@ class ProductionBoardRunner {
                 revisionHistory: historyPath,
                 qaReport: path.join(board.workspace, "revisions", `v${winningRevision.revision}`, "qa-report.json"),
             });
+            if (this.productionCoordinator && winnerJob.derivativeCampaign?.enabled) {
+                const completedWinner = await this.productionCoordinator.run(winnerJob.id);
+                packageResult.derivativeCampaign = completedWinner.result?.derivativeCampaign || null;
+                this.boardStore.addEvent(id, "DERIVATIVE_CAMPAIGN_COMPLETED", {
+                    winnerJobId: winnerJob.id,
+                    ...(packageResult.derivativeCampaign || {}),
+                });
+            }
             board = this.boardStore.get(id);
             board.status = "COMPLETE";
             board.completedAt = nowIso();

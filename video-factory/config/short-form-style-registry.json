@@ -70,6 +70,90 @@
         "semanticVisualsOnly": true,
         "maximumVisualInserts": 4
       }
+    },
+    {
+      "id": "benchmark-comparison-ladder",
+      "description": "Presenter-led two- or three-column comparison that escalates from a weak choice to a clear preferred choice.",
+      "selectionKeywords": ["versus", "difference", "choose", "better", "system", "tool", "compare"],
+      "duration": { "minimumSeconds": 12, "idealSeconds": 27, "maximumSeconds": 48 },
+      "captions": { "mode": "stable-keyword-highlight", "safeBottomRatio": 0.2, "anchorYRatio": 0.68, "wordsPerChunk": 4, "frameRate": 30, "minimumVisibleFrames": 18, "bridgeGapFrames": 6 },
+      "layout": { "faceZoomMultiplier": 1.17, "faceAnchor": { "x": 0.5, "y": 0.37 }, "platformUiReserveBottomRatio": 0.2, "headlineYRatio": 0.09 },
+      "motion": { "introScaleMultiplier": 1.04, "outroScaleMultiplier": 1.02, "introSeconds": 0.55 },
+      "graphics": { "headlineAccent": "#20D5C2", "comparisonLabels": true, "maximumHeadlineWords": 8 },
+      "editing": {
+        "formatFamily": "comparison-ladder",
+        "hookMode": "triple-hook-contrast",
+        "transition": "hard-cut",
+        "visualChangeIntervalSeconds": 2,
+        "calloutMode": "comparison-label-not-caption",
+        "audioPriority": "dialogue-first",
+        "dialogueGainDb": 1,
+        "semanticVisualsOnly": true,
+        "maximumVisualInserts": 6
+      }
+    },
+    {
+      "id": "benchmark-hook-test",
+      "description": "A/B creative demonstration that holds the idea constant while changing delivery, edit, hook, or proof.",
+      "selectionKeywords": ["hook", "test", "version", "views", "experiment", "delivery", "edit"],
+      "duration": { "minimumSeconds": 15, "idealSeconds": 32, "maximumSeconds": 50 },
+      "captions": { "mode": "stable-keyword-highlight", "safeBottomRatio": 0.2, "anchorYRatio": 0.68, "wordsPerChunk": 4, "frameRate": 30, "minimumVisibleFrames": 18, "bridgeGapFrames": 6 },
+      "layout": { "faceZoomMultiplier": 1.18, "faceAnchor": { "x": 0.5, "y": 0.36 }, "platformUiReserveBottomRatio": 0.2, "headlineYRatio": 0.09 },
+      "motion": { "introScaleMultiplier": 1.055, "outroScaleMultiplier": 1.015, "introSeconds": 0.45 },
+      "graphics": { "headlineAccent": "#FFD166", "variantLabels": ["A", "B"], "maximumHeadlineWords": 8 },
+      "editing": {
+        "formatFamily": "hook-test",
+        "hookMode": "triple-hook-question",
+        "transition": "hard-cut",
+        "visualChangeIntervalSeconds": 1.8,
+        "calloutMode": "variant-and-result-label",
+        "audioPriority": "dialogue-first",
+        "dialogueGainDb": 1,
+        "semanticVisualsOnly": true,
+        "maximumVisualInserts": 7
+      }
+    },
+    {
+      "id": "benchmark-rating-list",
+      "description": "Fast opinionated ratings or taxonomies where each item gets a visible score, reason, and semantic example.",
+      "selectionKeywords": ["rating", "rank", "types", "tools", "list", "myth", "best"],
+      "duration": { "minimumSeconds": 12, "idealSeconds": 26, "maximumSeconds": 45 },
+      "captions": { "mode": "stable-keyword-highlight", "safeBottomRatio": 0.2, "anchorYRatio": 0.68, "wordsPerChunk": 4, "frameRate": 30, "minimumVisibleFrames": 15, "bridgeGapFrames": 6 },
+      "layout": { "faceZoomMultiplier": 1.19, "faceAnchor": { "x": 0.5, "y": 0.36 }, "platformUiReserveBottomRatio": 0.2, "headlineYRatio": 0.09 },
+      "motion": { "introScaleMultiplier": 1.05, "outroScaleMultiplier": 1.02, "introSeconds": 0.4 },
+      "graphics": { "headlineAccent": "#FF5C77", "scoreBadge": true, "maximumHeadlineWords": 8 },
+      "editing": {
+        "formatFamily": "rating-list",
+        "hookMode": "triple-hook-opinion",
+        "transition": "hard-cut",
+        "visualChangeIntervalSeconds": 1.7,
+        "calloutMode": "score-and-reason",
+        "audioPriority": "dialogue-first",
+        "dialogueGainDb": 1,
+        "semanticVisualsOnly": true,
+        "maximumVisualInserts": 8
+      }
+    },
+    {
+      "id": "benchmark-story-authority",
+      "description": "Conversational founder story that alternates personal context, concrete proof, and a transferable lesson.",
+      "selectionKeywords": ["story", "built", "learned", "mistake", "founder", "journey", "lesson"],
+      "duration": { "minimumSeconds": 24, "idealSeconds": 44, "maximumSeconds": 60 },
+      "captions": { "mode": "stable-keyword-highlight", "safeBottomRatio": 0.2, "anchorYRatio": 0.68, "wordsPerChunk": 5, "frameRate": 30, "minimumVisibleFrames": 18, "bridgeGapFrames": 6 },
+      "layout": { "faceZoomMultiplier": 1.14, "faceAnchor": { "x": 0.5, "y": 0.37 }, "platformUiReserveBottomRatio": 0.2, "headlineYRatio": 0.09 },
+      "motion": { "introScaleMultiplier": 1.025, "outroScaleMultiplier": 1.02, "introSeconds": 0.75 },
+      "graphics": { "headlineAccent": "#63D2FF", "proofLabels": true, "maximumHeadlineWords": 8 },
+      "editing": {
+        "formatFamily": "story-authority",
+        "hookMode": "triple-hook-belief-shift",
+        "transition": "hard-cut",
+        "visualChangeIntervalSeconds": 2.4,
+        "calloutMode": "lesson-or-proof-not-caption",
+        "audioPriority": "dialogue-first",
+        "dialogueGainDb": 1,
+        "semanticVisualsOnly": true,
+        "maximumVisualInserts": 6
+      }
     }
   ]
 }

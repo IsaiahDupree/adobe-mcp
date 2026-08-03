@@ -30,6 +30,35 @@ function requestedProjectIsOpen(state, outputPath) {
     );
 }
 
+function retentionLoudnessCorrection(job, details) {
+    if (
+        details?.provider !== "ffmpeg-ebur128-read-only" ||
+        !job.generation?.enabled ||
+        !job.retention?.loudnessQa
+    ) return null;
+    const currentGainDb = Number(job.retention.dialogueGainDb || 0);
+    const targetLufs = Number(details.targetIntegratedLufs);
+    const integratedLufs = Number(details.integratedLufs);
+    const truePeakDb = Number(details.truePeakDb);
+    const maximumTruePeakDb = Number(details.maximumTruePeakDb);
+    if (![currentGainDb, targetLufs, integratedLufs, truePeakDb, maximumTruePeakDb].every(Number.isFinite)) {
+        return null;
+    }
+    const targetDeltaDb = targetLufs - integratedLufs;
+    const peakSafeDeltaDb = maximumTruePeakDb - 0.2 - truePeakDb;
+    const appliedDeltaDb = Math.min(targetDeltaDb, peakSafeDeltaDb);
+    const dialogueGainDb = Math.max(-12, Math.min(12, currentGainDb + appliedDeltaDb));
+    if (Math.abs(dialogueGainDb - currentGainDb) < 0.05) return null;
+    return {
+        provider: "premiere-retention-dialogue-gain-recovery",
+        measured: { integratedLufs, truePeakDb },
+        target: { integratedLufs: targetLufs, maximumTruePeakDb, safetyMarginDb: 0.2 },
+        previousDialogueGainDb: currentGainDb,
+        appliedDeltaDb: Number((dialogueGainDb - currentGainDb).toFixed(2)),
+        dialogueGainDb: Number(dialogueGainDb.toFixed(2)),
+    };
+}
+
 async function averageVideoLuma(filePath) {
     const { stdout } = await run("ffmpeg", [
         "-hide_banner",
@@ -590,7 +619,8 @@ class VideoJobRunner {
                     frameSize: sequence?.frameSize || null,
                 });
             }
-            const duration = sequence?.videoTracks?.[0]?.tracks?.[0]?.durationSeconds || 0;
+            const duration = (sequence?.videoTracks?.[0]?.tracks || [])
+                .reduce((sum, clip) => sum + Number(clip.durationSeconds || 0), 0);
             if (Math.abs(duration - job.shortForm.sourceRange.duration) > 0.15) {
                 issues.push({
                     severity: "critical",
@@ -1131,12 +1161,41 @@ class VideoJobRunner {
             await this.executeStage(id, "save", "SAVING_PROJECT", (current) =>
                 this.saveProject(current)
             );
-            const qc = await this.executeStage(id, "structural-qc", "QUALITY_CONTROL", (current) =>
+            let qc = await this.executeStage(id, "structural-qc", "QUALITY_CONTROL", (current) =>
                 this.runStructuralQc(current)
             );
-            const render = await this.executeStage(id, "render", "EXPORTING", (current) =>
-                this.renderAndValidate(current)
-            );
+            let render;
+            try {
+                render = await this.executeStage(id, "render", "EXPORTING", (current) =>
+                    this.renderAndValidate(current)
+                );
+            } catch (error) {
+                const current = this.store.get(id);
+                const correction = error.code === "WORKFLOW_VALIDATION_FAILED"
+                    ? retentionLoudnessCorrection(current, error.details)
+                    : null;
+                if (!correction) throw error;
+                current.retention.dialogueGainDb = correction.dialogueGainDb;
+                current.loudnessRecovery = correction;
+                current.error = null;
+                for (const stage of ["retention-edit", "save", "structural-qc", "render"]) {
+                    delete current.checkpoints[stage];
+                }
+                this.store.save(current);
+                this.store.addEvent(id, "LOUDNESS_RECOVERY_APPLIED", correction);
+                await this.executeStage(id, "retention-edit", "RETENTION_EDITING", (retryJob) =>
+                    this.applyPremiereRetention(retryJob)
+                );
+                await this.executeStage(id, "save", "SAVING_PROJECT", (retryJob) =>
+                    this.saveProject(retryJob)
+                );
+                qc = await this.executeStage(id, "structural-qc", "QUALITY_CONTROL", (retryJob) =>
+                    this.runStructuralQc(retryJob)
+                );
+                render = await this.executeStage(id, "render", "EXPORTING", (retryJob) =>
+                    this.renderAndValidate(retryJob)
+                );
+            }
             if (this.store.get(id).shortForm?.enabled && render && !render.skipped) {
                 shortFormFraming = await this.executeStage(
                     id,
@@ -1346,4 +1405,5 @@ module.exports = {
     measureAudioLoudness,
     parseEbur128Summary,
     requestedProjectIsOpen,
+    retentionLoudnessCorrection,
 };

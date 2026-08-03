@@ -117,6 +117,7 @@ class ShortFormCampaignStore {
             startAt: new Date(startAt).toISOString(),
             schedule: { ...preset.schedule, ...(spec.schedule || {}) },
             experiment: { ...preset.experiment, ...(spec.experiment || {}) },
+            headlines: { ...(preset.headlines || {}), ...(spec.headlines || {}) },
             archive: {
                 enabled: spec.archive?.enabled !== false,
                 mode: spec.archive?.mode || "copy",
@@ -152,6 +153,7 @@ class ShortFormCampaignStore {
             start_at: input.startAt,
             schedule: input.schedule,
             experiment: input.experiment,
+            headlines: input.headlines,
             archive: input.archive,
         });
     }
@@ -369,6 +371,7 @@ class ShortFormCampaignRunner {
                     minimum_seconds: state.minimumSeconds,
                     maximum_seconds: state.maximumSeconds,
                     require_captions: true,
+                    headlines: state.headlines,
                     archive: state.archive,
                 });
             }
