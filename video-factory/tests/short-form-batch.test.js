@@ -3,6 +3,7 @@ const assert = require("node:assert/strict");
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
+const { execFileSync } = require("child_process");
 const baseConfig = require("../lib/config");
 const { JobStore } = require("../lib/store");
 const {
@@ -13,7 +14,9 @@ const {
     condensedHeadline,
     coverTransform,
     createHeadlineGraphic,
-    createWordHighlightCaptions,
+    createStableCaptionOverlay,
+    captionContinuityReport,
+    createStableHighlightCaptions,
     loudnessCorrection,
     styleById,
     styleRegistry,
@@ -91,7 +94,7 @@ test("short-form style registry contains distinct, bounded editing contracts", (
     assert.ok(styleRegistry.styles.every((style) =>
         style.duration.minimumSeconds >= 15 &&
         style.duration.maximumSeconds <= 60 &&
-        style.captions.mode === "word-highlight" &&
+        style.captions.mode === "stable-keyword-highlight" &&
         style.layout.platformUiReserveBottomRatio >= 0.18 &&
         style.layout.faceZoomMultiplier >= 1.1 &&
         style.editing.audioPriority === "dialogue-first" &&
@@ -163,7 +166,7 @@ test("caption trimming rebases intersecting cues and clips them to the selected 
     assert.deepEqual(captionCues(output), cues);
 });
 
-test("semantic layout creates a top headline and timed word-highlight captions without a bottom bar", () => {
+test("semantic layout creates stable frame-aligned captions without flicker or a bottom bar", () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "premiere-short-layout-"));
     const headline = createHeadlineGraphic(
         path.join(root, "headline.png"),
@@ -171,17 +174,79 @@ test("semantic layout creates a top headline and timed word-highlight captions w
         { headlineYRatio: 0.12 },
         { magickBin: baseConfig.IMAGEMAGICK_BIN, font: baseConfig.CAPTION_FONT }
     );
-    const captions = createWordHighlightCaptions(
+    const captions = createStableHighlightCaptions(
         path.join(root, "captions"),
         [{ start: 0, end: 2, text: "Premiere keeps the project editable" }],
         { anchorYRatio: 0.67, wordsPerChunk: 5 },
         { magickBin: baseConfig.IMAGEMAGICK_BIN }
     );
     assert.ok(fs.statSync(headline).size > 1000);
-    assert.equal(captions.length, 5);
+    assert.equal(captions.length, 1);
     assert.equal(captions[0].activeWord, "Premiere");
+    assert.equal(captions[0].visibleFrames, 60);
+    assert.equal(captions[0].renderMode, "stable-keyword-highlight");
+    assert.deepEqual(captionContinuityReport(captions), {
+        passed: true,
+        rapidTransitions: [],
+        offFrameBoundaries: [],
+        accidentalGaps: [],
+        microGaps: [],
+    });
     assert.ok(captions.every((caption) => fs.statSync(caption.path).size > 1000));
     assert.ok(captions.every((caption) => caption.start >= 0 && caption.end <= 2));
+});
+
+test("stable captions bridge sub-200ms SRT holes that would blink on screen", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "premiere-caption-continuity-"));
+    const captions = createStableHighlightCaptions(
+        root,
+        [
+            { start: 0, end: 1, text: "Premiere keeps text stable" },
+            { start: 1.067, end: 2, text: "without visible flicker" },
+        ],
+        { frameRate: 30, minimumVisibleFrames: 18, bridgeGapFrames: 6 },
+        { magickBin: baseConfig.IMAGEMAGICK_BIN, font: baseConfig.CAPTION_FONT }
+    );
+    assert.equal(captions[0].endFrame, captions[1].startFrame);
+    assert.equal(captions[0].endFrame, 32);
+    assert.equal(captionContinuityReport(captions).passed, true);
+    assert.deepEqual(captionContinuityReport(captions).microGaps, []);
+});
+
+test("stable captions compile to one continuous alpha overlay with no clip boundaries", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "premiere-caption-overlay-"));
+    const headline = createHeadlineGraphic(
+        path.join(root, "headline.png"),
+        "Premiere stays editable",
+        { headlineYRatio: 0.12 },
+        { magickBin: baseConfig.IMAGEMAGICK_BIN, font: baseConfig.CAPTION_FONT }
+    );
+    const captions = createStableHighlightCaptions(
+        path.join(root, "captions"),
+        [
+            { start: 0, end: 1, text: "Premiere keeps text stable" },
+            { start: 1.067, end: 2, text: "without visible flicker" },
+        ],
+        { frameRate: 30, minimumVisibleFrames: 18, bridgeGapFrames: 6 },
+        { magickBin: baseConfig.IMAGEMAGICK_BIN, font: baseConfig.CAPTION_FONT, headlinePath: headline }
+    );
+    const overlay = createStableCaptionOverlay(
+        path.join(root, "captions.mov"),
+        headline,
+        captions,
+        2,
+        { ffmpegBin: baseConfig.FFMPEG_BIN, frameRate: 30 }
+    );
+    assert.equal(overlay.timelineClipCount, 1);
+    assert.equal(overlay.noCaptionClipBoundaries, true);
+    assert.equal(overlay.totalFrames, 60);
+    assert.ok(fs.statSync(overlay.path).size > 10_000);
+    const probe = JSON.parse(execFileSync(baseConfig.FFPROBE_BIN, [
+        "-v", "error", "-show_entries", "stream=codec_name,pix_fmt,width,height", "-of", "json", overlay.path,
+    ], { encoding: "utf8" }));
+    assert.equal(probe.streams[0].codec_name, "prores");
+    assert.equal(probe.streams[0].width, 1080);
+    assert.equal(probe.streams[0].height, 1920);
 });
 
 test("one completed project compiles three independent vertical styles with real media", async () => {
@@ -216,7 +281,7 @@ test("one completed project compiles three independent vertical styles with real
         assert.equal(child.shortForm.target.format, "9:16");
         assert.equal(child.shortForm.target.width, 1080);
         assert.equal(child.shortForm.target.height, 1920);
-        assert.equal(child.shortForm.captions.mode, "word-highlight");
+        assert.equal(child.shortForm.captions.mode, "stable-keyword-highlight");
         assert.equal(child.shortForm.captions.sourceEmbedded, false);
         assert.ok(child.shortForm.captions.graphics.length > 0);
         assert.equal(child.shortForm.layout.platformUiReserveBottomRatio, 0.18);
@@ -335,7 +400,7 @@ test("a project collection expands every completed source with preserved lineage
         assert.equal(job.parentShortFormBatchId, batch.id);
         assert.equal(
             job.shortForm.captions.mode,
-            child.sourceId === fixtures[0].id ? "source-embedded" : "word-highlight"
+            child.sourceId === fixtures[0].id ? "source-embedded" : "stable-keyword-highlight"
         );
         if (child.sourceId === fixtures[0].id) {
             assert.equal(job.shortForm.captions.remaskPath, undefined);

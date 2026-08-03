@@ -83,7 +83,10 @@ module.exports = {
     CODEX_JUDGE_TIMEOUT_MS: Number(process.env.VIDEO_FACTORY_CODEX_JUDGE_TIMEOUT_MS || 180000),
     CAPTION_FONT:
         process.env.VIDEO_FACTORY_CAPTION_FONT ||
-        "/System/Library/Fonts/Supplemental/Arial Bold.ttf",
+        "/System/Library/Fonts/Supplemental/DIN Condensed Bold.ttf",
+    HEADLINE_FONT:
+        process.env.VIDEO_FACTORY_HEADLINE_FONT ||
+        "/System/Library/Fonts/Supplemental/Impact.ttf",
     MIN_DISK_FREE_GB: Number(process.env.VIDEO_FACTORY_MIN_DISK_FREE_GB || 5),
     HEYGEN_API_URL: process.env.HEYGEN_API_URL || "https://api.heygen.com",
     HEYGEN_API_KEY: envValue("HEYGEN_API_KEY"),

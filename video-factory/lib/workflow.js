@@ -446,17 +446,21 @@ class VideoJobRunner {
         if (!this.cepAdapter) throw new Error("Short-form editing requires the Premiere CEP bridge.");
         const captionPath = job.shortForm.captionPath || job.outputPaths.combinedCaptions;
         let nativeCaptionTrack = null;
-        if (job.shortForm.captions.required && job.shortForm.captions.mode === "word-highlight") {
+        if (job.shortForm.captions.required && job.shortForm.captions.mode === "stable-keyword-highlight") {
             const graphics = job.shortForm.captions.graphics || [];
             if (!graphics.length) {
-                throw new WorkflowValidationError("Word-highlight captions require generated Premiere graphic assets.");
+                throw new WorkflowValidationError("Stable captions require generated Premiere graphic assets.");
+            }
+            if (job.shortForm.captions.overlay?.timelineClipCount !== 1 || !job.shortForm.captions.overlay?.noCaptionClipBoundaries) {
+                throw new WorkflowValidationError("Stable captions require one continuous Premiere overlay clip.");
             }
             nativeCaptionTrack = {
                 success: true,
                 created: true,
                 reused: false,
-                verification: "premiere-timeline-word-highlight-graphics",
+                verification: "premiere-timeline-stable-keyword-graphics",
                 graphics: graphics.length,
+                timelineClips: 1,
             };
         } else if (job.shortForm.captions.required) {
             if (!fs.existsSync(captionPath) || fs.statSync(captionPath).size === 0) {

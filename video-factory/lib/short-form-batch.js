@@ -86,14 +86,19 @@ function coverTransform(sourceFrame, targetFrame, focus = {}) {
 function createHeadlineGraphic(filePath, text, layout = {}, options = {}) {
     ensureDir(path.dirname(filePath));
     const magickBin = options.magickBin || "magick";
-    const font = options.font || "/System/Library/Fonts/Supplemental/Arial Bold.ttf";
+    const font = options.font || "/System/Library/Fonts/Supplemental/Impact.ttf";
     const y = Math.round(1920 * Number(layout.headlineYRatio ?? 0.12));
     const safeWidth = 900;
     const layer = `${filePath}.text.png`;
+    const words = String(text).trim().toUpperCase().split(/\s+/);
+    const splitAt = words.length > 3 ? Math.ceil(words.length / 2) : words.length;
+    const displayText = words.length > 3
+        ? `${words.slice(0, splitAt).join(" ")}\n${words.slice(splitAt).join(" ")}`
+        : words.join(" ");
     execFileSync(magickBin, [
         "-background", "none", "-fill", "white", "-stroke", "#0A0D10", "-strokewidth", "3",
-        "-font", font, "-pointsize", "66", "-gravity", "center", "-size", `${safeWidth}x260`,
-        `caption:${String(text).trim().toUpperCase()}`, "-trim", "+repage", layer,
+        "-font", font, "-pointsize", "82", "-gravity", "center", "-interline-spacing", "4", "-size", `${safeWidth}x300`,
+        `caption:${displayText}`, "-trim", "+repage", layer,
     ]);
     execFileSync(magickBin, [
         "-size", "1080x1920", "xc:none", layer, "-gravity", "north", "-geometry", `+0+${y}`,
@@ -103,13 +108,16 @@ function createHeadlineGraphic(filePath, text, layout = {}, options = {}) {
     return filePath;
 }
 
-function createWordHighlightCaptions(directory, cues, captions = {}, options = {}) {
+function createStableHighlightCaptions(directory, cues, captions = {}, options = {}) {
     ensureDir(directory);
     const magickBin = options.magickBin || "magick";
-    const font = options.font || "/System/Library/Fonts/Supplemental/Arial Bold.ttf";
-    const pointSize = Number(options.pointSize || 58);
+    const font = options.font || "/System/Library/Fonts/Supplemental/DIN Condensed Bold.ttf";
+    const pointSize = Number(options.pointSize || 70);
     const wordsPerChunk = Math.max(3, Math.min(7, Number(captions.wordsPerChunk || 5)));
     const anchorY = Math.max(0.55, Math.min(0.76, Number(captions.anchorYRatio || 0.67)));
+    const frameRate = Math.max(24, Math.min(60, Number(captions.frameRate || 30)));
+    const minimumVisibleFrames = Math.max(12, Number(captions.minimumVisibleFrames || 18));
+    const bridgeGapFrames = Math.max(1, Number(captions.bridgeGapFrames || Math.round(frameRate * 0.2)));
     const assets = [];
     const widthCache = new Map();
     const wordWidth = (word) => {
@@ -122,17 +130,33 @@ function createWordHighlightCaptions(directory, cues, captions = {}, options = {
         return width;
     };
     const spaceWidth = Math.round(pointSize * 0.34);
+    const stopWords = new Set(["a", "an", "and", "are", "as", "at", "be", "but", "by", "for", "from", "in", "is", "it", "of", "on", "or", "the", "to", "was", "we", "with", "you"]);
     for (const [cueIndex, cue] of cues.entries()) {
         const words = cue.text.trim().split(/\s+/).filter(Boolean);
         if (!words.length) continue;
-        const wordDuration = Math.max(0.08, (cue.end - cue.start) / words.length);
-        for (let wordIndex = 0; wordIndex < words.length; wordIndex += 1) {
-            const chunkStart = Math.floor(wordIndex / wordsPerChunk) * wordsPerChunk;
-            const chunk = words.slice(chunkStart, chunkStart + wordsPerChunk);
-            const active = wordIndex - chunkStart;
+        const cueStartFrame = Math.max(0, Math.round(cue.start * frameRate));
+        const cueEndFrame = Math.max(cueStartFrame + 1, Math.round(cue.end * frameRate));
+        const chunkCount = Math.max(1, Math.ceil(words.length / wordsPerChunk));
+        for (let chunkIndex = 0; chunkIndex < chunkCount; chunkIndex += 1) {
+            const chunkStart = chunkIndex * wordsPerChunk;
+            const chunkEnd = Math.min(words.length, chunkStart + wordsPerChunk);
+            const chunk = words.slice(chunkStart, chunkEnd);
+            const startFrame = Math.round(cueStartFrame + ((cueEndFrame - cueStartFrame) * chunkStart) / words.length);
+            const endFrame = Math.round(cueStartFrame + ((cueEndFrame - cueStartFrame) * chunkEnd) / words.length);
+            if (endFrame - startFrame < Math.min(minimumVisibleFrames, cueEndFrame - cueStartFrame) && chunkCount > 1) {
+                continue;
+            }
+            let active = 0;
+            for (let index = 1; index < chunk.length; index += 1) {
+                const candidate = chunk[index].replace(/[^A-Za-z0-9']/g, "").toLowerCase();
+                const current = chunk[active].replace(/[^A-Za-z0-9']/g, "").toLowerCase();
+                if ((!stopWords.has(candidate) && stopWords.has(current)) || (stopWords.has(candidate) === stopWords.has(current) && candidate.length > current.length)) {
+                    active = index;
+                }
+            }
             const output = path.join(
                 directory,
-                `caption-${String(cueIndex + 1).padStart(3, "0")}-${String(wordIndex + 1).padStart(2, "0")}.png`
+                `caption-${String(cueIndex + 1).padStart(3, "0")}-${String(chunkIndex + 1).padStart(2, "0")}.png`
             );
             const y = Math.round(anchorY * 1920);
             const widths = chunk.map(wordWidth);
@@ -157,13 +181,103 @@ function createWordHighlightCaptions(directory, cues, captions = {}, options = {
             assets.push({
                 path: output,
                 text: chunk.join(" "),
-                activeWord: words[wordIndex],
-                start: Number((cue.start + wordIndex * wordDuration).toFixed(3)),
-                end: Number((wordIndex === words.length - 1 ? cue.end : cue.start + (wordIndex + 1) * wordDuration).toFixed(3)),
+                activeWord: chunk[active],
+                cueIndex,
+                chunkIndex,
+                frameRate,
+                startFrame,
+                endFrame,
+                visibleFrames: endFrame - startFrame,
+                start: startFrame / frameRate,
+                end: endFrame / frameRate,
+                startTicks: Math.round((startFrame / frameRate) * TICKS_PER_SECOND),
+                renderMode: "stable-keyword-highlight",
             });
         }
     }
+    for (let index = 1; index < assets.length; index += 1) {
+        const previous = assets[index - 1];
+        const current = assets[index];
+        const gapFrames = current.startFrame - previous.endFrame;
+        if (gapFrames > 0 && gapFrames <= bridgeGapFrames) {
+            previous.endFrame = current.startFrame;
+            previous.visibleFrames = previous.endFrame - previous.startFrame;
+            previous.end = previous.endFrame / previous.frameRate;
+        }
+    }
     return assets;
+}
+
+function captionContinuityReport(graphics = []) {
+    const rapidTransitions = graphics.filter((graphic) => graphic.visibleFrames < 12);
+    const offFrameBoundaries = graphics.filter((graphic) =>
+        Math.abs(graphic.start * graphic.frameRate - graphic.startFrame) > 1e-6 ||
+        Math.abs(graphic.end * graphic.frameRate - graphic.endFrame) > 1e-6
+    );
+    const accidentalGaps = [];
+    const microGaps = [];
+    for (let index = 1; index < graphics.length; index += 1) {
+        const previous = graphics[index - 1];
+        const current = graphics[index];
+        const gapFrames = current.startFrame - previous.endFrame;
+        if (gapFrames > 0 && gapFrames <= Math.round(current.frameRate * 0.2)) {
+            microGaps.push({ previous: previous.path, current: current.path, frames: gapFrames });
+        }
+        if (previous.cueIndex === current.cueIndex && current.startFrame !== previous.endFrame) {
+            accidentalGaps.push({ previous: previous.path, current: current.path, frames: gapFrames });
+        }
+    }
+    return {
+        passed: rapidTransitions.length === 0 && offFrameBoundaries.length === 0 && accidentalGaps.length === 0 && microGaps.length === 0,
+        rapidTransitions,
+        offFrameBoundaries,
+        accidentalGaps,
+        microGaps,
+    };
+}
+
+function createStableCaptionOverlay(filePath, headlinePath, graphics, durationSeconds, options = {}) {
+    ensureDir(path.dirname(filePath));
+    const ffmpegBin = options.ffmpegBin || "ffmpeg";
+    const frameRate = Math.max(24, Math.min(60, Number(options.frameRate || 30)));
+    const totalFrames = Math.max(1, Math.round(durationSeconds * frameRate));
+    const segments = [];
+    let cursorFrame = 0;
+    for (const graphic of graphics) {
+        if (graphic.startFrame > cursorFrame) {
+            segments.push({ path: headlinePath, frames: graphic.startFrame - cursorFrame });
+        }
+        segments.push({ path: graphic.path, frames: Math.max(1, graphic.endFrame - graphic.startFrame) });
+        cursorFrame = Math.max(cursorFrame, graphic.endFrame);
+    }
+    if (cursorFrame < totalFrames) {
+        segments.push({ path: headlinePath, frames: totalFrames - cursorFrame });
+    }
+    if (!segments.length) segments.push({ path: headlinePath, frames: totalFrames });
+    const concatPath = `${filePath}.concat.txt`;
+    const quotePath = (value) => String(value).replaceAll("'", "'\\''");
+    const concatLines = [];
+    for (const segment of segments) {
+        concatLines.push(`file '${quotePath(segment.path)}'`);
+        concatLines.push(`duration ${(segment.frames / frameRate).toFixed(9)}`);
+    }
+    concatLines.push(`file '${quotePath(segments.at(-1).path)}'`);
+    fs.writeFileSync(concatPath, `${concatLines.join("\n")}\n`, "utf8");
+    execFileSync(ffmpegBin, [
+        "-y", "-v", "error", "-f", "concat", "-safe", "0", "-i", concatPath,
+        "-vf", `fps=${frameRate},format=yuva444p10le`,
+        "-t", String(durationSeconds), "-an", "-c:v", "prores_ks", "-profile:v", "4",
+        "-pix_fmt", "yuva444p10le", filePath,
+    ]);
+    fs.unlinkSync(concatPath);
+    return {
+        path: filePath,
+        frameRate,
+        totalFrames,
+        segmentCount: segments.length,
+        timelineClipCount: 1,
+        noCaptionClipBoundaries: true,
+    };
 }
 
 function condensedHeadline(value, maximumWords = 7) {
@@ -514,13 +628,13 @@ class ShortFormBatchStore {
                     layout,
                     {
                         magickBin: this.config.IMAGEMAGICK_BIN || this.config.MAGICK_BIN || "magick",
-                        font: this.config.CAPTION_FONT,
+                        font: this.config.HEADLINE_FONT || this.config.CAPTION_FONT,
                     }
                 );
             }
 
-            const captionGraphics = captionMode === "word-highlight"
-                ? createWordHighlightCaptions(
+            const captionGraphics = captionMode === "stable-keyword-highlight"
+                ? createStableHighlightCaptions(
                       path.join(workspace, "generated-assets", "short-form", "captions"),
                       cues,
                       style.captions,
@@ -531,21 +645,32 @@ class ShortFormBatchStore {
                       }
                   )
                 : [];
-            for (const [captionIndex, graphic] of captionGraphics.entries()) {
+            let captionOverlay = null;
+            if (captionGraphics.length && headlinePath) {
+                captionOverlay = createStableCaptionOverlay(
+                    path.join(workspace, "generated-assets", "short-form", "stable-caption-overlay.mov"),
+                    headlinePath,
+                    captionGraphics,
+                    selection.duration,
+                    {
+                        ffmpegBin: this.config.FFMPEG_BIN || "ffmpeg",
+                        frameRate: style.captions.frameRate || 30,
+                    }
+                );
                 sourceAssets.push({
-                    id: `word-caption-${captionIndex + 1}`,
-                    path: graphic.path,
-                    role: "word-highlight-caption",
+                    id: "stable-caption-overlay",
+                    path: captionOverlay.path,
+                    role: "stable-caption-overlay",
                     order: sourceAssets.length,
                 });
                 timeline.push({
-                    asset_path: graphic.path,
+                    asset_path: captionOverlay.path,
                     order: timeline.length,
                     video_track_index: 2,
                     audio_track_index: 0,
-                    insertion_time_ticks: Math.round(graphic.start * TICKS_PER_SECOND),
+                    insertion_time_ticks: 0,
                     source_start_seconds: 0,
-                    duration_seconds: Number((graphic.end - graphic.start).toFixed(3)),
+                    duration_seconds: selection.duration,
                     overwrite: true,
                 });
             }
@@ -607,6 +732,8 @@ class ShortFormBatchStore {
                         mode: captionMode,
                         sourceEmbedded: source.captionsEmbedded,
                         graphics: captionGraphics,
+                        continuity: captionContinuityReport(captionGraphics),
+                        overlay: captionOverlay,
                     },
                 },
                 archive: {
@@ -792,11 +919,13 @@ module.exports = {
     TICKS_PER_SECOND,
     candidateRanges,
     captionCues,
+    captionContinuityReport,
     condensedHeadline,
     coverTransform,
     createCaptionRemask,
     createHeadlineGraphic,
-    createWordHighlightCaptions,
+    createStableCaptionOverlay,
+    createStableHighlightCaptions,
     loudnessCorrection,
     probeVideo,
     styleById,
