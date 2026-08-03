@@ -275,6 +275,8 @@ class CepAdapter {
     var scaleReceipt=[];
     var positionReceipt=null;
     var dialogueGainReceipt=null;
+    var semanticVisualsFramed=0;
+    var overlayAudioRemoved=0;
     for(var componentIndex=0;componentIndex<clip.components.numItems;componentIndex++){
         var component=clip.components[componentIndex];
         if(component.matchName==="AE.ADBE Motion"||component.displayName==="Motion"){
@@ -321,6 +323,23 @@ class CepAdapter {
             }
         }
     }
+    for(var visualTrackIndex=1;visualTrackIndex<sequence.videoTracks.numTracks;visualTrackIndex++){
+        var visualTrack=sequence.videoTracks[visualTrackIndex];
+        for(var visualIndex=0;visualIndex<visualTrack.clips.numItems;visualIndex++){
+            var visualClip=visualTrack.clips[visualIndex];
+            if(visualClip&&visualClip.setScaleToFrameSize){
+                visualClip.setScaleToFrameSize();
+                semanticVisualsFramed++;
+            }
+        }
+    }
+    for(var overlayAudioTrackIndex=1;overlayAudioTrackIndex<sequence.audioTracks.numTracks;overlayAudioTrackIndex++){
+        var overlayAudioTrack=sequence.audioTracks[overlayAudioTrackIndex];
+        for(var overlayAudioIndex=overlayAudioTrack.clips.numItems-1;overlayAudioIndex>=0;overlayAudioIndex--){
+            overlayAudioTrack.clips[overlayAudioIndex].remove(false,false);
+            overlayAudioRemoved++;
+        }
+    }
     if(audioClip){
         var gainDb=Number(plan.editing.dialogueGainDb||0);
         for(var audioComponentIndex=0;audioComponentIndex<audioClip.components.numItems;audioComponentIndex++){
@@ -348,6 +367,8 @@ class CepAdapter {
         scale:scaleReceipt,
         position:positionReceipt,
         dialogueGain:dialogueGainReceipt,
+        semanticVisualsFramed:semanticVisualsFramed,
+        overlayAudioRemoved:overlayAudioRemoved,
         exposedCanvas:Boolean(plan.transform.exposedCanvas)
     });
 }catch(error){return JSON.stringify({success:false,error:String(error)});}})();`;

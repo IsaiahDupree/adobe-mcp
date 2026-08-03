@@ -511,6 +511,9 @@ function normalizeShortForm(spec) {
         },
         motion: { ...(input.motion || {}) },
         editing: { ...(input.editing || {}) },
+        layout: { ...(input.layout || {}) },
+        headline: input.headline ? { ...(input.headline || {}) } : null,
+        semanticVisuals: (input.semantic_visuals || input.semanticVisuals || []).map((item) => ({ ...item })),
         captions: {
             ...(captions || {}),
             required: captions.required !== false,

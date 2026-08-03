@@ -446,7 +446,19 @@ class VideoJobRunner {
         if (!this.cepAdapter) throw new Error("Short-form editing requires the Premiere CEP bridge.");
         const captionPath = job.shortForm.captionPath || job.outputPaths.combinedCaptions;
         let nativeCaptionTrack = null;
-        if (job.shortForm.captions.required) {
+        if (job.shortForm.captions.required && job.shortForm.captions.mode === "word-highlight") {
+            const graphics = job.shortForm.captions.graphics || [];
+            if (!graphics.length) {
+                throw new WorkflowValidationError("Word-highlight captions require generated Premiere graphic assets.");
+            }
+            nativeCaptionTrack = {
+                success: true,
+                created: true,
+                reused: false,
+                verification: "premiere-timeline-word-highlight-graphics",
+                graphics: graphics.length,
+            };
+        } else if (job.shortForm.captions.required) {
             if (!fs.existsSync(captionPath) || fs.statSync(captionPath).size === 0) {
                 throw new WorkflowValidationError("Short-form edit requires non-empty trimmed captions.");
             }

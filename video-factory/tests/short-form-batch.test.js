@@ -10,8 +10,10 @@ const {
     ShortFormBatchRunner,
     candidateRanges,
     captionCues,
+    condensedHeadline,
     coverTransform,
-    createCaptionRemask,
+    createHeadlineGraphic,
+    createWordHighlightCaptions,
     loudnessCorrection,
     styleById,
     styleRegistry,
@@ -82,16 +84,19 @@ test("short-form style registry contains distinct, bounded editing contracts", (
         "kinetic-proof",
         "clean-authority",
         "rapid-explainer",
+        "semantic-focus",
     ]);
-    assert.equal(new Set(styleRegistry.styles.map((style) => style.editing.visualChangeIntervalSeconds)).size, 3);
+    assert.ok(new Set(styleRegistry.styles.map((style) => style.editing.visualChangeIntervalSeconds)).size >= 3);
     assert.equal(new Set(styleRegistry.styles.map((style) => style.editing.dialogueGainDb)).size, 1);
     assert.ok(styleRegistry.styles.every((style) =>
         style.duration.minimumSeconds >= 15 &&
         style.duration.maximumSeconds <= 60 &&
-        style.captions.mode === "native" &&
+        style.captions.mode === "word-highlight" &&
+        style.layout.platformUiReserveBottomRatio >= 0.18 &&
+        style.layout.faceZoomMultiplier >= 1.1 &&
         style.editing.audioPriority === "dialogue-first" &&
-        style.editing.dialogueGainDb >= -3 &&
-        style.editing.dialogueGainDb <= 3
+        style.editing.dialogueGainDb >= -6 &&
+        style.editing.dialogueGainDb <= 6
     ));
     assert.throws(() => styleById("unknown-style"), /Unknown short-form style/);
 });
@@ -128,6 +133,15 @@ test("safe-fill transform covers a vertical frame and clamps off-center focus", 
     assert.ok(focused.position.x < 540);
     assert.ok(focused.position.x >= -626.667);
     assert.equal(focused.exposedCanvas, false);
+
+    const faceAnchored = coverTransform(
+        { width: 1280, height: 720, durationSeconds: 60 },
+        { width: 1080, height: 1920 },
+        { x: 0.534, y: 0.438, anchorX: 0.5, anchorY: 0.35, zoomMultiplier: 1.16 }
+    );
+    assert.ok(Math.abs(faceAnchored.scalePercent - 309.3334) < 0.001);
+    assert.ok(faceAnchored.position.y < 960);
+    assert.equal(faceAnchored.exposedCanvas, false);
 });
 
 test("caption trimming rebases intersecting cues and clips them to the selected range", () => {
@@ -149,10 +163,25 @@ test("caption trimming rebases intersecting cues and clips them to the selected 
     assert.deepEqual(captionCues(output), cues);
 });
 
-test("caption remask creates a real vertical-safe graphic", () => {
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), "premiere-short-remask-"));
-    const output = createCaptionRemask(path.join(root, "caption-remask.png"));
-    assert.ok(fs.statSync(output).size > 1000);
+test("semantic layout creates a top headline and timed word-highlight captions without a bottom bar", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "premiere-short-layout-"));
+    const headline = createHeadlineGraphic(
+        path.join(root, "headline.png"),
+        condensedHeadline("Premiere keeps every creative decision editable", 6),
+        { headlineYRatio: 0.12 },
+        { magickBin: baseConfig.IMAGEMAGICK_BIN, font: baseConfig.CAPTION_FONT }
+    );
+    const captions = createWordHighlightCaptions(
+        path.join(root, "captions"),
+        [{ start: 0, end: 2, text: "Premiere keeps the project editable" }],
+        { anchorYRatio: 0.67, wordsPerChunk: 5 },
+        { magickBin: baseConfig.IMAGEMAGICK_BIN }
+    );
+    assert.ok(fs.statSync(headline).size > 1000);
+    assert.equal(captions.length, 5);
+    assert.equal(captions[0].activeWord, "Premiere");
+    assert.ok(captions.every((caption) => fs.statSync(caption.path).size > 1000));
+    assert.ok(captions.every((caption) => caption.start >= 0 && caption.end <= 2));
 });
 
 test("one completed project compiles three independent vertical styles with real media", async () => {
@@ -187,8 +216,11 @@ test("one completed project compiles three independent vertical styles with real
         assert.equal(child.shortForm.target.format, "9:16");
         assert.equal(child.shortForm.target.width, 1080);
         assert.equal(child.shortForm.target.height, 1920);
-        assert.equal(child.shortForm.captions.mode, "native");
+        assert.equal(child.shortForm.captions.mode, "word-highlight");
         assert.equal(child.shortForm.captions.sourceEmbedded, false);
+        assert.ok(child.shortForm.captions.graphics.length > 0);
+        assert.equal(child.shortForm.layout.platformUiReserveBottomRatio, 0.18);
+        assert.equal(child.production.sourceAssets.some((asset) => asset.role === "caption-remask"), false);
         assert.equal(child.production.existingProjectPath, source.project_path);
         assert.equal(timeline.source_start_seconds, child.shortForm.sourceRange.start);
         assert.equal(timeline.duration_seconds, child.shortForm.sourceRange.duration);
@@ -303,11 +335,11 @@ test("a project collection expands every completed source with preserved lineage
         assert.equal(job.parentShortFormBatchId, batch.id);
         assert.equal(
             job.shortForm.captions.mode,
-            child.sourceId === fixtures[0].id ? "native-remasked" : "native"
+            child.sourceId === fixtures[0].id ? "source-embedded" : "word-highlight"
         );
         if (child.sourceId === fixtures[0].id) {
-            assert.ok(fs.existsSync(job.shortForm.captions.remaskPath));
-            assert.equal(job.production.editPlan.timeline[1].video_track_index, 1);
+            assert.equal(job.shortForm.captions.remaskPath, undefined);
+            assert.equal(job.production.sourceAssets.some((asset) => asset.role === "caption-remask"), false);
         }
     }
 });

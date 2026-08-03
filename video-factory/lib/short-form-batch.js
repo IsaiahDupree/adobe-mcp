@@ -26,7 +26,7 @@ function loudnessCorrection(job, details) {
     const targetDeltaDb = targetLufs - integratedLufs;
     const peakSafeDeltaDb = maximumTruePeakDb - 0.2 - truePeakDb;
     const appliedDeltaDb = Math.min(targetDeltaDb, peakSafeDeltaDb);
-    const dialogueGainDb = Math.max(-3, Math.min(3, currentGainDb + appliedDeltaDb));
+    const dialogueGainDb = Math.max(-6, Math.min(6, currentGainDb + appliedDeltaDb));
     if (Math.abs(dialogueGainDb - currentGainDb) < 0.05) return null;
     return {
         provider: "premiere-dialogue-gain-correction",
@@ -51,23 +51,26 @@ function probeVideo(filePath, ffprobeBin = "ffprobe") {
 }
 
 function coverTransform(sourceFrame, targetFrame, focus = {}) {
+    const zoomMultiplier = Math.max(1, Math.min(1.5, Number(focus.zoomMultiplier ?? 1)));
     const scale = Math.max(
         targetFrame.width / sourceFrame.width,
         targetFrame.height / sourceFrame.height
-    );
+    ) * zoomMultiplier;
     const scaledWidth = sourceFrame.width * scale;
     const scaledHeight = sourceFrame.height * scale;
     const focusX = Math.max(0, Math.min(1, Number(focus.x ?? 0.5)));
     const focusY = Math.max(0, Math.min(1, Number(focus.y ?? 0.5)));
+    const anchorX = Math.max(0, Math.min(1, Number(focus.anchorX ?? 0.5)));
+    const anchorY = Math.max(0, Math.min(1, Number(focus.anchorY ?? 0.5)));
     const maximumShiftX = Math.max(0, (scaledWidth - targetFrame.width) / 2);
     const maximumShiftY = Math.max(0, (scaledHeight - targetFrame.height) / 2);
     const positionX = Math.max(
         targetFrame.width / 2 - maximumShiftX,
-        Math.min(targetFrame.width / 2 + maximumShiftX, targetFrame.width / 2 + (0.5 - focusX) * scaledWidth)
+        Math.min(targetFrame.width / 2 + maximumShiftX, anchorX * targetFrame.width + (0.5 - focusX) * scaledWidth)
     );
     const positionY = Math.max(
         targetFrame.height / 2 - maximumShiftY,
-        Math.min(targetFrame.height / 2 + maximumShiftY, targetFrame.height / 2 + (0.5 - focusY) * scaledHeight)
+        Math.min(targetFrame.height / 2 + maximumShiftY, anchorY * targetFrame.height + (0.5 - focusY) * scaledHeight)
     );
     return {
         mode: "safe-fill",
@@ -75,9 +78,101 @@ function coverTransform(sourceFrame, targetFrame, focus = {}) {
         position: { x: Number(positionX.toFixed(3)), y: Number(positionY.toFixed(3)) },
         sourceFrame,
         targetFrame,
-        focus: { x: focusX, y: focusY },
+        focus: { x: focusX, y: focusY, anchorX, anchorY, zoomMultiplier },
         exposedCanvas: false,
     };
+}
+
+function createHeadlineGraphic(filePath, text, layout = {}, options = {}) {
+    ensureDir(path.dirname(filePath));
+    const magickBin = options.magickBin || "magick";
+    const font = options.font || "/System/Library/Fonts/Supplemental/Arial Bold.ttf";
+    const y = Math.round(1920 * Number(layout.headlineYRatio ?? 0.12));
+    const safeWidth = 900;
+    const layer = `${filePath}.text.png`;
+    execFileSync(magickBin, [
+        "-background", "none", "-fill", "white", "-stroke", "#0A0D10", "-strokewidth", "3",
+        "-font", font, "-pointsize", "66", "-gravity", "center", "-size", `${safeWidth}x260`,
+        `caption:${String(text).trim().toUpperCase()}`, "-trim", "+repage", layer,
+    ]);
+    execFileSync(magickBin, [
+        "-size", "1080x1920", "xc:none", layer, "-gravity", "north", "-geometry", `+0+${y}`,
+        "-composite", filePath,
+    ]);
+    fs.unlinkSync(layer);
+    return filePath;
+}
+
+function createWordHighlightCaptions(directory, cues, captions = {}, options = {}) {
+    ensureDir(directory);
+    const magickBin = options.magickBin || "magick";
+    const font = options.font || "/System/Library/Fonts/Supplemental/Arial Bold.ttf";
+    const pointSize = Number(options.pointSize || 58);
+    const wordsPerChunk = Math.max(3, Math.min(7, Number(captions.wordsPerChunk || 5)));
+    const anchorY = Math.max(0.55, Math.min(0.76, Number(captions.anchorYRatio || 0.67)));
+    const assets = [];
+    const widthCache = new Map();
+    const wordWidth = (word) => {
+        if (widthCache.has(word)) return widthCache.get(word);
+        const width = Number(execFileSync(magickBin, [
+            "-background", "none", "-font", font, "-pointsize", String(pointSize),
+            `label:${word}`, "-format", "%w", "info:",
+        ], { encoding: "utf8" }).trim());
+        widthCache.set(word, width);
+        return width;
+    };
+    const spaceWidth = Math.round(pointSize * 0.34);
+    for (const [cueIndex, cue] of cues.entries()) {
+        const words = cue.text.trim().split(/\s+/).filter(Boolean);
+        if (!words.length) continue;
+        const wordDuration = Math.max(0.08, (cue.end - cue.start) / words.length);
+        for (let wordIndex = 0; wordIndex < words.length; wordIndex += 1) {
+            const chunkStart = Math.floor(wordIndex / wordsPerChunk) * wordsPerChunk;
+            const chunk = words.slice(chunkStart, chunkStart + wordsPerChunk);
+            const active = wordIndex - chunkStart;
+            const output = path.join(
+                directory,
+                `caption-${String(cueIndex + 1).padStart(3, "0")}-${String(wordIndex + 1).padStart(2, "0")}.png`
+            );
+            const y = Math.round(anchorY * 1920);
+            const widths = chunk.map(wordWidth);
+            const totalWidth = widths.reduce((sum, width) => sum + width, 0) + spaceWidth * (chunk.length - 1);
+            let x = Math.max(54, Math.round((1080 - totalWidth) / 2));
+            const drawArgs = ["-size", "1080x1920", "xc:none", "-font", font, "-pointsize", String(pointSize), "-gravity", "northwest"];
+            for (let chunkIndex = 0; chunkIndex < chunk.length; chunkIndex += 1) {
+                drawArgs.push(
+                    "-fill", chunkIndex === active ? "#20D5C2" : "#FFFFFF",
+                    "-stroke", "#090B0D", "-strokewidth", "3",
+                    "-annotate", `+${x}+${y}`, chunk[chunkIndex]
+                );
+                x += widths[chunkIndex] + spaceWidth;
+            }
+            drawArgs.push(output);
+            execFileSync(magickBin, drawArgs);
+            if (options.headlinePath) {
+                const composite = `${output}.composite.png`;
+                execFileSync(magickBin, [output, options.headlinePath, "-composite", composite]);
+                fs.renameSync(composite, output);
+            }
+            assets.push({
+                path: output,
+                text: chunk.join(" "),
+                activeWord: words[wordIndex],
+                start: Number((cue.start + wordIndex * wordDuration).toFixed(3)),
+                end: Number((wordIndex === words.length - 1 ? cue.end : cue.start + (wordIndex + 1) * wordDuration).toFixed(3)),
+            });
+        }
+    }
+    return assets;
+}
+
+function condensedHeadline(value, maximumWords = 7) {
+    return String(value || "")
+        .replace(/[^A-Za-z0-9' -]+/g, " ")
+        .trim()
+        .split(/\s+/)
+        .slice(0, maximumWords)
+        .join(" ");
 }
 
 function srtTime(seconds) {
@@ -348,21 +443,24 @@ class ShortFormBatchStore {
         for (const [index, selection] of selections.entries()) {
             const source = sources.find((item) => item.id === selection.sourceId);
             const style = styleById(selection.styleId);
-            const transform = coverTransform(source.media, targetFrame, spec.focus || {});
             const childId = `${id}-${String(index + 1).padStart(2, "0")}-${selection.styleId}`;
-            const captionRemaskPath = source.captionsEmbedded
-                ? createCaptionRemask(
-                      path.join(
-                          this.config.CAMPAIGNS_DIR,
-                          campaignId,
-                          childId,
-                          "generated-assets",
-                          "short-form",
-                          "caption-remask.png"
-                      ),
-                      this.config.MAGICK_BIN || "magick"
-                  )
-                : null;
+            const workspace = path.join(this.config.CAMPAIGNS_DIR, campaignId, childId);
+            const layout = { ...(style.layout || {}), ...(spec.layout || {}) };
+            const sourceFocus = spec.focus || {};
+            const transform = coverTransform(source.media, targetFrame, {
+                x: sourceFocus.x ?? 0.5,
+                y: sourceFocus.y ?? 0.44,
+                anchorX: sourceFocus.anchorX ?? layout.faceAnchor?.x ?? 0.5,
+                anchorY: sourceFocus.anchorY ?? layout.faceAnchor?.y ?? 0.35,
+                zoomMultiplier: sourceFocus.zoomMultiplier ?? layout.faceZoomMultiplier ?? 1,
+            });
+            const captionMode = source.captionsEmbedded ? "source-embedded" : style.captions.mode;
+            const captionPath = path.join(workspace, "transcripts", "combined-captions.srt");
+            const cues = source.captionsPath ? trimCaptions(source.captionsPath, captionPath, selection) : [];
+            const headlineText = condensedHeadline(
+                spec.headline || selection.title || source.title,
+                Number(spec.headline_max_words || spec.headlineMaxWords || 7)
+            );
             const sourceAssets = [{ id: "source-master", path: source.renderPath, role: "source-master", order: 0 }];
             const timeline = [{
                 asset_path: source.renderPath,
@@ -374,12 +472,89 @@ class ShortFormBatchStore {
                 duration_seconds: selection.duration,
                 overwrite: true,
             }];
-            if (captionRemaskPath) {
-                sourceAssets.push({ id: "caption-remask", path: captionRemaskPath, role: "caption-remask", order: 1 });
+
+            const semanticVisuals = (spec.semantic_visuals || spec.semanticVisuals || [])
+                .slice(0, Number(style.editing.maximumVisualInserts || 4));
+            for (const [visualIndex, visual] of semanticVisuals.entries()) {
+                const visualPath = path.normalize(visual.path || visual.localPath || "");
+                const start = Number(visual.start);
+                const end = Number(visual.end);
+                if (!path.isAbsolute(visualPath) || !fs.existsSync(visualPath)) {
+                    throw new Error(`Semantic visual ${visual.id || visualIndex + 1} requires an existing absolute path.`);
+                }
+                if (![start, end].every(Number.isFinite) || start < 0 || end <= start || end > selection.duration + 0.05) {
+                    throw new Error(`Semantic visual ${visual.id || visualIndex + 1} is outside the selected short.`);
+                }
+                const visualId = visual.id || `semantic-visual-${visualIndex + 1}`;
+                sourceAssets.push({
+                    id: visualId,
+                    path: visualPath,
+                    role: "semantic-b-roll",
+                    order: sourceAssets.length,
+                    provider: visual.provider || null,
+                    query: visual.query || null,
+                });
                 timeline.push({
-                    asset_path: captionRemaskPath,
-                    order: 1,
+                    asset_path: visualPath,
+                    order: timeline.length,
                     video_track_index: 1,
+                    audio_track_index: 1,
+                    insertion_time_ticks: Math.round(start * TICKS_PER_SECOND),
+                    source_start_seconds: Number(visual.sourceStart || 0),
+                    duration_seconds: Number((end - start).toFixed(3)),
+                    overwrite: true,
+                });
+            }
+
+            let headlinePath = null;
+            if (headlineText) {
+                headlinePath = createHeadlineGraphic(
+                    path.join(workspace, "generated-assets", "short-form", "headline.png"),
+                    headlineText,
+                    layout,
+                    {
+                        magickBin: this.config.IMAGEMAGICK_BIN || this.config.MAGICK_BIN || "magick",
+                        font: this.config.CAPTION_FONT,
+                    }
+                );
+            }
+
+            const captionGraphics = captionMode === "word-highlight"
+                ? createWordHighlightCaptions(
+                      path.join(workspace, "generated-assets", "short-form", "captions"),
+                      cues,
+                      style.captions,
+                      {
+                          magickBin: this.config.IMAGEMAGICK_BIN || this.config.MAGICK_BIN || "magick",
+                          font: this.config.CAPTION_FONT,
+                          headlinePath,
+                      }
+                  )
+                : [];
+            for (const [captionIndex, graphic] of captionGraphics.entries()) {
+                sourceAssets.push({
+                    id: `word-caption-${captionIndex + 1}`,
+                    path: graphic.path,
+                    role: "word-highlight-caption",
+                    order: sourceAssets.length,
+                });
+                timeline.push({
+                    asset_path: graphic.path,
+                    order: timeline.length,
+                    video_track_index: 2,
+                    audio_track_index: 0,
+                    insertion_time_ticks: Math.round(graphic.start * TICKS_PER_SECOND),
+                    source_start_seconds: 0,
+                    duration_seconds: Number((graphic.end - graphic.start).toFixed(3)),
+                    overwrite: true,
+                });
+            }
+            if (headlinePath && captionGraphics.length === 0) {
+                sourceAssets.push({ id: "semantic-headline", path: headlinePath, role: "headline", order: sourceAssets.length });
+                timeline.push({
+                    asset_path: headlinePath,
+                    order: timeline.length,
+                    video_track_index: 2,
                     audio_track_index: 0,
                     insertion_time_ticks: 0,
                     source_start_seconds: 0,
@@ -423,12 +598,15 @@ class ShortFormBatchStore {
                     transform,
                     motion: style.motion,
                     editing: style.editing,
+                    layout,
+                    headline: headlinePath ? { text: headlineText, path: headlinePath } : null,
+                    semantic_visuals: semanticVisuals,
                     captions: {
                         ...style.captions,
                         required: requireCaptions,
-                        mode: source.captionsEmbedded ? "native-remasked" : style.captions.mode,
+                        mode: captionMode,
                         sourceEmbedded: source.captionsEmbedded,
-                        remaskPath: captionRemaskPath,
+                        graphics: captionGraphics,
                     },
                 },
                 archive: {
@@ -438,9 +616,6 @@ class ShortFormBatchStore {
                     include_source_assets: false,
                 },
             });
-            const cues = source.captionsPath
-                ? trimCaptions(source.captionsPath, child.outputPaths.combinedCaptions, selection)
-                : [];
             if (child.shortForm.captions.required && cues.length === 0) {
                 throw new Error(`Short-form child ${child.id} requires captions in its selected source range.`);
             }
@@ -458,6 +633,9 @@ class ShortFormBatchStore {
                 renderPath: child.outputPaths.render,
                 captionPath: child.outputPaths.combinedCaptions,
                 captionCues: cues.length,
+                captionGraphics: captionGraphics.length,
+                semanticVisuals: semanticVisuals.length,
+                headline: headlineText,
                 transform,
                 status: child.status,
             });
@@ -614,8 +792,11 @@ module.exports = {
     TICKS_PER_SECOND,
     candidateRanges,
     captionCues,
+    condensedHeadline,
     coverTransform,
     createCaptionRemask,
+    createHeadlineGraphic,
+    createWordHighlightCaptions,
     loudnessCorrection,
     probeVideo,
     styleById,

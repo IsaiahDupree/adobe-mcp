@@ -91,8 +91,14 @@ module.exports = {
     ELEVENLABS_API_KEY: envValue("ELEVENLABS_API_KEY", "", [
         path.join(REPO_ROOT, "../../Remotion/.env.local"),
     ]),
-    PEXELS_API_KEY: envValue("PEXELS_API_KEY"),
-    PIXABAY_API_KEY: envValue("PIXABAY_API_KEY"),
+    PEXELS_API_KEY: envValue("PEXELS_API_KEY", "", [
+        path.join(REPO_ROOT, "../../factoryos/.env"),
+        path.join(REPO_ROOT, "../../Remotion/.env.local"),
+    ]),
+    PIXABAY_API_KEY: envValue("PIXABAY_API_KEY", "", [
+        path.join(REPO_ROOT, "../../factoryos/.env"),
+        path.join(REPO_ROOT, "../../Remotion/.env.local"),
+    ]),
     HEYGEN_AVATAR_ID: envValue(
         "HEYGEN_AVATAR_ID",
         "d9af08b6f80349aaa56096443f91d19e"
