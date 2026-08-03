@@ -76,22 +76,34 @@ New HeyGen jobs can include `derivative_campaign.enabled: true`, as shown in `ex
 
 ### Creator benchmark presets
 
-The private `@personalbrandlaunch` study measures 20 ranked public reels plus one user-selected reference reel without checking source media into Git. Its portable production grammar is stored in `config/content-benchmark-profiles.json`; its source list, aggregate measurements, and detailed report live under `benchmarks/personalbrandlaunch-top20-*`.
+The private `@personalbrandlaunch` study measures 100 unique public reels without checking source media into Git: the preserved ranked top 20 plus 80 public timeline additions. Its portable production grammar is stored in `config/content-benchmark-profiles.json`; the source manifest and detailed report live under `benchmarks/personalbrandlaunch-top100-*`. The private analysis package also contains all transcripts, per-video measurements, contact sheets, current trend evidence, and an 80-idea Isaiah backlog.
 
 `authority-benchmark-matrix-v1` preserves the original four-format experiment. `authority-benchmark-expanded-v2` adds contrarian deconstruction, proof-led screen walkthrough, and before/after reveal for seven original Isaiah variants from one completed HeyGen source. Each format enforces a non-duplicative spoken/written/visual triple hook, stable no-flicker captions, style-specific semantic asset selection, face-safe vertical framing, an unobstructed platform UI reserve, and a goal-matched CTA.
 
 ```bash
 python3 scripts/analyze_creator_benchmark.py \
-  --manifest benchmarks/personalbrandlaunch-top20-source.json \
+  --manifest benchmarks/personalbrandlaunch-top100-source.json \
   --source-dir /absolute/private/corpus/source \
   --transcript-dir /absolute/private/corpus/transcripts \
   --output-dir /absolute/private/corpus/analysis \
-  --frames-dir /absolute/private/corpus/frames
+  --frames-dir /absolute/private/corpus/frames \
+  --resume
+
+node scripts/research_next_video.js /absolute/private/corpus/research/next-video-trends.json
+
+python3 scripts/synthesize_creator_benchmark.py \
+  --corpus /absolute/private/corpus/analysis/corpus.json \
+  --aggregate /absolute/private/corpus/analysis/aggregate.json \
+  --research /absolute/private/corpus/research/next-video-trends.json \
+  --ideas-output /absolute/private/corpus/analysis/isaiah-80-idea-backlog.json \
+  --report-output benchmarks/personalbrandlaunch-top100-report.md
 
 node cli.js board-submit examples/authority-benchmark-isaiah-board.json --run
 node cli.js board-status isaiah-tool-stack-vs-content-system-v1
 node cli.js short-campaign-submit examples/authority-benchmark-isaiah-short-campaign.json --run
 ```
+
+`examples/isaiah-100-video-content-system-board.json` turns the expanded benchmark into one approval-gated long-form campaign. It uses one HeyGen presenter scene with the `Isaiahdupree_v2` ElevenLabs voice, reuses that paid source across Premiere revisions, and derives 21 approval-gated shorts: three semantic ranges across seven benchmark styles.
 
 The benchmark is an editorial reference, not a media library or script source. Generated posts use original Isaiah topics, claims, language, footage, graphics, colors, and offers.
 

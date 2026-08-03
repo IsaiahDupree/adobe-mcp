@@ -201,24 +201,34 @@ def make_contact_sheet(path: Path, output: Path, duration: float) -> None:
 
 def format_family(title: str) -> str:
     lowered = title.lower()
-    if " vs" in lowered or "which video" in lowered or "different delivery" in lowered:
-        return "comparison-or-test"
-    if "rating" in lowered or "types" in lowered or "tools" in lowered or "101" in lowered:
+    if any(term in lowered for term in ("case study", "how we got", "how i got", "results", "million views")):
+        return "case-study-or-proof"
+    if any(term in lowered for term in (" vs", "which video", "different delivery", "levels of", "before and after")):
+        return "comparison-ladder-or-test"
+    if any(term in lowered for term in ("rating", "types", "tools", "101", "mistakes", "ways to", "steps")):
         return "rating-list-or-taxonomy"
-    if "hi we" in lowered or "story" in lowered:
-        return "story-or-identity"
-    return "teaching-demonstration"
+    if any(term in lowered for term in ("hi we", "my story", "storytime", "pov:", "day in", "journey")):
+        return "founder-diary-or-story"
+    if any(term in lowered for term in ("why ", "stop ", "don't ", "hot take", "unpopular", "truth")):
+        return "contrarian-or-deconstruction"
+    if any(term in lowered for term in ("how to", "framework", "structure", "formula", "strategy")):
+        return "tutorial-or-framework"
+    return "teaching-or-demonstration"
 
 
 def hook_family(title: str, transcript: dict) -> str:
     opening = f"{title} {transcript.get('openingSegment', '')}".lower()
+    if re.search(r"\b(i|we) (made|grew|got|generated|built|tested|analyzed)\b", opening):
+        return "outcome-or-proof"
+    if any(term in opening for term in ("stop ", "don't ", "wrong", "truth", "nobody", "most people")):
+        return "contrarian-or-correction"
     if "which" in opening or "?" in opening:
         return "question-or-prediction"
-    if " vs" in opening or "different" in opening or "more cuts" in opening:
-        return "comparison-or-contrast"
+    if any(term in opening for term in (" vs", "different", "more cuts", "levels of", "before")):
+        return "comparison-ladder-or-contrast"
     if re.search(r"\b(five|seven|three|top|rating|types|tools|songs)\b", opening):
         return "list-or-taxonomy"
-    if "my name" in opening or "we met" in opening:
+    if any(term in opening for term in ("my name", "we met", "my story", "pov:")):
         return "personal-story"
     return "direct-claim-or-instruction"
 
@@ -229,11 +239,38 @@ def cta_family(transcript: dict) -> str:
         return "keyword-comment"
     if "follow" in closing:
         return "follow"
+    if "save" in closing or "share" in closing or "send this" in closing:
+        return "save-or-share"
+    if any(term in closing for term in ("link in", "book", "apply", "work with", "dm me")):
+        return "offer-or-service"
     return "none-or-implicit"
 
 
+def reusable_rows(analysis_dir: Path | None) -> dict[str, dict]:
+    if not analysis_dir or not analysis_dir.exists():
+        return {}
+    rows = {}
+    for path in analysis_dir.glob("*.json"):
+        if path.name in {"aggregate.json", "corpus.json"}:
+            continue
+        try:
+            row = json.loads(path.read_text())
+        except (json.JSONDecodeError, OSError):
+            continue
+        shortcode = row.get("shortcode")
+        if shortcode:
+            rows[shortcode] = row
+    return rows
+
+
+def reusable_frames(frames_dir: Path | None) -> dict[str, Path]:
+    if not frames_dir or not frames_dir.exists():
+        return {}
+    return {path.stem.split("-", 1)[-1].replace("-style-anchor", ""): path for path in frames_dir.glob("*.jpg")}
+
+
 def summarize(rows: list[dict]) -> dict:
-    ranked = [row for row in rows if row["rank"] <= 20]
+    ranked = [row for row in rows if not row.get("role")]
     def mean(path: tuple[str, ...]) -> float:
         values = []
         for row in ranked:
@@ -257,7 +294,7 @@ def summarize(rows: list[dict]) -> dict:
     return {
         "schemaVersion": 1,
         "corpusSize": len(ranked),
-        "styleAnchorIncluded": any(row["rank"] > 20 for row in rows),
+        "expandedTimelineIncluded": any(row["rank"] > 20 for row in rows),
         "durationSeconds": {
             "mean": mean(("media", "durationSeconds")),
             "median": round(statistics.median(row["media"]["durationSeconds"] for row in ranked), 3),
@@ -317,15 +354,40 @@ def main() -> None:
     parser.add_argument("--transcript-dir", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--frames-dir", type=Path, required=True)
+    parser.add_argument("--reuse-analysis-dir", type=Path)
+    parser.add_argument("--reuse-frames-dir", type=Path)
+    parser.add_argument("--resume", action="store_true")
     args = parser.parse_args()
     manifest = json.loads(args.manifest.read_text())
     args.output_dir.mkdir(parents=True, exist_ok=True)
+    args.frames_dir.mkdir(parents=True, exist_ok=True)
+    reuse = reusable_rows(args.reuse_analysis_dir)
+    frame_reuse = reusable_frames(args.reuse_frames_dir)
     rows = []
     for entry in manifest["entries"]:
         source = args.source_dir / entry["file"]
-        media = probe_media(source)
-        transcript = transcript_metrics(args.transcript_dir / f"{source.stem}.json", media["durationSeconds"])
-        visual = visual_metrics(source, args.frames_dir / f"{source.stem}.jpg", media["durationSeconds"])
+        destination = args.output_dir / f"{source.stem}.json"
+        cached = None
+        if args.resume and destination.exists():
+            try:
+                cached = json.loads(destination.read_text())
+            except (json.JSONDecodeError, OSError):
+                cached = None
+        cached = cached or reuse.get(entry["shortcode"])
+        if cached:
+            media = cached["media"]
+            transcript = cached["transcript"]
+            visual = cached["visual"]
+            audio = cached["audio"]
+            old_frame = frame_reuse.get(entry["shortcode"])
+            new_frame = args.frames_dir / f"{source.stem}.jpg"
+            if old_frame and not new_frame.exists():
+                new_frame.hardlink_to(old_frame)
+        else:
+            media = probe_media(source)
+            transcript = transcript_metrics(args.transcript_dir / f"{source.stem}.json", media["durationSeconds"])
+            visual = visual_metrics(source, args.frames_dir / f"{source.stem}.jpg", media["durationSeconds"])
+            audio = audio_metrics(source)
         row = {
             **entry,
             "formatFamily": format_family(entry["title"]),
@@ -334,11 +396,12 @@ def main() -> None:
             "media": media,
             "transcript": transcript,
             "visual": visual,
-            "audio": audio_metrics(source),
+            "audio": audio,
         }
-        (args.output_dir / f"{source.stem}.json").write_text(json.dumps(row, indent=2) + "\n")
+        destination.write_text(json.dumps(row, indent=2) + "\n")
         rows.append(row)
-        print(f"Analyzed {entry['rank']:02d}: {entry['shortcode']}", flush=True)
+        action = "Reused" if cached else "Analyzed"
+        print(f"{action} {entry['rank']:03d}: {entry['shortcode']}", flush=True)
     aggregate = summarize(rows)
     (args.output_dir / "aggregate.json").write_text(json.dumps(aggregate, indent=2) + "\n")
     (args.output_dir / "corpus.json").write_text(json.dumps(rows, indent=2) + "\n")

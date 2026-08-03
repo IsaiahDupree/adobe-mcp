@@ -1,0 +1,166 @@
+{
+  "board_id": "isaiah-100-video-content-system-v1",
+  "campaign_id": "isaiah-100-video-benchmark-campaign-v1",
+  "topic": "I analyzed 100 viral videos and turned the patterns into an autonomous content system",
+  "objective": "Use first-party benchmark and production receipts to teach creators how evidence becomes repeatable content without copying another creator's identity or scripts.",
+  "max_revisions": 3,
+  "minimum_revisions": 2,
+  "agents": {"provider": "local", "judge_count": 2},
+  "trend": {
+    "enabled": true,
+    "query": "AI content creation system creator workflow",
+    "limit": 8,
+    "max_age_days": 180,
+    "region": "US"
+  },
+  "content_benchmark": {
+    "profile_id": "authority-education-v1",
+    "format_family": "benchmark-screen-proof-walkthrough",
+    "written_hook": "FROM BENCHMARK TO CONTENT OS",
+    "visual_hook": "A measured 100-reel grid resolves into an evidence-to-production pipeline and seven controlled Premiere edits.",
+    "cta_goal": "audience-growth"
+  },
+  "claims_and_sources": [
+    {
+      "claim": "The private benchmark contains 100 unique public reels with transcripts and per-video production measurements.",
+      "source": "video-factory/benchmarks/personalbrandlaunch-top100-source.json and private analysis corpus",
+      "proofType": "first-party benchmark receipt"
+    },
+    {
+      "claim": "The benchmark was converted into 80 original Isaiah content ideas across four brand pillars.",
+      "source": "private personalbrandlaunch-top100/analysis/isaiah-80-idea-backlog.json",
+      "proofType": "first-party planning artifact"
+    },
+    {
+      "claim": "One presenter source can be reused across controlled Premiere edits without purchasing the same speech again.",
+      "source": "Video Factory generation-reuse and short-form campaign receipts",
+      "proofType": "first-party system demonstration"
+    }
+  ],
+  "prohibited_patterns": [
+    "copied benchmark creator wording, footage, graphics, identity, or claims",
+    "caption text reused as the editorial callout",
+    "decorative B-roll unrelated to the active spoken idea",
+    "gray lower caption bar",
+    "flickering captions or per-frame overlay replacement",
+    "unlicensed media",
+    "unsupported performance promise",
+    "automatic publication"
+  ],
+  "base_job": {
+    "job_id": "isaiah-100-video-content-system-master",
+    "campaign_id": "isaiah-100-video-benchmark-campaign-v1",
+    "priority": 100,
+    "request": {
+      "topic": "I analyzed 100 viral videos and turned the patterns into an autonomous content system",
+      "audience": "Software founders, creators, and operators who use AI tools but still make content through disconnected manual steps",
+      "viewer_problem": "They can generate more content, but they cannot trace why an idea was chosen, how an edit was designed, or what should change after publication.",
+      "core_promise": "Show the evidence-backed loop that turns one creator benchmark into an original idea backlog, one five-minute master, and controlled short-form experiments.",
+      "cta": "Follow the build to see which format earns the strongest viewer retention."
+    },
+    "autonomy": {
+      "mode": "guarded",
+      "script_approval": "automatic",
+      "rough_cut_approval": "automatic_if_qc_passes",
+      "final_publish_approval": "required"
+    },
+    "production": {
+      "project_name": "isaiah-100-video-content-system",
+      "sequence_name": "YOUTUBE_16X9_100_VIDEO_SYSTEM",
+      "render": {"timeout_ms": 1800000, "export_type": "IMMEDIATELY"}
+    },
+    "generation": {
+      "enabled": true,
+      "provider": "heygen",
+      "voice_provider": "elevenlabs",
+      "elevenlabs_voice_id": "k0HDiJKO5QdXkGN6NSLI",
+      "elevenlabs_model_id": "eleven_multilingual_v2",
+      "elevenlabs_output_format": "mp3_44100_128",
+      "elevenlabs_voice_settings": {"stability": 0.48, "similarity_boost": 0.82, "style": 0.2, "use_speaker_boost": true, "speed": 1.12},
+      "voice_variant_id": "elevenlabs-isaiah-v2",
+      "avatar_id": "93a72551393b4a13a7e256a3fa3ca421",
+      "voice_id": "32ebf1506d7f4b9d93fbcfdda958721c",
+      "engine": "avatar_iii",
+      "aspect_ratio": "16:9",
+      "resolution": "720p",
+      "fit": "cover",
+      "output_format": "mp4",
+      "concurrency": 1,
+      "words_per_minute": 160,
+      "scenes": [
+        {
+          "id": "benchmark-system",
+          "title": "From 100 measured videos to a content operating system",
+          "callout_text": "EVIDENCE BECOMES A SYSTEM",
+          "script": "I analyzed one hundred videos from a creator whose content consistently makes complicated branding and social strategy feel simple. But I did not do it so I could copy their posts. I wanted to answer a harder question: can you measure the production patterns that make content clear, translate those patterns into original rules, and then give an autonomous system enough structure to produce, edit, and test new videos for a completely different brand? This video is the receipt. I collected one hundred unique public reels, transcribed every one, measured their pacing, visual changes, presenter framing, sound, hooks, format families, and calls to action, then connected those findings to my own brand, my own products, and the systems I actually operate. The result is not a folder of inspiration. It is an evidence-to-production loop.\n\nThe problem with most AI content workflows is that they begin with generation. Someone opens a model, asks for ten ideas, turns one into a script, and hopes the algorithm likes it. That creates output, but it does not create memory. The system cannot explain why the topic deserved production, which viewer problem it addresses, what proof supports the claim, why a visual appears at a specific second, or what should change after the post performs. More tools make that chain harder to see. So I started before generation. I used my Ops Console, Marketing Institution, Research Institution, brand book, live service registry, and current market evidence to identify the intersection between what people are paying attention to and what I can prove.\n\nThe strongest topic was sitting inside the work itself: I analyzed one hundred viral and high-signal videos and turned the patterns into an autonomous content system. It is timely because creators are already using AI across research, writing, editing, and production, but trust and control are becoming more valuable as generic output gets cheaper. It is on brand because I am not promising an imaginary machine. I can show the corpus, the transcripts, the measurements, the eighty-idea backlog, the Premiere projects, the quality checks, and the experiment records. The proof exists before the claim.\n\nHere is what the benchmark taught me. First, a strong opening is not one hook. It is three coordinated hooks. The spoken line makes a promise. The written headline compresses or reframes that promise in a few words. The visual layer demonstrates the tension immediately. Those layers agree, but they do not repeat the same sentence. That matters because a caption is for accessibility and reading rhythm. A callout is an editorial idea. When a system treats them as the same thing, the video feels noisy and mechanical.\n\nSecond, the reusable unit is a format, not a topic. Comparison ladders help people choose between levels. Hook tests make a prediction and reveal the winner. Rating lists turn advice into a fast taxonomy. Founder stories attach a lesson to a real decision. Contrarian deconstructions replace weak common advice with a stronger operating rule. Screen-proof walkthroughs make the artifact visible. Before-and-after reveals make change undeniable. I can use all seven without borrowing somebody else's language, footage, brand, or claims because the structure travels while the evidence remains mine.\n\nThird, visual density only works when the visuals explain the active sentence. More B-roll is not automatically better. A screen capture belongs where I name the system. A diagram belongs where I explain the relationship between research, production, and measurement. Provider footage belongs where it gives a viewer concrete context that the presenter alone cannot show. A random laptop clip added every two seconds is still random. The goal is a meaningful visual reset, not motion for its own sake.\n\nFourth, calls to action work after value, not instead of value. A keyword comment makes sense when I have a relevant map or template to deliver. A follow makes sense when this is one episode in a measurable build-in-public series. A service invitation makes sense after I have shown the workflow and qualified the problem. Sometimes the strongest authority move is to end after the proof. The business goal chooses the CTA; habit does not.\n\nI converted those findings into eighty original ideas across four pillars. Receipts over renders shows the actual artifact behind every claim. Manual-work tax exposes the hidden handoffs that disconnected tools leave behind. Own your infrastructure explains where control, recovery, and permissions live. Speed to shipped documents how quickly a verified system moves from signal to finished work. Each idea includes a hook family, format family, required proof, and goal-matched CTA. That means the backlog is not eighty vague titles. It is eighty production-ready hypotheses tied to the brand.\n\nNow the system is producing this campaign with one paid presenter generation. Isaiahdupree v2 from ElevenLabs supplies the voice, HeyGen supplies the performance, and Premiere remains the editable master. The edit adds native captions, first-party proof, licensed Pexels and Pixabay footage, generated two-dimensional explainers, face-safe motion, sound hierarchy, and release checks. The project is the product, not just the exported MP4. An agent can reopen it, inspect the timeline, replace a visual, correct a caption, or render another revision without buying the same speech again.\n\nThen the long-form source becomes a controlled short-form matrix. Seven styles can test comparison, hook prediction, rating, story authority, contrarian correction, screen proof, and before-and-after presentation. Each version preserves the same source lineage and remains approval-gated. When real retention data comes back, the system can compare average percentage viewed, completion, early retention, qualified comments, and conversion signals without pretending that public likes are private audience truth. The winning format earns another iteration; the weak one becomes a documented lesson.\n\nThat is the larger idea. Autonomy is not producing the largest number of files. It is preserving the chain of judgment from evidence to idea, from idea to edit, and from edit to learning. One hundred measured videos became eighty original opportunities. One opportunity became one five-minute source. One source became a portfolio of controlled experiments. And every decision leaves a receipt. Follow this build, because the next episode is not another prediction about AI content. It is the actual result of what viewers chose."
+        }
+      ]
+    },
+    "retention": {
+      "enabled": true,
+      "preset": "youtube-explainer",
+      "caption_mode": "native",
+      "native_caption_track_name": "C1_ACCESSIBILITY_EN",
+      "hook_text": "I ANALYZED 100 VIRAL VIDEOS",
+      "pattern_interrupt_text": "THE PROOF EXISTS BEFORE THE CLAIM",
+      "punch_in_scale": 1.06,
+      "dialogue_gain_db": 1,
+      "loudness_qa": {"target_integrated_lufs": -16, "tolerance_lufs": 2, "maximum_true_peak_db": -1},
+      "creative_reference_ids": ["heygen-hyperframes-launch", "remotion-overlay", "remotion-tiktok-captions"]
+    },
+    "showcase": {
+      "enabled": true,
+      "minimum_duration_seconds": 285,
+      "maximum_duration_seconds": 390,
+      "asset_policy": {"mode": "provider-only", "record_provenance": true},
+      "asset_requests": [
+        {"id":"creator-research","scene_id":"benchmark-system","query":"content creator researching social media videos computer","purpose":"Show the benchmark research process while the 100-video study is introduced.","providers":["pexels","pixabay"],"orientation":"landscape","timeline_offset_seconds":14,"placement_duration_seconds":6},
+        {"id":"data-analysis","scene_id":"benchmark-system","query":"data analyst measuring video performance dashboard","purpose":"Show measurable evidence replacing a generic inspiration folder.","providers":["pexels","pixabay"],"orientation":"landscape","timeline_offset_seconds":30,"placement_duration_seconds":6},
+        {"id":"too-many-tools","scene_id":"benchmark-system","query":"creator overwhelmed multiple software apps computer","purpose":"Illustrate the disconnected manual workflow problem.","providers":["pexels","pixabay"],"orientation":"landscape","timeline_offset_seconds":51,"placement_duration_seconds":6},
+        {"id":"marketing-research","scene_id":"benchmark-system","query":"marketing research strategy team dashboard","purpose":"Support the distinction between market evidence and generation.","providers":["pexels","pixabay"],"orientation":"landscape","timeline_offset_seconds":72,"placement_duration_seconds":6},
+        {"id":"creator-ai-workflow","scene_id":"benchmark-system","query":"creator using artificial intelligence video workflow","purpose":"Provide context for current AI adoption in creator production.","providers":["pexels","pixabay"],"orientation":"landscape","timeline_offset_seconds":94,"placement_duration_seconds":6},
+        {"id":"video-opening","scene_id":"benchmark-system","query":"video creator recording opening hook camera","purpose":"Show the spoken and visual hook layers being coordinated.","providers":["pexels","pixabay"],"orientation":"landscape","timeline_offset_seconds":119,"placement_duration_seconds":6},
+        {"id":"format-comparison","scene_id":"benchmark-system","query":"split screen video comparison editing","purpose":"Illustrate reusable format structures without borrowing topics.","providers":["pexels","pixabay"],"orientation":"landscape","timeline_offset_seconds":146,"placement_duration_seconds":6},
+        {"id":"storyboard-formats","scene_id":"benchmark-system","query":"video storyboard content formats planning","purpose":"Show multiple structures being selected for different ideas.","providers":["pexels","pixabay"],"orientation":"landscape","timeline_offset_seconds":164,"placement_duration_seconds":6},
+        {"id":"semantic-broll","scene_id":"benchmark-system","query":"professional video editor choosing b roll footage","purpose":"Demonstrate intentional B-roll selection tied to meaning.","providers":["pexels","pixabay"],"orientation":"landscape","timeline_offset_seconds":188,"placement_duration_seconds":6},
+        {"id":"call-to-action","scene_id":"benchmark-system","query":"creator planning audience call to action social media","purpose":"Support the goal-matched CTA explanation.","providers":["pexels","pixabay"],"orientation":"landscape","timeline_offset_seconds":213,"placement_duration_seconds":6},
+        {"id":"content-backlog","scene_id":"benchmark-system","query":"content calendar backlog planning board","purpose":"Show ideas becoming a structured production backlog.","providers":["pexels","pixabay"],"orientation":"landscape","timeline_offset_seconds":239,"placement_duration_seconds":6},
+        {"id":"voice-recording","scene_id":"benchmark-system","query":"voice recording microphone studio narration","purpose":"Illustrate Isaiahdupree v2 narration production.","providers":["pexels","pixabay"],"orientation":"landscape","timeline_offset_seconds":263,"placement_duration_seconds":6},
+        {"id":"premiere-edit","scene_id":"benchmark-system","query":"professional video editor timeline multiple tracks","purpose":"Show Premiere as the editable production master.","providers":["pexels","pixabay"],"orientation":"landscape","timeline_offset_seconds":280,"placement_duration_seconds":7},
+        {"id":"vertical-variants","scene_id":"benchmark-system","query":"vertical social media video editing phone formats","purpose":"Show a long-form source becoming controlled vertical variants.","providers":["pexels","pixabay"],"orientation":"landscape","timeline_offset_seconds":307,"placement_duration_seconds":7},
+        {"id":"retention-analytics","scene_id":"benchmark-system","query":"video audience retention analytics graph dashboard","purpose":"Connect the experiment matrix to viewer evidence.","providers":["pexels","pixabay"],"orientation":"landscape","timeline_offset_seconds":329,"placement_duration_seconds":7},
+        {"id":"autonomous-system","scene_id":"benchmark-system","query":"automated creative production workflow computer screens","purpose":"Close on the complete evidence-to-learning production loop.","providers":["pexels","pixabay"],"orientation":"landscape","timeline_offset_seconds":350,"placement_duration_seconds":7}
+      ],
+      "explainer_assets": [
+        {"id":"evidence-loop","scene_id":"benchmark-system","eyebrow":"ONE TRACEABLE LOOP","title":"EVIDENCE BECOMES PRODUCTION","points":["RESEARCH","RULES","BRIEF","EDIT","MEASURE"],"layout":"process","timeline_offset_seconds":37,"placement_duration_seconds":7},
+        {"id":"pre-generation-gate","scene_id":"benchmark-system","eyebrow":"BEFORE GENERATION","title":"FOUR QUESTIONS","points":["WHO","PROBLEM","WHY NOW","PROOF"],"layout":"process","timeline_offset_seconds":81,"placement_duration_seconds":7},
+        {"id":"triple-hook","scene_id":"benchmark-system","eyebrow":"FIRST TWO SECONDS","title":"THREE COORDINATED HOOKS","points":["SPOKEN PROMISE","WRITTEN REFRAME","VISUAL PROOF"],"layout":"process","timeline_offset_seconds":128,"placement_duration_seconds":7},
+        {"id":"seven-formats","scene_id":"benchmark-system","eyebrow":"THE STRUCTURE TRAVELS","title":"SEVEN ORIGINAL FORMAT TESTS","points":["COMPARE","PREDICT","RATE","STORY","PROVE"],"layout":"ranking","timeline_offset_seconds":173,"placement_duration_seconds":8},
+        {"id":"visual-rule","scene_id":"benchmark-system","eyebrow":"SEMANTIC DENSITY","title":"EVERY VISUAL EXPLAINS","points":["SCREEN PROOF","DIAGRAM","B-ROLL","LABEL"],"layout":"checklist","timeline_offset_seconds":197,"placement_duration_seconds":7},
+        {"id":"four-pillars","scene_id":"benchmark-system","eyebrow":"80 ORIGINAL IDEAS","title":"FOUR ISAIAH PILLARS","points":["RECEIPTS","MANUAL TAX","OWN INFRA","SHIP SPEED"],"layout":"ranking","timeline_offset_seconds":247,"placement_duration_seconds":8},
+        {"id":"one-generation","scene_id":"benchmark-system","eyebrow":"CONTROL THE COST","title":"ONE SOURCE, MANY EDITS","points":["ONE VOICE","ONE PERFORMANCE","PREMIERE MASTER","SEVEN TESTS"],"layout":"process","timeline_offset_seconds":289,"placement_duration_seconds":8},
+        {"id":"learning-loop","scene_id":"benchmark-system","eyebrow":"AFTER PUBLICATION","title":"LET VIEWERS CHOOSE","points":["RETENTION","COMPLETION","COMMENTS","CONVERSION","NEXT RUN"],"layout":"experiment","timeline_offset_seconds":338,"placement_duration_seconds":8}
+      ]
+    },
+    "derivative_campaign": {
+      "enabled": true,
+      "preset": "authority-benchmark-expanded-v2",
+      "styles": ["benchmark-comparison-ladder", "benchmark-hook-test", "benchmark-rating-list", "benchmark-story-authority", "benchmark-contrarian-deconstruction", "benchmark-screen-proof-walkthrough", "benchmark-before-after-reveal"],
+      "clips_per_source": 3,
+      "platforms": ["youtube", "instagram", "tiktok"],
+      "schedule": {"approvalRequired": true},
+      "headlines": {
+        "benchmark-comparison-ladder": "RANDOM IDEAS VS. CONTENT SYSTEM",
+        "benchmark-hook-test": "WHAT DID 100 VIRAL VIDEOS SHARE?",
+        "benchmark-rating-list": "7 FORMATS WORTH TESTING",
+        "benchmark-story-authority": "I MEASURED 100 VIDEOS",
+        "benchmark-contrarian-deconstruction": "MORE AI CONTENT IS NOT THE ADVANTAGE",
+        "benchmark-screen-proof-walkthrough": "WATCH EVIDENCE BECOME A VIDEO",
+        "benchmark-before-after-reveal": "FROM INSPIRATION FOLDER TO SYSTEM"
+      },
+      "archive": {"enabled": true, "mode": "copy", "destination_root": "/Volumes/My Passport/VideoFactory/ShortForm"}
+    },
+    "archive": {"enabled": true, "mode": "move", "destination_root": "/Volumes/My Passport/VideoFactory", "include_source_assets": true}
+  },
+  "archive": {"enabled": true, "destination_root": "/Volumes/My Passport/VideoFactory/ProductionBoards"}
+}

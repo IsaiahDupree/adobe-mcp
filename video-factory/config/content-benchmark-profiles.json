@@ -6,8 +6,8 @@
       "status": "active",
       "sourceAttribution": {
         "creator": "@personalbrandlaunch",
-        "analysisScope": "Top-20 current-year reel benchmark plus one user-selected style anchor",
-        "sourceManifest": "../benchmarks/personalbrandlaunch-top20-source.json",
+        "analysisScope": "One hundred unique public reels: preserved ranked top 20 plus 80 public timeline additions",
+        "sourceManifest": "../benchmarks/personalbrandlaunch-top100-source.json",
         "adaptationPolicy": "Reproduce production grammar only. Use original Isaiah topics, wording, claims, footage, graphics, colors, and calls to action."
       },
       "portablePrinciples": [
@@ -28,13 +28,13 @@
       "scriptRules": {
         "hookWindowSeconds": 2,
         "writtenHookWords": {"minimum": 3, "maximum": 8},
-        "spokenWordsPerMinute": {"minimum": 150, "target": 178, "maximum": 205},
+        "spokenWordsPerMinute": {"minimum": 180, "target": 220, "maximum": 250},
         "sentenceWordsMaximum": 16,
         "structure": ["scroll stop", "clear distinction", "three useful beats", "proof or example", "goal-matched CTA"],
         "forbidden": ["copied creator phrasing", "unsupported growth claims", "caption-as-callout", "generic follow for more before value"]
       },
       "editingRules": {
-        "visualChangeIntervalSeconds": {"minimum": 1.5, "target": 2.0, "maximum": 2.6},
+        "visualChangeIntervalSeconds": {"minimum": 1.6, "target": 2.4, "maximum": 3.0},
         "transitionDefault": "hard-cut",
         "presenterPriority": "Presenter remains the narrative spine; B-roll appears only when it explains the current phrase.",
         "bRollPolicy": "Prefer short semantic inserts, screen demonstrations, diagrams, comparison labels, and proof captures over decorative stock footage.",

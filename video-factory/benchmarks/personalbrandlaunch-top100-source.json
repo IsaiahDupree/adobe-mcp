@@ -1,0 +1,1605 @@
+{
+  "schemaVersion": 2,
+  "creator": {
+    "handle": "personalbrandlaunch",
+    "displayName": "Ava | Content Marketing | Social Media Management",
+    "referenceProfile": "https://www.instagram.com/personalbrandlaunch/"
+  },
+  "scope": {
+    "ranking": "Preserved SocialPruf top 20 followed by the newest unique public timeline reels",
+    "purpose": "Private production-pattern analysis; source media is not redistributed or used in generated posts.",
+    "targetCount": 100,
+    "profileQuery": "PolarisLoggedOutDesktopWWWProfilePostsTabContentQuery",
+    "profileQueryDocumentId": "27126064893724785",
+    "postQuery": "PolarisPostRootQuery",
+    "postQueryDocumentId": "27619468827737957",
+    "collectedAt": "2026-08-03T13:27:32Z"
+  },
+  "sources": [
+    "https://www.instagram.com/reel/DbfymuBhrC7/",
+    "https://socialpruf.com/instagram/personalbrandlaunch",
+    "https://www.contentcopilot.so/playbook/personalbrandlaunch"
+  ],
+  "entries": [
+    {
+      "rank": 1,
+      "shortcode": "DZXUbeGPBWp",
+      "title": "Sound Effects 101",
+      "url": "https://www.instagram.com/reel/DZXUbeGPBWp/",
+      "file": "001-DZXUbeGPBWp.mp4",
+      "views": 3340000,
+      "likes": 238000,
+      "comments": 25500,
+      "sourceGroup": "preserved-top-20"
+    },
+    {
+      "rank": 2,
+      "shortcode": "DQ1iunmjZ9j",
+      "title": "Important vs. Not Important - Social Media Edition",
+      "url": "https://www.instagram.com/reel/DQ1iunmjZ9j/",
+      "file": "002-DQ1iunmjZ9j.mp4",
+      "views": 1830000,
+      "likes": 52000,
+      "comments": 560,
+      "sourceGroup": "preserved-top-20"
+    },
+    {
+      "rank": 3,
+      "shortcode": "DWBm-iAlZb4",
+      "title": "Slow Growth vs. Fast Growth Posting Schedule",
+      "url": "https://www.instagram.com/reel/DWBm-iAlZb4/",
+      "file": "003-DWBm-iAlZb4.mp4",
+      "views": 1810000,
+      "likes": 39000,
+      "comments": 8990,
+      "sourceGroup": "preserved-top-20"
+    },
+    {
+      "rank": 4,
+      "shortcode": "DVYhLgCDeMO",
+      "title": "Same Hook, Different Delivery",
+      "url": "https://www.instagram.com/reel/DVYhLgCDeMO/",
+      "file": "004-DVYhLgCDeMO.mp4",
+      "views": 1720000,
+      "likes": 56900,
+      "comments": 45300,
+      "sourceGroup": "preserved-top-20"
+    },
+    {
+      "rank": 5,
+      "shortcode": "DN5dPT1jWYp",
+      "title": "Rating Social Media Advice On a Scale of 1-10",
+      "url": "https://www.instagram.com/reel/DN5dPT1jWYp/",
+      "file": "005-DN5dPT1jWYp.mp4",
+      "views": 1690000,
+      "likes": 20000,
+      "comments": 225,
+      "sourceGroup": "preserved-top-20"
+    },
+    {
+      "rank": 6,
+      "shortcode": "DZfC2ahsY9j",
+      "title": "Music For Short Type",
+      "url": "https://www.instagram.com/reel/DZfC2ahsY9j/",
+      "file": "006-DZfC2ahsY9j.mp4",
+      "views": 1580000,
+      "likes": 39600,
+      "comments": 166,
+      "sourceGroup": "preserved-top-20"
+    },
+    {
+      "rank": 7,
+      "shortcode": "DPJSguHDYlX",
+      "title": "Reels vs. Carousels vs. Stories",
+      "url": "https://www.instagram.com/reel/DPJSguHDYlX/",
+      "file": "007-DPJSguHDYlX.mp4",
+      "views": 1470000,
+      "likes": 44300,
+      "comments": 437,
+      "sourceGroup": "preserved-top-20"
+    },
+    {
+      "rank": 8,
+      "shortcode": "DQt1panjV5T",
+      "title": "More Cuts = More Engagement",
+      "url": "https://www.instagram.com/reel/DQt1panjV5T/",
+      "file": "008-DQt1panjV5T.mp4",
+      "views": 1380000,
+      "likes": 39700,
+      "comments": 444,
+      "sourceGroup": "preserved-top-20"
+    },
+    {
+      "rank": 9,
+      "shortcode": "DP_XMPEDJF4",
+      "title": "Hi we're Ava & Ben",
+      "url": "https://www.instagram.com/reel/DP_XMPEDJF4/",
+      "file": "009-DP_XMPEDJF4.mp4",
+      "views": 1160000,
+      "likes": 76800,
+      "comments": 473,
+      "sourceGroup": "preserved-top-20"
+    },
+    {
+      "rank": 10,
+      "shortcode": "DSNFwl8DHYX",
+      "title": "Telling a Story vs. Storytelling",
+      "url": "https://www.instagram.com/reel/DSNFwl8DHYX/",
+      "file": "010-DSNFwl8DHYX.mp4",
+      "views": 1080000,
+      "likes": 17200,
+      "comments": 118,
+      "sourceGroup": "preserved-top-20"
+    },
+    {
+      "rank": 11,
+      "shortcode": "DTxg4KDjfdx",
+      "title": "Which video got more views? Video A or B?",
+      "url": "https://www.instagram.com/reel/DTxg4KDjfdx/",
+      "file": "011-DTxg4KDjfdx.mp4",
+      "views": 1050000,
+      "likes": 24300,
+      "comments": 120,
+      "sourceGroup": "preserved-top-20"
+    },
+    {
+      "rank": 12,
+      "shortcode": "DNstL-22oeP",
+      "title": "100 View vs. 100K vs. 1M View Hook",
+      "url": "https://www.instagram.com/reel/DNstL-22oeP/",
+      "file": "012-DNstL-22oeP.mp4",
+      "views": 853000,
+      "likes": 22200,
+      "comments": 256,
+      "sourceGroup": "preserved-top-20"
+    },
+    {
+      "rank": 13,
+      "shortcode": "DUBvyjLEtFF",
+      "title": "Hi we're Ava & Ben",
+      "url": "https://www.instagram.com/reel/DUBvyjLEtFF/",
+      "file": "013-DUBvyjLEtFF.mp4",
+      "views": 824000,
+      "likes": 56100,
+      "comments": 313,
+      "sourceGroup": "preserved-top-20"
+    },
+    {
+      "rank": 14,
+      "shortcode": "DP8ycrgjJrE",
+      "title": "Following vs. Personal Brand",
+      "url": "https://www.instagram.com/reel/DP8ycrgjJrE/",
+      "file": "014-DP8ycrgjJrE.mp4",
+      "views": 788000,
+      "likes": 27600,
+      "comments": 182,
+      "sourceGroup": "preserved-top-20"
+    },
+    {
+      "rank": 15,
+      "shortcode": "DWE72LsIGQy",
+      "title": "Which video got more views? Video A or B?",
+      "url": "https://www.instagram.com/reel/DWE72LsIGQy/",
+      "file": "015-DWE72LsIGQy.mp4",
+      "views": 743000,
+      "likes": 24200,
+      "comments": 46,
+      "sourceGroup": "preserved-top-20"
+    },
+    {
+      "rank": 16,
+      "shortcode": "DQjhLi9DH0I",
+      "title": "Educational vs. Storytelling vs. Authority Reels",
+      "url": "https://www.instagram.com/reel/DQjhLi9DH0I/",
+      "file": "016-DQjhLi9DH0I.mp4",
+      "views": 733000,
+      "likes": 17200,
+      "comments": 189,
+      "sourceGroup": "preserved-top-20"
+    },
+    {
+      "rank": 17,
+      "shortcode": "DXJs0eIkcWY",
+      "title": "Instagram 101",
+      "url": "https://www.instagram.com/reel/DXJs0eIkcWY/",
+      "file": "017-DXJs0eIkcWY.mp4",
+      "views": 732000,
+      "likes": 12100,
+      "comments": 100,
+      "sourceGroup": "preserved-top-20"
+    },
+    {
+      "rank": 18,
+      "shortcode": "DPd68UjjZDV",
+      "title": "5 Main Types of Content",
+      "url": "https://www.instagram.com/reel/DPd68UjjZDV/",
+      "file": "018-DPd68UjjZDV.mp4",
+      "views": 719000,
+      "likes": 22700,
+      "comments": 202,
+      "sourceGroup": "preserved-top-20"
+    },
+    {
+      "rank": 19,
+      "shortcode": "DRHkT0Rjlgj",
+      "title": "Reels vs. Carousels vs. Stories",
+      "url": "https://www.instagram.com/reel/DRHkT0Rjlgj/",
+      "file": "019-DRHkT0Rjlgj.mp4",
+      "views": 718000,
+      "likes": 17000,
+      "comments": 150,
+      "sourceGroup": "preserved-top-20"
+    },
+    {
+      "rank": 20,
+      "shortcode": "DRPUBIWjQZK",
+      "title": "Top Tools for Creators",
+      "url": "https://www.instagram.com/reel/DRPUBIWjQZK/",
+      "file": "020-DRPUBIWjQZK.mp4",
+      "views": 629000,
+      "likes": 15600,
+      "comments": 159,
+      "sourceGroup": "preserved-top-20"
+    },
+    {
+      "rank": 21,
+      "shortcode": "DLmnYEKvWtS",
+      "title": "POV: You Hire Me As Your Social Media Manager \ud83d\ude0e",
+      "caption": "POV: You Hire Me As Your Social Media Manager \ud83d\ude0e\n\nAre you a business owner who wants to grow and sell on social media like this? Comment the word SMM for more info \u2705",
+      "url": "https://www.instagram.com/reel/DLmnYEKvWtS/",
+      "file": "021-DLmnYEKvWtS.mp4",
+      "publishedAt": 1751454965,
+      "views": 0,
+      "likes": 18598,
+      "comments": 4954,
+      "sourceGroup": "public-timeline-expansion",
+      "sourceDimensions": {
+        "width": 720,
+        "height": 1280
+      }
+    },
+    {
+      "rank": 22,
+      "shortcode": "DGdV2i6NRtS",
+      "title": "This is My Story :)",
+      "caption": "This is My Story :)\n\nFollow Along For the Ride.",
+      "url": "https://www.instagram.com/reel/DGdV2i6NRtS/",
+      "file": "022-DGdV2i6NRtS.mp4",
+      "publishedAt": 1740406407,
+      "views": 0,
+      "likes": 17325,
+      "comments": 459,
+      "sourceGroup": "public-timeline-expansion",
+      "sourceDimensions": {
+        "width": 720,
+        "height": 1280
+      }
+    },
+    {
+      "rank": 23,
+      "shortcode": "Dbk8Ha7BAFW",
+      "title": "Viral Video Case Study",
+      "caption": "Viral Video Case Study.\u00a0\n\nFollow for more social media marketing education!",
+      "url": "https://www.instagram.com/reel/Dbk8Ha7BAFW/",
+      "file": "023-Dbk8Ha7BAFW.mp4",
+      "publishedAt": 1785758405,
+      "views": 0,
+      "likes": 146,
+      "comments": 4,
+      "sourceGroup": "public-timeline-expansion",
+      "sourceDimensions": {
+        "width": 720,
+        "height": 1280
+      }
+    },
+    {
+      "rank": 24,
+      "shortcode": "DbjHcx0BKO9",
+      "title": "4 Levels of Awareness",
+      "caption": "4 Levels of Awareness\n\nFollow for more social media marketing education.",
+      "url": "https://www.instagram.com/reel/DbjHcx0BKO9/",
+      "file": "024-DbjHcx0BKO9.mp4",
+      "publishedAt": 1785697205,
+      "views": 0,
+      "likes": 670,
+      "comments": 10,
+      "sourceGroup": "public-timeline-expansion",
+      "sourceDimensions": {
+        "width": 720,
+        "height": 1280
+      }
+    },
+    {
+      "rank": 25,
+      "shortcode": "DbiXUvEBKF0",
+      "title": "Perfect Storytelling Structures",
+      "caption": "Perfect Storytelling Structures.\u00a0\n\nComment \u201cSTORY\u201d and I will send over this + more that you can use for your own content!",
+      "url": "https://www.instagram.com/reel/DbiXUvEBKF0/",
+      "file": "025-DbiXUvEBKF0.mp4",
+      "publishedAt": 1785672006,
+      "views": 0,
+      "likes": 323,
+      "comments": 121,
+      "sourceGroup": "public-timeline-expansion",
+      "sourceDimensions": {
+        "width": 720,
+        "height": 1280
+      }
+    },
+    {
+      "rank": 26,
+      "shortcode": "DbgimXuh2Rj",
+      "title": "Best Formats For Your Niche",
+      "caption": "Best Formats For Your Niche.\u00a0\n\nFollow for more social media marketing education.",
+      "url": "https://www.instagram.com/reel/DbgimXuh2Rj/",
+      "file": "026-DbgimXuh2Rj.mp4",
+      "publishedAt": 1785610804,
+      "views": 0,
+      "likes": 611,
+      "comments": 6,
+      "sourceGroup": "public-timeline-expansion",
+      "sourceDimensions": {
+        "width": 720,
+        "height": 1280
+      }
+    },
+    {
+      "rank": 27,
+      "shortcode": "DbfymuBhrC7",
+      "title": "The Power of Background Music",
+      "caption": "The Power of Background Music.\u00a0\n\nFollow for more social media marketing education.",
+      "url": "https://www.instagram.com/reel/DbfymuBhrC7/",
+      "file": "027-DbfymuBhrC7.mp4",
+      "publishedAt": 1785585606,
+      "views": 0,
+      "likes": 1466,
+      "comments": 101,
+      "sourceGroup": "public-timeline-expansion",
+      "sourceDimensions": {
+        "width": 720,
+        "height": 1280
+      }
+    },
+    {
+      "rank": 28,
+      "shortcode": "DbdNwT2BPYO",
+      "title": "Product Based Business Owner Video Ideas",
+      "caption": "Product Based Business Owner Video Ideas.\u00a0\n\nFollow for more social media marketing education.",
+      "url": "https://www.instagram.com/reel/DbdNwT2BPYO/",
+      "file": "028-DbdNwT2BPYO.mp4",
+      "publishedAt": 1785499203,
+      "views": 0,
+      "likes": 323,
+      "comments": 6,
+      "sourceGroup": "public-timeline-expansion",
+      "sourceDimensions": {
+        "width": 720,
+        "height": 1280
+      }
+    },
+    {
+      "rank": 29,
+      "shortcode": "DbbZDzDBfmJ",
+      "title": "Telling a Story vs. Storytelling",
+      "caption": "Telling a Story vs. Storytelling.\n\nFollow for more social media marketing education.",
+      "url": "https://www.instagram.com/reel/DbbZDzDBfmJ/",
+      "file": "029-DbbZDzDBfmJ.mp4",
+      "publishedAt": 1785438005,
+      "views": 0,
+      "likes": 1085,
+      "comments": 25,
+      "sourceGroup": "public-timeline-expansion",
+      "sourceDimensions": {
+        "width": 720,
+        "height": 1280
+      }
+    },
+    {
+      "rank": 30,
+      "shortcode": "DbapAqahjWZ",
+      "title": "Creative Reels That Inspired Me This Week",
+      "caption": "Creative Reels That Inspired Me This Week.\u00a0\n\nFollow for more social media marketing education!",
+      "url": "https://www.instagram.com/reel/DbapAqahjWZ/",
+      "file": "030-DbapAqahjWZ.mp4",
+      "publishedAt": 1785412804,
+      "views": 0,
+      "likes": 367,
+      "comments": 8,
+      "sourceGroup": "public-timeline-expansion",
+      "sourceDimensions": {
+        "width": 720,
+        "height": 1280
+      }
+    },
+    {
+      "rank": 31,
+      "shortcode": "DbY0P6PhSDy",
+      "title": "Comment HOOK and I will send over 1,000 hook templates taken from viral videos",
+      "caption": "Comment HOOK and I will send over 1,000 hook templates taken from viral videos.",
+      "url": "https://www.instagram.com/reel/DbY0P6PhSDy/",
+      "file": "031-DbY0P6PhSDy.mp4",
+      "publishedAt": 1785351605,
+      "views": 0,
+      "likes": 1544,
+      "comments": 975,
+      "sourceGroup": "public-timeline-expansion",
+      "sourceDimensions": {
+        "width": 720,
+        "height": 1280
+      }
+    },
+    {
+      "rank": 32,
+      "shortcode": "DbYEHGOBvCG",
+      "title": "Gamify Your Niche",
+      "caption": "Gamify Your Niche.\u00a0\n\nFollow for more social media marketing education.",
+      "url": "https://www.instagram.com/reel/DbYEHGOBvCG/",
+      "file": "032-DbYEHGOBvCG.mp4",
+      "publishedAt": 1785326404,
+      "views": 0,
+      "likes": 1042,
+      "comments": 17,
+      "sourceGroup": "public-timeline-expansion",
+      "sourceDimensions": {
+        "width": 720,
+        "height": 1280
+      }
+    },
+    {
+      "rank": 33,
+      "shortcode": "DbWPDzrMErw",
+      "title": "We All Know Those Creators That Just Have the Perfect Branding \ud83d\udc40",
+      "caption": "We All Know Those Creators That Just Have the Perfect Branding \ud83d\udc40\n\nFollow for more social media marketing education \u2705",
+      "url": "https://www.instagram.com/reel/DbWPDzrMErw/",
+      "file": "033-DbWPDzrMErw.mp4",
+      "publishedAt": 1785265219,
+      "views": 0,
+      "likes": 1195,
+      "comments": 9,
+      "sourceGroup": "public-timeline-expansion",
+      "sourceDimensions": {
+        "width": 720,
+        "height": 1280
+      }
+    },
+    {
+      "rank": 34,
+      "shortcode": "DbVf7qcxerE",
+      "title": "If you\u2019re a business owner looking to grow and get leads on social media, comment \u201cSMM\u201d for more information!",
+      "caption": "If you\u2019re a business owner looking to grow and get leads on social media, comment \u201cSMM\u201d for more information!",
+      "url": "https://www.instagram.com/reel/DbVf7qcxerE/",
+      "file": "034-DbVf7qcxerE.mp4",
+      "publishedAt": 1785240490,
+      "views": 0,
+      "likes": 446,
+      "comments": 56,
+      "sourceGroup": "public-timeline-expansion",
+      "sourceDimensions": {
+        "width": 720,
+        "height": 1280
+      }
+    },
+    {
+      "rank": 35,
+      "shortcode": "DbTtqaGpR6q",
+      "title": "There are 3 types of content you should post",
+      "caption": "There are 3 types of content you should post.\n\nIf you\u2019re a business owner looking to grow and sell on social media, comment SMM for more information.",
+      "url": "https://www.instagram.com/reel/DbTtqaGpR6q/",
+      "file": "035-DbTtqaGpR6q.mp4",
+      "publishedAt": 1785180614,
+      "views": 0,
+      "likes": 2326,
+      "comments": 190,
+      "sourceGroup": "public-timeline-expansion",
+      "sourceDimensions": {
+        "width": 720,
+        "height": 1280
+      }
+    },
+    {
+      "rank": 36,
+      "shortcode": "DbS5MDDPMgB",
+      "title": "Humble Yourself",
+      "caption": "Humble Yourself.\u00a0\n\nFollow for more social media marketing education.",
+      "url": "https://www.instagram.com/reel/DbS5MDDPMgB/",
+      "file": "036-DbS5MDDPMgB.mp4",
+      "publishedAt": 1785153085,
+      "views": 0,
+      "likes": 7045,
+      "comments": 135,
+      "sourceGroup": "public-timeline-expansion",
+      "sourceDimensions": {
+        "width": 720,
+        "height": 1280
+      }
+    },
+    {
+      "rank": 37,
+      "shortcode": "DbRF4aih0Jj",
+      "title": "Weekly Diary - Episode #25",
+      "caption": "Weekly Diary - Episode #25",
+      "url": "https://www.instagram.com/reel/DbRF4aih0Jj/",
+      "file": "037-DbRF4aih0Jj.mp4",
+      "publishedAt": 1785092405,
+      "views": 0,
+      "likes": 356,
+      "comments": 16,
+      "sourceGroup": "public-timeline-expansion",
+      "sourceDimensions": {
+        "width": 720,
+        "height": 1280
+      }
+    },
+    {
+      "rank": 38,
+      "shortcode": "DbQVuOvhdOK",
+      "title": "It\u2019s Okay to Change Your Mind",
+      "caption": "It\u2019s Okay to Change Your Mind.",
+      "url": "https://www.instagram.com/reel/DbQVuOvhdOK/",
+      "file": "038-DbQVuOvhdOK.mp4",
+      "publishedAt": 1785067207,
+      "views": 0,
+      "likes": 628,
+      "comments": 34,
+      "sourceGroup": "public-timeline-expansion",
+      "sourceDimensions": {
+        "width": 720,
+        "height": 1280
+      }
+    },
+    {
+      "rank": 39,
+      "shortcode": "DbNxB4tBrTh",
+      "title": "Founder Video Ideas",
+      "caption": "Founder Video Ideas\n\nFollow for more social media marketing education!",
+      "url": "https://www.instagram.com/reel/DbNxB4tBrTh/",
+      "file": "039-DbNxB4tBrTh.mp4",
+      "publishedAt": 1784980806,
+      "views": 0,
+      "likes": 665,
+      "comments": 16,
+      "sourceGroup": "public-timeline-expansion",
+      "sourceDimensions": {
+        "width": 720,
+        "height": 1280
+      }
+    },
+    {
+      "rank": 40,
+      "shortcode": "DbLMfkrPrKN",
+      "title": "The Easiest Niches to Grow on Social Media",
+      "caption": "The Easiest Niches to Grow on Social Media.\u00a0\n\nFollow for more social media marketing education.",
+      "url": "https://www.instagram.com/reel/DbLMfkrPrKN/",
+      "file": "040-DbLMfkrPrKN.mp4",
+      "publishedAt": 1784894869,
+      "views": 0,
+      "likes": 562,
+      "comments": 21,
+      "sourceGroup": "public-timeline-expansion",
+      "sourceDimensions": {
+        "width": 720,
+        "height": 1280
+      }
+    },
+    {
+      "rank": 41,
+      "shortcode": "DbJZJGmuAZG",
+      "title": "Important vs. Not Important - Social Media Edition",
+      "caption": "Important vs. Not Important - Social Media Edition.\u00a0\n\nFollow for more social media marketing education.",
+      "url": "https://www.instagram.com/reel/DbJZJGmuAZG/",
+      "file": "041-DbJZJGmuAZG.mp4",
+      "publishedAt": 1784834325,
+      "views": 0,
+      "likes": 3832,
+      "comments": 68,
+      "sourceGroup": "public-timeline-expansion",
+      "sourceDimensions": {
+        "width": 720,
+        "height": 1280
+      }
+    },
+    {
+      "rank": 42,
+      "shortcode": "DbIo3i_vwp1",
+      "title": "Business owners looking to grow and sell on social media, and want done for you monthly research, ideation, scripting, editing, and uploading, comment SMM for more information",
+      "caption": "Business owners looking to grow and sell on social media, and want done for you monthly research, ideation, scripting, editing, and uploading, comment SMM for more information.",
+      "url": "https://www.instagram.com/reel/DbIo3i_vwp1/",
+      "file": "042-DbIo3i_vwp1.mp4",
+      "publishedAt": 1784809524,
+      "views": 0,
+      "likes": 967,
+      "comments": 174,
+      "sourceGroup": "public-timeline-expansion",
+      "sourceDimensions": {
+        "width": 720,
+        "height": 1280
+      }
+    },
+    {
+      "rank": 43,
+      "shortcode": "DbG2nNgM6qQ",
+      "title": "Ranking Niches From 1-10 Based on Easiest Growth",
+      "caption": "Ranking Niches From 1-10 Based on Easiest Growth\n\nFollow for more social media marketing education!",
+      "url": "https://www.instagram.com/reel/DbG2nNgM6qQ/",
+      "file": "043-DbG2nNgM6qQ.mp4",
+      "publishedAt": 1784749145,
+      "views": 0,
+      "likes": 985,
+      "comments": 31,
+      "sourceGroup": "public-timeline-expansion",
+      "sourceDimensions": {
+        "width": 720,
+        "height": 1280
+      }
+    },
+    {
+      "rank": 44,
+      "shortcode": "DbGC_57szLC",
+      "title": "Who Will Get More Leads?",
+      "caption": "Who Will Get More Leads?\u00a0\n\nWant an example of a freebie that has generated over 100,000+ leads for my business? Comment \u201cHOOK\u201d and I\u2019ll send it over.",
+      "url": "https://www.instagram.com/reel/DbGC_57szLC/",
+      "file": "044-DbGC_57szLC.mp4",
+      "publishedAt": 1784722041,
+      "views": 0,
+      "likes": 717,
+      "comments": 229,
+      "sourceGroup": "public-timeline-expansion",
+      "sourceDimensions": {
+        "width": 720,
+        "height": 1280
+      }
+    },
+    {
+      "rank": 45,
+      "shortcode": "DbEPCAJxT4g",
+      "title": "REPOST: Originally posted this back in March I promise I am not replicating anyone who has made the same post since ;)",
+      "caption": "REPOST: Originally posted this back in March I promise I am not replicating anyone who has made the same post since ;) \n\nSlow Growth vs. Fast Growth Posting Schedule. \n\nBusiness Owners Looking to Grow and Sell on Social Media like my clients and I, comment \u201cSMM\u201d for more information!",
+      "url": "https://www.instagram.com/reel/DbEPCAJxT4g/",
+      "file": "045-DbEPCAJxT4g.mp4",
+      "publishedAt": 1784661155,
+      "views": 0,
+      "likes": 1917,
+      "comments": 586,
+      "sourceGroup": "public-timeline-expansion",
+      "sourceDimensions": {
+        "width": 720,
+        "height": 1280
+      }
+    },
+    {
+      "rank": 46,
+      "shortcode": "DbDePofByH-",
+      "title": "8 Short Form Content Structures Working Right Now",
+      "caption": "8 Short Form Content Structures Working Right Now.\n\nFollow for more social media marketing education.",
+      "url": "https://www.instagram.com/reel/DbDePofByH-/",
+      "file": "046-DbDePofByH-.mp4",
+      "publishedAt": 1784635578,
+      "views": 0,
+      "likes": 580,
+      "comments": 8,
+      "sourceGroup": "public-timeline-expansion",
+      "sourceDimensions": {
+        "width": 720,
+        "height": 1280
+      }
+    },
+    {
+      "rank": 47,
+      "shortcode": "DbBqoNZuQDO",
+      "title": "Visual Hooks 101",
+      "caption": "Visual Hooks 101\n\nWant a thousand handpicked viral hooks that I templatized that you can steal? Comment \u201cHOOK\u201d and I will send it over.",
+      "url": "https://www.instagram.com/reel/DbBqoNZuQDO/",
+      "file": "047-DbBqoNZuQDO.mp4",
+      "publishedAt": 1784574898,
+      "views": 0,
+      "likes": 1255,
+      "comments": 1541,
+      "sourceGroup": "public-timeline-expansion",
+      "sourceDimensions": {
+        "width": 720,
+        "height": 1280
+      }
+    },
+    {
+      "rank": 48,
+      "shortcode": "DbA6MuXhSBa",
+      "title": "How to Create a My Story Video",
+      "caption": "How to Create a My Story Video.\u00a0\n\nIf you want a more in-depth breakdown on how to create the most important video you\u2019ll ever post on your profile, just comment \u201cMY STORY\u201d and I\u2019ll send it over.",
+      "url": "https://www.instagram.com/reel/DbA6MuXhSBa/",
+      "file": "048-DbA6MuXhSBa.mp4",
+      "publishedAt": 1784549819,
+      "views": 0,
+      "likes": 751,
+      "comments": 1257,
+      "sourceGroup": "public-timeline-expansion",
+      "sourceDimensions": {
+        "width": 720,
+        "height": 1280
+      }
+    },
+    {
+      "rank": 49,
+      "shortcode": "Da_EXdbigkD",
+      "title": "What Pinned Posts Should You Have On Your Profile?",
+      "caption": "What Pinned Posts Should You Have On Your Profile? \n\nBusiness owners looking to grow and sell on social media comment \u201cSMM\u201d for more information!",
+      "url": "https://www.instagram.com/reel/Da_EXdbigkD/",
+      "file": "049-Da_EXdbigkD.mp4",
+      "publishedAt": 1784487718,
+      "views": 0,
+      "likes": 1644,
+      "comments": 108,
+      "sourceGroup": "public-timeline-expansion",
+      "sourceDimensions": {
+        "width": 720,
+        "height": 1280
+      }
+    },
+    {
+      "rank": 50,
+      "shortcode": "Da-USmbguXu",
+      "title": "How to Stay Creative 101",
+      "caption": "How to Stay Creative 101",
+      "url": "https://www.instagram.com/reel/Da-USmbguXu/",
+      "file": "050-Da-USmbguXu.mp4",
+      "publishedAt": 1784462512,
+      "views": 0,
+      "likes": 507,
+      "comments": 17,
+      "sourceGroup": "public-timeline-expansion",
+      "sourceDimensions": {
+        "width": 720,
+        "height": 1280
+      }
+    },
+    {
+      "rank": 51,
+      "shortcode": "Da7vej6l6VX",
+      "title": "If I Had to Implement AI, into My Content Workflow From Scratch This is What I Would Do",
+      "caption": "If I Had to Implement AI, into My Content Workflow From Scratch This is What I Would Do. \n\nIf you want a more in-depth breakdown on how to do this, comment \u201cAI\u201d and I'll send you my video breaking this down.",
+      "url": "https://www.instagram.com/reel/Da7vej6l6VX/",
+      "file": "051-Da7vej6l6VX.mp4",
+      "publishedAt": 1784376099,
+      "views": 0,
+      "likes": 1983,
+      "comments": 1479,
+      "sourceGroup": "public-timeline-expansion",
+      "sourceDimensions": {
+        "width": 720,
+        "height": 1280
+      }
+    },
+    {
+      "rank": 52,
+      "shortcode": "Da5MG6AhX_c",
+      "title": "Business owners looking to grow and sell on social media, and want done for you monthly research, ideation, scripting, editing, and uploading, comment SMM for more information",
+      "caption": "Business owners looking to grow and sell on social media, and want done for you monthly research, ideation, scripting, editing, and uploading, comment SMM for more information.",
+      "url": "https://www.instagram.com/reel/Da5MG6AhX_c/",
+      "file": "052-Da5MG6AhX_c.mp4",
+      "publishedAt": 1784290821,
+      "views": 0,
+      "likes": 568,
+      "comments": 56,
+      "sourceGroup": "public-timeline-expansion",
+      "sourceDimensions": {
+        "width": 720,
+        "height": 1280
+      }
+    },
+    {
+      "rank": 53,
+      "shortcode": "Da3V7AxhLgo",
+      "title": "Following vs. Personal Brand",
+      "caption": "Following vs. Personal Brand\u00a0\n\nFollow for more social media marketing education \u2705",
+      "url": "https://www.instagram.com/reel/Da3V7AxhLgo/",
+      "file": "053-Da3V7AxhLgo.mp4",
+      "publishedAt": 1784228643,
+      "views": 0,
+      "likes": 2408,
+      "comments": 25,
+      "sourceGroup": "public-timeline-expansion",
+      "sourceDimensions": {
+        "width": 720,
+        "height": 1280
+      }
+    },
+    {
+      "rank": 54,
+      "shortcode": "Da2lzSiOrqC",
+      "title": "Posts Every Business Owner Should Have on Their Profile",
+      "caption": "Posts Every Business Owner Should Have on Their Profile.\u00a0\n\nBusiness owners looking to grow and sell on social media, comment \u201cSMM\u201d if you want done for you short form content so you can get results like my clients.",
+      "url": "https://www.instagram.com/reel/Da2lzSiOrqC/",
+      "file": "054-Da2lzSiOrqC.mp4",
+      "publishedAt": 1784203582,
+      "views": 0,
+      "likes": 434,
+      "comments": 59,
+      "sourceGroup": "public-timeline-expansion",
+      "sourceDimensions": {
+        "width": 720,
+        "height": 1280
+      }
+    },
+    {
+      "rank": 55,
+      "shortcode": "Da00ngwuuyL",
+      "title": "How to Make a Freebie 101",
+      "caption": "How to Make a Freebie 101\u00a0\n\nWant an example of a freebie that has generated over 100,000+ leads for my business? Comment \u201cHOOK\u201d and I\u2019ll send it over.",
+      "url": "https://www.instagram.com/reel/Da00ngwuuyL/",
+      "file": "055-Da00ngwuuyL.mp4",
+      "publishedAt": 1784144093,
+      "views": 0,
+      "likes": 1478,
+      "comments": 1024,
+      "sourceGroup": "public-timeline-expansion",
+      "sourceDimensions": {
+        "width": 720,
+        "height": 1280
+      }
+    },
+    {
+      "rank": 56,
+      "shortcode": "Da0BgBxAMK8",
+      "title": "Product/Service Reel Tutorial!",
+      "caption": "Product/Service Reel Tutorial!\n\nFollow for more social media marketing education!",
+      "url": "https://www.instagram.com/reel/Da0BgBxAMK8/",
+      "file": "056-Da0BgBxAMK8.mp4",
+      "publishedAt": 1784117225,
+      "views": 0,
+      "likes": 442,
+      "comments": 26,
+      "sourceGroup": "public-timeline-expansion",
+      "sourceDimensions": {
+        "width": 720,
+        "height": 1280
+      }
+    },
+    {
+      "rank": 57,
+      "shortcode": "DayOnBMhbL-",
+      "title": "Bad, Good, Great - Storytelling Edition",
+      "caption": "Bad, Good, Great - Storytelling Edition. \n\nIf you want to learn how to create a storytelling short, comment STORY and I will send you a free step by step guide on how.",
+      "url": "https://www.instagram.com/reel/DayOnBMhbL-/",
+      "file": "057-DayOnBMhbL-.mp4",
+      "publishedAt": 1784056942,
+      "views": 0,
+      "likes": 1851,
+      "comments": 1223,
+      "sourceGroup": "public-timeline-expansion",
+      "sourceDimensions": {
+        "width": 720,
+        "height": 1280
+      }
+    },
+    {
+      "rank": 58,
+      "shortcode": "DaxccxlBfwP",
+      "title": "What\u2019s the Viral Script Structure, Short Form Content Technique?",
+      "caption": "What\u2019s the Viral Script Structure, Short Form Content Technique?\u00a0\n\nFollow for more social media marketing education!",
+      "url": "https://www.instagram.com/reel/DaxccxlBfwP/",
+      "file": "058-DaxccxlBfwP.mp4",
+      "publishedAt": 1784030973,
+      "views": 0,
+      "likes": 506,
+      "comments": 28,
+      "sourceGroup": "public-timeline-expansion",
+      "sourceDimensions": {
+        "width": 720,
+        "height": 1280
+      }
+    },
+    {
+      "rank": 59,
+      "shortcode": "DavoOY4sgUI",
+      "title": "Viral New Account Case Study",
+      "caption": "Viral New Account Case Study.\u00a0\n\n@sunberryclub \n\nNOTE: The templates are there so you can just screenshot them on the screen ;) \n\nFollow for more social media marketing education!",
+      "url": "https://www.instagram.com/reel/DavoOY4sgUI/",
+      "file": "059-DavoOY4sgUI.mp4",
+      "publishedAt": 1783969798,
+      "views": 0,
+      "likes": 2669,
+      "comments": 149,
+      "sourceGroup": "public-timeline-expansion",
+      "sourceDimensions": {
+        "width": 720,
+        "height": 1280
+      }
+    },
+    {
+      "rank": 60,
+      "shortcode": "Dau4CFLBP_u",
+      "title": "Do Not Throw Away a Topic Too Fast",
+      "caption": "Do Not Throw Away a Topic Too Fast.\u00a0\n\nFollow for more social media marketing education.",
+      "url": "https://www.instagram.com/reel/Dau4CFLBP_u/",
+      "file": "060-Dau4CFLBP_u.mp4",
+      "publishedAt": 1783944411,
+      "views": 0,
+      "likes": 388,
+      "comments": 12,
+      "sourceGroup": "public-timeline-expansion",
+      "sourceDimensions": {
+        "width": 720,
+        "height": 1280
+      }
+    },
+    {
+      "rank": 61,
+      "shortcode": "DasSnU3BNi5",
+      "title": "Here\u2019s How I Have Been Using AI for Video Editing",
+      "caption": "Here\u2019s How I Have Been Using AI for Video Editing.",
+      "url": "https://www.instagram.com/reel/DasSnU3BNi5/",
+      "file": "061-DasSnU3BNi5.mp4",
+      "publishedAt": 1783857606,
+      "views": 0,
+      "likes": 1507,
+      "comments": 40,
+      "sourceGroup": "public-timeline-expansion",
+      "sourceDimensions": {
+        "width": 720,
+        "height": 1280
+      }
+    },
+    {
+      "rank": 62,
+      "shortcode": "DaqGCGKAYOH",
+      "title": "Weekly Diary - Episode #23",
+      "caption": "Weekly Diary - Episode #23",
+      "url": "https://www.instagram.com/reel/DaqGCGKAYOH/",
+      "file": "062-DaqGCGKAYOH.mp4",
+      "publishedAt": 1783784104,
+      "views": 0,
+      "likes": 377,
+      "comments": 7,
+      "sourceGroup": "public-timeline-expansion",
+      "sourceDimensions": {
+        "width": 720,
+        "height": 1280
+      }
+    },
+    {
+      "rank": 63,
+      "shortcode": "DanJqYNBzMx",
+      "title": "How Do You Grow on Instagram in 2026?",
+      "caption": "How Do You Grow on Instagram in 2026?\u00a0\n\nWant someone who can do this for you? Comment \u201cSMM\u201d for more information!",
+      "url": "https://www.instagram.com/reel/DanJqYNBzMx/",
+      "file": "063-DanJqYNBzMx.mp4",
+      "publishedAt": 1783685381,
+      "views": 0,
+      "likes": 1031,
+      "comments": 169,
+      "sourceGroup": "public-timeline-expansion",
+      "sourceDimensions": {
+        "width": 720,
+        "height": 1280
+      }
+    },
+    {
+      "rank": 64,
+      "shortcode": "DalXmIchmWQ",
+      "title": "Steal These Viral Hooks \ud83e\udd2b",
+      "caption": "Steal These Viral Hooks \ud83e\udd2b\n\nIf you want a list of 1,000 viral fill in the blank template hooks, comment HOOK and I will send it over! \u2705",
+      "url": "https://www.instagram.com/reel/DalXmIchmWQ/",
+      "file": "064-DalXmIchmWQ.mp4",
+      "publishedAt": 1783625498,
+      "views": 0,
+      "likes": 959,
+      "comments": 924,
+      "sourceGroup": "public-timeline-expansion",
+      "sourceDimensions": {
+        "width": 720,
+        "height": 1280
+      }
+    },
+    {
+      "rank": 65,
+      "shortcode": "DaklGYdBPDO",
+      "title": "How Do You Build in Public, As a Founder?",
+      "caption": "How Do You Build in Public, As a Founder?\u00a0\n\nWant someone who can do this for you? Comment \u201cSMM\u201d for more information!",
+      "url": "https://www.instagram.com/reel/DaklGYdBPDO/",
+      "file": "065-DaklGYdBPDO.mp4",
+      "publishedAt": 1783599087,
+      "views": 0,
+      "likes": 1131,
+      "comments": 178,
+      "sourceGroup": "public-timeline-expansion",
+      "sourceDimensions": {
+        "width": 720,
+        "height": 1280
+      }
+    },
+    {
+      "rank": 66,
+      "shortcode": "Daix1yuJAP3",
+      "title": "3 Things To Do After Posting Your Video",
+      "caption": "3 Things To Do After Posting Your Video.\n\nFollow for more social media marketing education!",
+      "url": "https://www.instagram.com/reel/Daix1yuJAP3/",
+      "file": "066-Daix1yuJAP3.mp4",
+      "publishedAt": 1783538595,
+      "views": 0,
+      "likes": 2111,
+      "comments": 29,
+      "sourceGroup": "public-timeline-expansion",
+      "sourceDimensions": {
+        "width": 720,
+        "height": 1280
+      }
+    },
+    {
+      "rank": 67,
+      "shortcode": "DaiA1H9hd0i",
+      "title": "Following vs. Personal Brand",
+      "caption": "Following vs. Personal Brand",
+      "url": "https://www.instagram.com/reel/DaiA1H9hd0i/",
+      "file": "067-DaiA1H9hd0i.mp4",
+      "publishedAt": 1783512839,
+      "views": 0,
+      "likes": 536,
+      "comments": 19,
+      "sourceGroup": "public-timeline-expansion",
+      "sourceDimensions": {
+        "width": 720,
+        "height": 1280
+      }
+    },
+    {
+      "rank": 68,
+      "shortcode": "DagN2gkOV8j",
+      "title": "5 Main Types Of Content",
+      "caption": "5 Main Types Of Content\u00a0\n\nFollow for more social media marketing education.",
+      "url": "https://www.instagram.com/reel/DagN2gkOV8j/",
+      "file": "068-DagN2gkOV8j.mp4",
+      "publishedAt": 1783452677,
+      "views": 0,
+      "likes": 1415,
+      "comments": 166,
+      "sourceGroup": "public-timeline-expansion",
+      "sourceDimensions": {
+        "width": 720,
+        "height": 1280
+      }
+    },
+    {
+      "rank": 69,
+      "shortcode": "DafZmQ8BNi6",
+      "title": "Weekly Diary - Episode #21",
+      "caption": "Weekly Diary - Episode #21",
+      "url": "https://www.instagram.com/reel/DafZmQ8BNi6/",
+      "file": "069-DafZmQ8BNi6.mp4",
+      "publishedAt": 1783425778,
+      "views": 0,
+      "likes": 848,
+      "comments": 19,
+      "sourceGroup": "public-timeline-expansion",
+      "sourceDimensions": {
+        "width": 720,
+        "height": 1280
+      }
+    },
+    {
+      "rank": 70,
+      "shortcode": "DadmBrVjnIA",
+      "title": "How to Tell a Story in Under 1 Minute \ud83d\udcda\u23f0",
+      "caption": "How to Tell a Story in Under 1 Minute \ud83d\udcda\u23f0\n\nComment STORY and I will send over Storytelling Templates Taken From Viral Videos. \u2705",
+      "url": "https://www.instagram.com/reel/DadmBrVjnIA/",
+      "file": "070-DadmBrVjnIA.mp4",
+      "publishedAt": 1783364498,
+      "views": 0,
+      "likes": 3382,
+      "comments": 6616,
+      "sourceGroup": "public-timeline-expansion",
+      "sourceDimensions": {
+        "width": 720,
+        "height": 1280
+      }
+    },
+    {
+      "rank": 71,
+      "shortcode": "Dac18UMicc_",
+      "title": "Hook Templates 101",
+      "caption": "Hook Templates 101. \n\nIf you want a list of 1,000 viral fill in the blank template hooks, comment HOOK and I will send it over! \u2705",
+      "url": "https://www.instagram.com/reel/Dac18UMicc_/",
+      "file": "071-Dac18UMicc_.mp4",
+      "publishedAt": 1783339282,
+      "views": 0,
+      "likes": 818,
+      "comments": 944,
+      "sourceGroup": "public-timeline-expansion",
+      "sourceDimensions": {
+        "width": 720,
+        "height": 1280
+      }
+    },
+    {
+      "rank": 72,
+      "shortcode": "DabBN2zD4Jl",
+      "title": "How to Plan a Full Month of Content in 45 Minutes \u23f0",
+      "caption": "How to Plan a Full Month of Content in 45 Minutes \u23f0",
+      "url": "https://www.instagram.com/reel/DabBN2zD4Jl/",
+      "file": "072-DabBN2zD4Jl.mp4",
+      "publishedAt": 1783278092,
+      "views": 0,
+      "likes": 4377,
+      "comments": 2883,
+      "sourceGroup": "public-timeline-expansion",
+      "sourceDimensions": {
+        "width": 720,
+        "height": 1280
+      }
+    },
+    {
+      "rank": 73,
+      "shortcode": "DaaRJp5Dop7",
+      "title": "If You Had 60 Minutes to Create a Month Worth of Content Ideas How Would You Do It?",
+      "caption": "If You Had 60 Minutes to Create a Month Worth of Content Ideas How Would You Do It?",
+      "url": "https://www.instagram.com/reel/DaaRJp5Dop7/",
+      "file": "073-DaaRJp5Dop7.mp4",
+      "publishedAt": 1783252918,
+      "views": 0,
+      "likes": 1158,
+      "comments": 328,
+      "sourceGroup": "public-timeline-expansion",
+      "sourceDimensions": {
+        "width": 720,
+        "height": 1280
+      }
+    },
+    {
+      "rank": 74,
+      "shortcode": "DaYca3Aj4U7",
+      "title": "Comment \u201cAva\u201d for the full episode",
+      "caption": "Comment \u201cAva\u201d for the full episode.",
+      "url": "https://www.instagram.com/reel/DaYca3Aj4U7/",
+      "file": "074-DaYca3Aj4U7.mp4",
+      "publishedAt": 1783191689,
+      "views": 0,
+      "likes": 4154,
+      "comments": 2309,
+      "sourceGroup": "public-timeline-expansion",
+      "sourceDimensions": {
+        "width": 720,
+        "height": 1280
+      }
+    },
+    {
+      "rank": 75,
+      "shortcode": "DaXsUa1j6a0",
+      "title": "Talking Head vs. Yaps",
+      "caption": "Talking Head vs. Yaps \n\nFollow for more social media marketing education.",
+      "url": "https://www.instagram.com/reel/DaXsUa1j6a0/",
+      "file": "075-DaXsUa1j6a0.mp4",
+      "publishedAt": 1783166479,
+      "views": 0,
+      "likes": 1252,
+      "comments": 22,
+      "sourceGroup": "public-timeline-expansion",
+      "sourceDimensions": {
+        "width": 720,
+        "height": 1280
+      }
+    },
+    {
+      "rank": 76,
+      "shortcode": "DaV3o5qgWAa",
+      "title": "100 Views vs. 1M Views \ud83d\udcca",
+      "caption": "100 Views vs. 1M Views \ud83d\udcca\n\nFollow for more social media marketing education \u2705",
+      "url": "https://www.instagram.com/reel/DaV3o5qgWAa/",
+      "file": "076-DaV3o5qgWAa.mp4",
+      "publishedAt": 1783105298,
+      "views": 0,
+      "likes": 1075,
+      "comments": 10,
+      "sourceGroup": "public-timeline-expansion",
+      "sourceDimensions": {
+        "width": 720,
+        "height": 1280
+      }
+    },
+    {
+      "rank": 77,
+      "shortcode": "DaVHo_ClOm_",
+      "title": "If You Had to Make a Storytelling Video That Would Get 1M Views How Would You Do It?",
+      "caption": "If You Had to Make a Storytelling Video That Would Get 1M Views How Would You Do It? \n\nWant someone who can do this for you? Comment \u201cSMM\u201d for more information!",
+      "url": "https://www.instagram.com/reel/DaVHo_ClOm_/",
+      "file": "077-DaVHo_ClOm_.mp4",
+      "publishedAt": 1783080142,
+      "views": 0,
+      "likes": 1325,
+      "comments": 637,
+      "sourceGroup": "public-timeline-expansion",
+      "sourceDimensions": {
+        "width": 720,
+        "height": 1280
+      }
+    },
+    {
+      "rank": 78,
+      "shortcode": "DaTX7bIJU1X",
+      "title": "Instagram 101\u2026",
+      "caption": "Instagram 101\u2026\n\nFollow for more social media marketing education.",
+      "url": "https://www.instagram.com/reel/DaTX7bIJU1X/",
+      "file": "078-DaTX7bIJU1X.mp4",
+      "publishedAt": 1783021598,
+      "views": 0,
+      "likes": 950,
+      "comments": 17,
+      "sourceGroup": "public-timeline-expansion",
+      "sourceDimensions": {
+        "width": 720,
+        "height": 1280
+      }
+    },
+    {
+      "rank": 79,
+      "shortcode": "DaSjvHkMyd9",
+      "title": "100 View vs. 1M view Video",
+      "caption": "100 View vs. 1M view Video.\u00a0\n\nFollow for more social media marketing education.",
+      "url": "https://www.instagram.com/reel/DaSjvHkMyd9/",
+      "file": "079-DaSjvHkMyd9.mp4",
+      "publishedAt": 1782994243,
+      "views": 0,
+      "likes": 498,
+      "comments": 71,
+      "sourceGroup": "public-timeline-expansion",
+      "sourceDimensions": {
+        "width": 720,
+        "height": 1280
+      }
+    },
+    {
+      "rank": 80,
+      "shortcode": "DaP-Zr9vnTl",
+      "title": "POV: You Hire Me As Your Social Media Manager \ud83d\ude0e",
+      "caption": "POV: You Hire Me As Your Social Media Manager \ud83d\ude0e\n\nInterested? Comment SMM for more information! \u2705",
+      "url": "https://www.instagram.com/reel/DaP-Zr9vnTl/",
+      "file": "080-DaP-Zr9vnTl.mp4",
+      "publishedAt": 1782907748,
+      "views": 0,
+      "likes": 2003,
+      "comments": 536,
+      "sourceGroup": "public-timeline-expansion",
+      "sourceDimensions": {
+        "width": 720,
+        "height": 1280
+      }
+    },
+    {
+      "rank": 81,
+      "shortcode": "DaOLHL2Jsyj",
+      "title": "Same Hook, Different Delivery",
+      "caption": "Same Hook, Different Delivery.\n\nWant 1,000 viral hooks taken from viral videos that I\u2019ve templatized for your content? Comment \u201c1000\u201d!",
+      "url": "https://www.instagram.com/reel/DaOLHL2Jsyj/",
+      "file": "081-DaOLHL2Jsyj.mp4",
+      "publishedAt": 1782847198,
+      "views": 0,
+      "likes": 3599,
+      "comments": 4418,
+      "sourceGroup": "public-timeline-expansion",
+      "sourceDimensions": {
+        "width": 720,
+        "height": 1280
+      }
+    },
+    {
+      "rank": 82,
+      "shortcode": "DaNZhMgJl-2",
+      "title": "Educational vs. Storytelling vs. Yap Reels",
+      "caption": "Educational vs. Storytelling vs. Yap Reels.\u00a0\n\nFollow for more social media marketing education.",
+      "url": "https://www.instagram.com/reel/DaNZhMgJl-2/",
+      "file": "082-DaNZhMgJl-2.mp4",
+      "publishedAt": 1782821187,
+      "views": 0,
+      "likes": 387,
+      "comments": 13,
+      "sourceGroup": "public-timeline-expansion",
+      "sourceDimensions": {
+        "width": 720,
+        "height": 1280
+      }
+    },
+    {
+      "rank": 83,
+      "shortcode": "DaLpwC5Jcfr",
+      "title": "100 Views vs. 1M Views \ud83d\udcca",
+      "caption": "100 Views vs. 1M Views \ud83d\udcca\n\nComment HOOK and I will send over a list of 1,000 that can work in any niche \u2705",
+      "url": "https://www.instagram.com/reel/DaLpwC5Jcfr/",
+      "file": "083-DaLpwC5Jcfr.mp4",
+      "publishedAt": 1782762626,
+      "views": 0,
+      "likes": 5071,
+      "comments": 4220,
+      "sourceGroup": "public-timeline-expansion",
+      "sourceDimensions": {
+        "width": 720,
+        "height": 1280
+      }
+    },
+    {
+      "rank": 84,
+      "shortcode": "DaK0NKPRigo",
+      "title": "What Type of Content Should You Post?",
+      "caption": "What Type of Content Should You Post?\u00a0\n\nBusiness owners looking to grow and sell on social media, comment \u201cSMM\u201d for more information.",
+      "url": "https://www.instagram.com/reel/DaK0NKPRigo/",
+      "file": "084-DaK0NKPRigo.mp4",
+      "publishedAt": 1782734511,
+      "views": 0,
+      "likes": 1132,
+      "comments": 210,
+      "sourceGroup": "public-timeline-expansion",
+      "sourceDimensions": {
+        "width": 720,
+        "height": 1280
+      }
+    },
+    {
+      "rank": 85,
+      "shortcode": "DaIPd0ohziK",
+      "title": "Using AI For Content",
+      "caption": "Using AI For Content.\u00a0\n\nWant a thousand handpicked viral hooks that I templatized that you can steal? Comment \u201cHOOK\u201d and I will send it over.",
+      "url": "https://www.instagram.com/reel/DaIPd0ohziK/",
+      "file": "085-DaIPd0ohziK.mp4",
+      "publishedAt": 1782648009,
+      "views": 0,
+      "likes": 1805,
+      "comments": 968,
+      "sourceGroup": "public-timeline-expansion",
+      "sourceDimensions": {
+        "width": 720,
+        "height": 1280
+      }
+    },
+    {
+      "rank": 86,
+      "shortcode": "DaFqxYihVmH",
+      "title": "Weekly Diary - Episode #20",
+      "caption": "Weekly Diary - Episode #20",
+      "url": "https://www.instagram.com/reel/DaFqxYihVmH/",
+      "file": "086-DaFqxYihVmH.mp4",
+      "publishedAt": 1782561617,
+      "views": 0,
+      "likes": 626,
+      "comments": 16,
+      "sourceGroup": "public-timeline-expansion",
+      "sourceDimensions": {
+        "width": 720,
+        "height": 1280
+      }
+    },
+    {
+      "rank": 87,
+      "shortcode": "DaDFaYDOgfX",
+      "title": "Do hashtags even work anymore on Instagram?",
+      "caption": "Do hashtags even work anymore on Instagram?",
+      "url": "https://www.instagram.com/reel/DaDFaYDOgfX/",
+      "file": "087-DaDFaYDOgfX.mp4",
+      "publishedAt": 1782475128,
+      "views": 0,
+      "likes": 431,
+      "comments": 15,
+      "sourceGroup": "public-timeline-expansion",
+      "sourceDimensions": {
+        "width": 720,
+        "height": 1280
+      }
+    },
+    {
+      "rank": 88,
+      "shortcode": "DaBUdFIgYDP",
+      "title": "Comment \u201cHOOK\u201d If you want 1000 hook templates, based off of viral videos, and I will send it over",
+      "caption": "Comment \u201cHOOK\u201d If you want 1000 hook templates, based off of viral videos, and I will send it over.",
+      "url": "https://www.instagram.com/reel/DaBUdFIgYDP/",
+      "file": "088-DaBUdFIgYDP.mp4",
+      "publishedAt": 1782415868,
+      "views": 0,
+      "likes": 1649,
+      "comments": 1816,
+      "sourceGroup": "public-timeline-expansion",
+      "sourceDimensions": {
+        "width": 720,
+        "height": 1280
+      }
+    },
+    {
+      "rank": 89,
+      "shortcode": "DaAgdgDsY_I",
+      "title": "Is Educational Content Dead?",
+      "caption": "Is Educational Content Dead?",
+      "url": "https://www.instagram.com/reel/DaAgdgDsY_I/",
+      "file": "089-DaAgdgDsY_I.mp4",
+      "publishedAt": 1782388789,
+      "views": 0,
+      "likes": 632,
+      "comments": 29,
+      "sourceGroup": "public-timeline-expansion",
+      "sourceDimensions": {
+        "width": 720,
+        "height": 1280
+      }
+    },
+    {
+      "rank": 90,
+      "shortcode": "DZ-wG1oOORj",
+      "title": "Bad vs. Good vs. Great Scripts",
+      "caption": "Bad vs. Good vs. Great Scripts. \n\nComment SCRIPT for real scripts I wrote that got me over 1M views.",
+      "url": "https://www.instagram.com/reel/DZ-wG1oOORj/",
+      "file": "090-DZ-wG1oOORj.mp4",
+      "publishedAt": 1782329620,
+      "views": 0,
+      "likes": 1387,
+      "comments": 2534,
+      "sourceGroup": "public-timeline-expansion",
+      "sourceDimensions": {
+        "width": 720,
+        "height": 1280
+      }
+    },
+    {
+      "rank": 91,
+      "shortcode": "DZ968w3yI9J",
+      "title": "Ranking Viral Video Types",
+      "caption": "Ranking Viral Video Types.\u00a0\n\nFollow for More Social Media Marketing Education.",
+      "url": "https://www.instagram.com/reel/DZ968w3yI9J/",
+      "file": "091-DZ968w3yI9J.mp4",
+      "publishedAt": 1782301845,
+      "views": 0,
+      "likes": 436,
+      "comments": 12,
+      "sourceGroup": "public-timeline-expansion",
+      "sourceDimensions": {
+        "width": 720,
+        "height": 1280
+      }
+    },
+    {
+      "rank": 92,
+      "shortcode": "DZ8KY50p4JU",
+      "title": "Don\u2019t Know How to Write Scripts? \ud83d\udcdd",
+      "caption": "Don\u2019t Know How to Write Scripts? \ud83d\udcdd\n\nIf you\u2019re a business owner looking for someone to research, script, edit, and upload all of your content for you, comment SMM for more information \u2705",
+      "url": "https://www.instagram.com/reel/DZ8KY50p4JU/",
+      "file": "092-DZ8KY50p4JU.mp4",
+      "publishedAt": 1782242821,
+      "views": 0,
+      "likes": 3391,
+      "comments": 1644,
+      "sourceGroup": "public-timeline-expansion",
+      "sourceDimensions": {
+        "width": 720,
+        "height": 1280
+      }
+    },
+    {
+      "rank": 93,
+      "shortcode": "DZ7YitENTjm",
+      "title": "PERSONAL BRANDING 101 (How to Never Destroy Your Reputation)",
+      "caption": "PERSONAL BRANDING 101 (How to Never Destroy Your Reputation)",
+      "url": "https://www.instagram.com/reel/DZ7YitENTjm/",
+      "file": "093-DZ7YitENTjm.mp4",
+      "publishedAt": 1782217067,
+      "views": 0,
+      "likes": 2439,
+      "comments": 221,
+      "sourceGroup": "public-timeline-expansion",
+      "sourceDimensions": {
+        "width": 720,
+        "height": 1280
+      }
+    },
+    {
+      "rank": 94,
+      "shortcode": "DZ5mFb9slKT",
+      "title": "This is a Viral Storytelling Video \ud83d\udcda",
+      "caption": "This is a Viral Storytelling Video \ud83d\udcda\n\nWant us to research, ideate, script, edit, and upload your content so you can grow and sell on social media as a business owner? Comment SMM!",
+      "url": "https://www.instagram.com/reel/DZ5mFb9slKT/",
+      "file": "094-DZ5mFb9slKT.mp4",
+      "publishedAt": 1782156617,
+      "views": 0,
+      "likes": 1664,
+      "comments": 1036,
+      "sourceGroup": "public-timeline-expansion",
+      "sourceDimensions": {
+        "width": 720,
+        "height": 1280
+      }
+    },
+    {
+      "rank": 95,
+      "shortcode": "DZ46n7uFaCX",
+      "title": "Things I Find Incredibly Chic - Personal Brand Edition",
+      "caption": "Things I Find Incredibly Chic - Personal Brand Edition\u00a0\n\nFollow for More Social Media Marketing Edition.",
+      "url": "https://www.instagram.com/reel/DZ46n7uFaCX/",
+      "file": "095-DZ46n7uFaCX.mp4",
+      "publishedAt": 1782134044,
+      "views": 0,
+      "likes": 827,
+      "comments": 20,
+      "sourceGroup": "public-timeline-expansion",
+      "sourceDimensions": {
+        "width": 720,
+        "height": 1280
+      }
+    },
+    {
+      "rank": 96,
+      "shortcode": "DZ29-0jBD9i",
+      "title": "There are 5 Main Types of Content You Should be Posting\ud83d\udcf1",
+      "caption": "There are 5 Main Types of Content You Should be Posting\ud83d\udcf1\n\nFollow for more social media marketing education \u2705",
+      "url": "https://www.instagram.com/reel/DZ29-0jBD9i/",
+      "file": "096-DZ29-0jBD9i.mp4",
+      "publishedAt": 1782068408,
+      "views": 0,
+      "likes": 1964,
+      "comments": 28,
+      "sourceGroup": "public-timeline-expansion",
+      "sourceDimensions": {
+        "width": 720,
+        "height": 1280
+      }
+    },
+    {
+      "rank": 97,
+      "shortcode": "DZzpJojhoIy",
+      "title": "3 Types of Research",
+      "caption": "3 Types of Research.\u00a0\n\nIf you just want a team who\u2019s going to research, script, edit, and upload all your content for you, all you gotta do is film. Comment \u201cSMM\u201d for more information.",
+      "url": "https://www.instagram.com/reel/DZzpJojhoIy/",
+      "file": "097-DZzpJojhoIy.mp4",
+      "publishedAt": 1781956810,
+      "views": 0,
+      "likes": 753,
+      "comments": 106,
+      "sourceGroup": "public-timeline-expansion",
+      "sourceDimensions": {
+        "width": 720,
+        "height": 1280
+      }
+    },
+    {
+      "rank": 98,
+      "shortcode": "DZxCO8otC1L",
+      "title": "The Art of the Written Hook",
+      "caption": "The Art of the Written Hook\u00a0\n\nFollow for more social media marketing education.",
+      "url": "https://www.instagram.com/reel/DZxCO8otC1L/",
+      "file": "098-DZxCO8otC1L.mp4",
+      "publishedAt": 1781869394,
+      "views": 0,
+      "likes": 443,
+      "comments": 54,
+      "sourceGroup": "public-timeline-expansion",
+      "sourceDimensions": {
+        "width": 720,
+        "height": 1280
+      }
+    },
+    {
+      "rank": 99,
+      "shortcode": "DZuoZ2ApUoR",
+      "title": "All the fastest-growing creators have a mission",
+      "caption": "All the fastest-growing creators have a mission.",
+      "url": "https://www.instagram.com/reel/DZuoZ2ApUoR/",
+      "file": "099-DZuoZ2ApUoR.mp4",
+      "publishedAt": 1781788962,
+      "views": 0,
+      "likes": 1677,
+      "comments": 24,
+      "sourceGroup": "public-timeline-expansion",
+      "sourceDimensions": {
+        "width": 720,
+        "height": 1280
+      }
+    },
+    {
+      "rank": 100,
+      "shortcode": "DZsthAIMgG2",
+      "title": "We All Know Those Creators That Just Have the Perfect Branding \ud83d\udc40",
+      "caption": "We All Know Those Creators That Just Have the Perfect Branding \ud83d\udc40\n\nFollow for more social media marketing education \u2705",
+      "url": "https://www.instagram.com/reel/DZsthAIMgG2/",
+      "file": "100-DZsthAIMgG2.mp4",
+      "publishedAt": 1781724486,
+      "views": 0,
+      "likes": 3494,
+      "comments": 24,
+      "sourceGroup": "public-timeline-expansion",
+      "sourceDimensions": {
+        "width": 720,
+        "height": 1280
+      }
+    }
+  ]
+}
