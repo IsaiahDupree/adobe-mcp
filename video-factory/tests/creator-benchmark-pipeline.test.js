@@ -45,13 +45,47 @@ test("100-video campaign spends one presenter generation and derives 21 approval
     assert.equal(job.generation.scenes.length, 1);
     assert.equal(job.generation.voiceProvider, "elevenlabs");
     assert.equal(job.generation.voiceVariantId, "elevenlabs-isaiah-v2");
+    assert.equal(job.generation.elevenLabsModelId, "eleven_flash_v2_5");
+    assert.equal(job.generation.engine, "avatar_iii");
+    assert.equal(job.generation.resolution, "720p");
     assert.equal(job.generation.concurrency, 1);
+    assert.deepEqual(job.modelPolicy, {
+        id: "video-campaign-low-cost-owned-v1",
+        maxPresenterGenerations: 1,
+        reusePaidPresenterSource: true,
+        estimatedHeyGenUsdPerMinute: 1,
+    });
     assert.equal(job.derivativeCampaign.styles.length, 7);
     assert.equal(job.derivativeCampaign.clipsPerSource, 3);
     assert.equal(job.derivativeCampaign.schedule.approvalRequired, true);
     assert.equal(job.showcase.assetPolicy.mode, "provider-only");
     assert.equal(job.showcase.assetRequests.length, 16);
     assert.equal(job.showcase.explainerAssets.length, 8);
+});
+
+test("low-cost policy rejects premium HeyGen engines and duplicate presenter generations", () => {
+    const spec = JSON.parse(fs.readFileSync(path.join(factoryRoot, "examples", "isaiah-100-video-content-system-board.json")));
+    const defaults = {
+        avatarId: "default-avatar",
+        voiceId: "default-voice",
+        elevenLabsVoiceId: "default-elevenlabs",
+    };
+    const premium = structuredClone(spec.base_job);
+    premium.generation.engine = "avatar_iv";
+    assert.throws(
+        () => normalizeJobSpec(premium, "/tmp/video-factory-campaigns", "/tmp/video-factory-archive", defaults),
+        /requires HeyGen Avatar III/,
+    );
+
+    const duplicate = structuredClone(spec.base_job);
+    duplicate.generation.scenes.push({
+        id: "duplicate-paid-scene",
+        script: "This second scene would buy another presenter generation and must be rejected.",
+    });
+    assert.throws(
+        () => normalizeJobSpec(duplicate, "/tmp/video-factory-campaigns", "/tmp/video-factory-archive", defaults),
+        /one paid presenter generation/,
+    );
 });
 
 test("checked-in benchmark report contains the complete 100-video index and 80-idea backlog", () => {

@@ -82,6 +82,7 @@ class JobStore {
             autonomy: job.autonomy,
             production: job.production,
             generation: job.generation,
+            modelPolicy: job.modelPolicy,
             retention: job.retention,
             showcase: job.showcase,
             composition: job.composition,

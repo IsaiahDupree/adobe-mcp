@@ -69,12 +69,18 @@
       "sequence_name": "YOUTUBE_16X9_100_VIDEO_SYSTEM",
       "render": {"timeout_ms": 1800000, "export_type": "IMMEDIATELY"}
     },
+    "model_policy": {
+      "id": "video-campaign-low-cost-owned-v1",
+      "max_presenter_generations": 1,
+      "reuse_paid_presenter_source": true,
+      "estimated_heygen_usd_per_minute": 1.0
+    },
     "generation": {
       "enabled": true,
       "provider": "heygen",
       "voice_provider": "elevenlabs",
       "elevenlabs_voice_id": "k0HDiJKO5QdXkGN6NSLI",
-      "elevenlabs_model_id": "eleven_multilingual_v2",
+      "elevenlabs_model_id": "eleven_flash_v2_5",
       "elevenlabs_output_format": "mp3_44100_128",
       "elevenlabs_voice_settings": {"stability": 0.48, "similarity_boost": 0.82, "style": 0.2, "use_speaker_boost": true, "speed": 1.12},
       "voice_variant_id": "elevenlabs-isaiah-v2",

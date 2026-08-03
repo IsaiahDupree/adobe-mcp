@@ -136,7 +136,7 @@ function normalizeGeneration(spec, defaults = {}) {
         voiceId,
         voiceProvider,
         elevenLabsVoiceId,
-        elevenLabsModelId: input.elevenlabs_model_id || input.elevenLabsModelId || "eleven_multilingual_v2",
+        elevenLabsModelId: input.elevenlabs_model_id || input.elevenLabsModelId || "eleven_flash_v2_5",
         elevenLabsOutputFormat: input.elevenlabs_output_format || input.elevenLabsOutputFormat || "mp3_44100_128",
         elevenLabsVoiceSettings: input.elevenlabs_voice_settings || input.elevenLabsVoiceSettings || {
             stability: 0.48,
@@ -163,6 +163,41 @@ function normalizeGeneration(spec, defaults = {}) {
         concurrency: Math.max(1, Math.min(4, Number(input.concurrency || 3))),
         pollIntervalMs: Number(input.poll_interval_ms || input.pollIntervalMs || 8000),
         timeoutMs: Number(input.timeout_ms || input.timeoutMs || 20 * 60 * 1000),
+    };
+}
+
+function normalizeModelPolicy(spec, generation) {
+    const input = spec.model_policy || spec.modelPolicy;
+    if (!input) return null;
+    const id = input.id || input.policy_id || input.policyId;
+    if (!id) throw new Error("model_policy.id is required.");
+    const maxPresenterGenerations = Number(
+        input.max_presenter_generations || input.maxPresenterGenerations || 1,
+    );
+    if (!Number.isInteger(maxPresenterGenerations) || maxPresenterGenerations < 1) {
+        throw new Error("model_policy.max_presenter_generations must be a positive integer.");
+    }
+    if (id === "video-campaign-low-cost-owned-v1") {
+        if (generation.provider !== "heygen" || generation.engine !== "avatar_iii") {
+            throw new Error("Low-cost policy requires HeyGen Avatar III.");
+        }
+        if (generation.resolution !== "720p") {
+            throw new Error("Low-cost policy requires 720p presenter generation.");
+        }
+        if (generation.voiceProvider !== "elevenlabs" || generation.elevenLabsModelId !== "eleven_flash_v2_5") {
+            throw new Error("Low-cost policy requires ElevenLabs Flash v2.5.");
+        }
+        if (generation.concurrency !== 1 || generation.scenes.length > maxPresenterGenerations) {
+            throw new Error("Low-cost policy allows one paid presenter generation per master.");
+        }
+    }
+    return {
+        id,
+        maxPresenterGenerations,
+        reusePaidPresenterSource: input.reuse_paid_presenter_source !== false,
+        estimatedHeyGenUsdPerMinute: Number(
+            input.estimated_heygen_usd_per_minute || input.estimatedHeyGenUsdPerMinute || 0,
+        ),
     };
 }
 
@@ -600,6 +635,7 @@ function normalizeJobSpec(
     const sourceAssets = collectAssets(spec);
     const archive = normalizeArchive(spec, defaultArchiveRoot);
     const generation = normalizeGeneration(spec, defaults);
+    const modelPolicy = normalizeModelPolicy(spec, generation);
     const retention = normalizeRetention(spec, defaults);
     const showcase = normalizeShowcase(spec);
     const composition = normalizeComposition(spec, generation);
@@ -653,6 +689,7 @@ function normalizeJobSpec(
             render,
         },
         generation,
+        modelPolicy,
         retention,
         showcase,
         composition,
