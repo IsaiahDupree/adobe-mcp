@@ -49,6 +49,31 @@
         "minimumReplicationsPerStyle": 2,
         "practicalSignificanceRatio": 0.08
       }
+    },
+    {
+      "id": "authority-benchmark-expanded-v2",
+      "status": "active",
+      "sourceProvider": "heygen",
+      "benchmarkProfileId": "authority-education-v1",
+      "styles": ["benchmark-comparison-ladder", "benchmark-hook-test", "benchmark-rating-list", "benchmark-story-authority", "benchmark-contrarian-deconstruction", "benchmark-screen-proof-walkthrough", "benchmark-before-after-reveal"],
+      "variantMode": "all-styles",
+      "clipsPerSource": 1,
+      "minimumSeconds": 15,
+      "maximumSeconds": 55,
+      "platforms": ["youtube", "instagram", "tiktok"],
+      "schedule": {
+        "styleSpacingHours": 48,
+        "crossPlatformOffsetMinutes": 30,
+        "approvalRequired": true
+      },
+      "experiment": {
+        "primaryVariable": "benchmark_format_family",
+        "primaryMetric": "average_percentage_viewed",
+        "guardrails": ["completion_rate", "three_second_view_rate", "engagement_rate"],
+        "minimumViewsPerStyle": 500,
+        "minimumReplicationsPerStyle": 2,
+        "practicalSignificanceRatio": 0.08
+      }
     }
   ]
 }

@@ -154,6 +154,78 @@
         "semanticVisualsOnly": true,
         "maximumVisualInserts": 6
       }
+    },
+    {
+      "id": "benchmark-contrarian-deconstruction",
+      "description": "A familiar belief is stated plainly, broken with one causal explanation, then replaced by a more useful operating rule.",
+      "selectionKeywords": ["wrong", "myth", "mistake", "stop", "actually", "fail", "belief", "truth"],
+      "duration": { "minimumSeconds": 15, "idealSeconds": 30, "maximumSeconds": 46 },
+      "captions": { "mode": "stable-keyword-highlight", "safeBottomRatio": 0.2, "anchorYRatio": 0.66, "wordsPerChunk": 3, "frameRate": 30, "minimumVisibleFrames": 18, "bridgeGapFrames": 6 },
+      "layout": { "faceZoomMultiplier": 1.2, "faceAnchor": { "x": 0.5, "y": 0.35 }, "platformUiReserveBottomRatio": 0.2, "headlineYRatio": 0.08 },
+      "motion": { "introScaleMultiplier": 1.065, "outroScaleMultiplier": 1.015, "introSeconds": 0.35 },
+      "graphics": { "headlineAccent": "#F4E04D", "formatLabel": "MYTH / REALITY", "maximumHeadlineWords": 7 },
+      "editing": {
+        "formatFamily": "contrarian-deconstruction",
+        "hookMode": "triple-hook-contrarian",
+        "transition": "hard-cut",
+        "visualChangeIntervalSeconds": 1.6,
+        "calloutMode": "myth-cause-replacement",
+        "audioPriority": "dialogue-first",
+        "dialogueGainDb": 1,
+        "musicMode": "restrained-tension",
+        "sfxMode": "myth-strike-and-rule-reveal",
+        "semanticVisualsOnly": true,
+        "semanticVisualMode": "diagram-plus-proof",
+        "maximumVisualInserts": 4
+      }
+    },
+    {
+      "id": "benchmark-screen-proof-walkthrough",
+      "description": "A proof-led screen demonstration where each visible action answers the phrase being spoken and the presenter returns to interpret the result.",
+      "selectionKeywords": ["show", "screen", "demo", "premiere", "project", "timeline", "result", "proof"],
+      "duration": { "minimumSeconds": 18, "idealSeconds": 36, "maximumSeconds": 52 },
+      "captions": { "mode": "stable-keyword-highlight", "safeBottomRatio": 0.2, "anchorYRatio": 0.71, "wordsPerChunk": 5, "frameRate": 30, "minimumVisibleFrames": 18, "bridgeGapFrames": 6 },
+      "layout": { "faceZoomMultiplier": 1.12, "faceAnchor": { "x": 0.5, "y": 0.34 }, "platformUiReserveBottomRatio": 0.2, "headlineYRatio": 0.08 },
+      "motion": { "introScaleMultiplier": 1.015, "outroScaleMultiplier": 1.025, "introSeconds": 0.8 },
+      "graphics": { "headlineAccent": "#7CF29A", "formatLabel": "LIVE PROOF", "maximumHeadlineWords": 7 },
+      "editing": {
+        "formatFamily": "screen-proof-walkthrough",
+        "hookMode": "result-before-process",
+        "transition": "action-matched-hard-cut",
+        "visualChangeIntervalSeconds": 1.5,
+        "calloutMode": "action-result-takeaway",
+        "audioPriority": "dialogue-first",
+        "dialogueGainDb": 1,
+        "musicMode": "minimal-technical-pulse",
+        "sfxMode": "interface-actions-only",
+        "semanticVisualsOnly": true,
+        "semanticVisualMode": "video-only",
+        "maximumVisualInserts": 8
+      }
+    },
+    {
+      "id": "benchmark-before-after-reveal",
+      "description": "The finished outcome appears first, the weak starting state creates contrast, and a compressed mechanism earns the final reveal.",
+      "selectionKeywords": ["before", "after", "changed", "fixed", "improved", "from", "to", "transformation"],
+      "duration": { "minimumSeconds": 15, "idealSeconds": 28, "maximumSeconds": 45 },
+      "captions": { "mode": "stable-keyword-highlight", "safeBottomRatio": 0.2, "anchorYRatio": 0.67, "wordsPerChunk": 4, "frameRate": 30, "minimumVisibleFrames": 18, "bridgeGapFrames": 6 },
+      "layout": { "faceZoomMultiplier": 1.18, "faceAnchor": { "x": 0.5, "y": 0.36 }, "platformUiReserveBottomRatio": 0.2, "headlineYRatio": 0.1 },
+      "motion": { "introScaleMultiplier": 1.07, "outroScaleMultiplier": 1.04, "introSeconds": 0.4 },
+      "graphics": { "headlineAccent": "#FF8A3D", "formatLabel": "BEFORE / AFTER", "maximumHeadlineWords": 8 },
+      "editing": {
+        "formatFamily": "before-after-reveal",
+        "hookMode": "triple-hook-outcome-first",
+        "transition": "hard-cut",
+        "visualChangeIntervalSeconds": 1.9,
+        "calloutMode": "before-mechanism-after",
+        "audioPriority": "dialogue-first",
+        "dialogueGainDb": 1,
+        "musicMode": "rising-proof-pulse",
+        "sfxMode": "before-after-reveal-only",
+        "semanticVisualsOnly": true,
+        "semanticVisualMode": "complete-evidence-sequence",
+        "maximumVisualInserts": 6
+      }
     }
   ]
 }

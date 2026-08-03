@@ -21,7 +21,7 @@
       "researchRules": {
         "ideaSources": ["audience questions", "search questions", "creator analytics", "customer objections", "product proof"],
         "requiredEvidence": ["viewer problem", "one concrete distinction", "one proof point or demonstration", "one platform-native promise"],
-        "angleTests": ["comparison", "contrarian rating", "result-first", "question", "list or taxonomy"],
+        "angleTests": ["comparison", "contrarian deconstruction", "result-first before-and-after", "screen proof walkthrough", "question", "list or taxonomy"],
         "readingLevelMaximum": 6,
         "reusePolicy": "Re-angle a validated idea only when the hook, proof, or audience problem changes."
       },
@@ -52,7 +52,10 @@
         {"id": "benchmark-comparison-ladder", "bestFor": ["framework choices", "tool comparisons", "before and after", "good better best"]},
         {"id": "benchmark-hook-test", "bestFor": ["A/B hooks", "editing demonstrations", "creative experiments"]},
         {"id": "benchmark-rating-list", "bestFor": ["myth ratings", "tool lists", "content taxonomies"]},
-        {"id": "benchmark-story-authority", "bestFor": ["founder lessons", "build in public", "identity and belief shifts"]}
+        {"id": "benchmark-story-authority", "bestFor": ["founder lessons", "build in public", "identity and belief shifts"]},
+        {"id": "benchmark-contrarian-deconstruction", "bestFor": ["category myths", "common workflow mistakes", "replacing weak advice with an operating rule"]},
+        {"id": "benchmark-screen-proof-walkthrough", "bestFor": ["Premiere demonstrations", "product proof", "auditable workflow walkthroughs"]},
+        {"id": "benchmark-before-after-reveal", "bestFor": ["creative transformations", "workflow improvements", "result-first case studies"]}
       ]
     }
   ]

@@ -26,7 +26,7 @@ function loudnessCorrection(job, details) {
     const targetDeltaDb = targetLufs - integratedLufs;
     const peakSafeDeltaDb = maximumTruePeakDb - 0.2 - truePeakDb;
     const appliedDeltaDb = Math.min(targetDeltaDb, peakSafeDeltaDb);
-    const dialogueGainDb = Math.max(-6, Math.min(6, currentGainDb + appliedDeltaDb));
+    const dialogueGainDb = Math.max(-12, Math.min(12, currentGainDb + appliedDeltaDb));
     if (Math.abs(dialogueGainDb - currentGainDb) < 0.05) return null;
     return {
         provider: "premiere-dialogue-gain-correction",
@@ -117,6 +117,7 @@ function createStableHighlightCaptions(directory, cues, captions = {}, options =
     const wordsPerChunk = Math.max(3, Math.min(7, Number(captions.wordsPerChunk || 5)));
     const anchorY = Math.max(0.55, Math.min(0.76, Number(captions.anchorYRatio || 0.67)));
     const frameRate = Math.max(24, Math.min(60, Number(captions.frameRate || 30)));
+    const totalFrames = Math.max(1, Math.round(Number(options.durationSeconds || cues.at(-1)?.end || 0) * frameRate));
     const minimumVisibleFrames = Math.max(12, Number(captions.minimumVisibleFrames || 18));
     const bridgeGapFrames = Math.max(1, Number(captions.bridgeGapFrames || Math.round(frameRate * 0.2)));
     const assets = [];
@@ -224,6 +225,18 @@ function createStableHighlightCaptions(directory, cues, captions = {}, options =
             next.start = next.startFrame / next.frameRate;
             next.startTicks = Math.round(next.start * TICKS_PER_SECOND);
             current.endFrame += missing;
+        }
+        let remaining = minimumFrames - (current.endFrame - current.startFrame);
+        if (remaining > 0) {
+            const endBoundary = next ? next.startFrame : totalFrames;
+            const extendBy = Math.min(remaining, Math.max(0, endBoundary - current.endFrame));
+            current.endFrame += extendBy;
+            remaining -= extendBy;
+        }
+        if (remaining > 0) {
+            const startBoundary = previous ? previous.endFrame : 0;
+            const shiftBy = Math.min(remaining, Math.max(0, current.startFrame - startBoundary));
+            current.startFrame -= shiftBy;
         }
         current.visibleFrames = current.endFrame - current.startFrame;
         current.start = current.startFrame / current.frameRate;
@@ -478,6 +491,17 @@ function inheritedSemanticVisuals(source, selection) {
         .filter((item) => item.end > item.start && path.isAbsolute(path.normalize(item.path || "")) && fs.existsSync(item.path));
 }
 
+function selectSemanticVisuals(visuals, editing = {}) {
+    const mode = editing.semanticVisualMode || "complete-evidence-sequence";
+    const diagrams = visuals.filter((item) => item.provider === "generated-2d");
+    const videos = visuals.filter((item) => item.provider !== "generated-2d");
+    if (mode === "video-only") return videos;
+    if (mode === "diagram-plus-proof") {
+        return [diagrams[0], videos.at(-1)].filter(Boolean);
+    }
+    return visuals;
+}
+
 class ShortFormBatchStore {
     constructor(config, jobStore, boardStore = null, compositionStore = null) {
         this.config = config;
@@ -675,9 +699,9 @@ class ShortFormBatchStore {
                 }];
 
             const requestedSemanticVisuals = spec.semantic_visuals || spec.semanticVisuals || [];
-            const semanticVisuals = (requestedSemanticVisuals.length
+            const semanticVisuals = selectSemanticVisuals((requestedSemanticVisuals.length
                 ? requestedSemanticVisuals
-                : inheritedSemanticVisuals(source, selection))
+                : inheritedSemanticVisuals(source, selection)), style.editing)
                 .slice(0, Number(style.editing.maximumVisualInserts || 4));
             for (const [visualIndex, visual] of semanticVisuals.entries()) {
                 const visualPath = path.normalize(visual.path || visual.localPath || "");
@@ -733,6 +757,7 @@ class ShortFormBatchStore {
                           magickBin: this.config.IMAGEMAGICK_BIN || this.config.MAGICK_BIN || "magick",
                           font: this.config.CAPTION_FONT,
                           headlinePath,
+                          durationSeconds: selection.duration,
                       }
                   )
                 : [];
@@ -1021,6 +1046,7 @@ module.exports = {
     createStableHighlightCaptions,
     clippedCleanTimeline,
     inheritedSemanticVisuals,
+    selectSemanticVisuals,
     loudnessCorrection,
     probeVideo,
     styleById,

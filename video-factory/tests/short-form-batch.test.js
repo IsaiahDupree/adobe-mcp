@@ -20,6 +20,7 @@ const {
     createStableHighlightCaptions,
     inheritedSemanticVisuals,
     loudnessCorrection,
+    selectSemanticVisuals,
     styleById,
     styleRegistry,
     trimCaptions,
@@ -94,6 +95,9 @@ test("short-form style registry contains distinct, bounded editing contracts", (
         "benchmark-hook-test",
         "benchmark-rating-list",
         "benchmark-story-authority",
+        "benchmark-contrarian-deconstruction",
+        "benchmark-screen-proof-walkthrough",
+        "benchmark-before-after-reveal",
     ]);
     assert.ok(new Set(styleRegistry.styles.map((style) => style.editing.visualChangeIntervalSeconds)).size >= 3);
     assert.equal(new Set(styleRegistry.styles.map((style) => style.editing.dialogueGainDb)).size, 1);
@@ -110,6 +114,26 @@ test("short-form style registry contains distinct, bounded editing contracts", (
     assert.throws(() => styleById("unknown-style"), /Unknown short-form style/);
 });
 
+test("expanded benchmark styles choose distinct semantic evidence mixes", () => {
+    const visuals = [
+        { id: "screen-a", provider: "pexels" },
+        { id: "screen-b", provider: "pexels" },
+        { id: "diagram", provider: "generated-2d" },
+    ];
+    assert.deepEqual(
+        selectSemanticVisuals(visuals, { semanticVisualMode: "video-only" }).map((item) => item.id),
+        ["screen-a", "screen-b"]
+    );
+    assert.deepEqual(
+        selectSemanticVisuals(visuals, { semanticVisualMode: "diagram-plus-proof" }).map((item) => item.id),
+        ["diagram", "screen-b"]
+    );
+    assert.deepEqual(
+        selectSemanticVisuals(visuals, { semanticVisualMode: "complete-evidence-sequence" }).map((item) => item.id),
+        ["screen-a", "screen-b", "diagram"]
+    );
+});
+
 test("short-form loudness recovery targets dialogue while preserving true-peak headroom", () => {
     const correction = loudnessCorrection({
         shortForm: { enabled: true, editing: { dialogueGainDb: -0.5 } },
@@ -123,6 +147,18 @@ test("short-form loudness recovery targets dialogue while preserving true-peak h
     assert.equal(correction.dialogueGainDb, 2.5);
     assert.equal(correction.appliedDeltaDb, 3);
     assert.equal(correction.target.safetyMarginDb, 0.2);
+
+    const quietSource = loudnessCorrection({
+        shortForm: { enabled: true, editing: { dialogueGainDb: 1 } },
+    }, {
+        provider: "ffmpeg-ebur128-read-only",
+        integratedLufs: -24.2,
+        truePeakDb: -9.2,
+        targetIntegratedLufs: -16,
+        maximumTruePeakDb: -1,
+    });
+    assert.equal(quietSource.dialogueGainDb, 9);
+    assert.equal(quietSource.appliedDeltaDb, 8);
 });
 
 test("safe-fill transform covers a vertical frame and clamps off-center focus", () => {
@@ -265,6 +301,22 @@ test("stable captions expand brief single-word cues without changing the sequenc
     assert.ok(captions.every((caption) => caption.visibleFrames >= 12));
     assert.equal(captions[0].startFrame, 0);
     assert.equal(captions.at(-1).endFrame, 72);
+    assert.equal(captionContinuityReport(captions).passed, true);
+});
+
+test("stable captions extend a brief final word into remaining sequence frames", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "premiere-caption-final-word-"));
+    const captions = createStableHighlightCaptions(
+        root,
+        [
+            { start: 0, end: 0.9, text: "Finish the useful thought" },
+            { start: 1, end: 1.333, text: "Building" },
+        ],
+        { frameRate: 30, wordsPerChunk: 3 },
+        { magickBin: baseConfig.IMAGEMAGICK_BIN, font: baseConfig.CAPTION_FONT, durationSeconds: 1.5 }
+    );
+    assert.equal(captions.at(-1).visibleFrames, 12);
+    assert.equal(captions.at(-1).endFrame, 42);
     assert.equal(captionContinuityReport(captions).passed, true);
 });
 

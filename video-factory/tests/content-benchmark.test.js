@@ -68,3 +68,14 @@ test("production brief carries benchmark research, script, edit, hook, and CTA c
     assert.equal(brief.cta.benchmarkRule.mode, "keyword-comment");
     assert.ok(brief.benchmarkExecution.researchRules.requiredEvidence.includes("one proof point or demonstration"));
 });
+
+test("benchmark profile exposes the three expanded short-form grammars", () => {
+    const profile = profileById("authority-education-v1");
+    const ids = profile.formatFamilies.map((family) => family.id);
+    assert.deepEqual(ids.slice(-3), [
+        "benchmark-contrarian-deconstruction",
+        "benchmark-screen-proof-walkthrough",
+        "benchmark-before-after-reveal",
+    ]);
+    assert.ok(profile.formatFamilies.every((family) => family.bestFor.length >= 3));
+});

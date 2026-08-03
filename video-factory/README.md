@@ -78,7 +78,7 @@ New HeyGen jobs can include `derivative_campaign.enabled: true`, as shown in `ex
 
 The private `@personalbrandlaunch` study measures 20 ranked public reels plus one user-selected reference reel without checking source media into Git. Its portable production grammar is stored in `config/content-benchmark-profiles.json`; its source list, aggregate measurements, and detailed report live under `benchmarks/personalbrandlaunch-top20-*`.
 
-`authority-benchmark-matrix-v1` creates four original Isaiah variants from one completed HeyGen source: comparison ladder, hook A/B test, rating/list, and story/authority. Each format enforces a non-duplicative spoken/written/visual triple hook, stable no-flicker captions, semantic-only inserts, face-safe vertical framing, an unobstructed platform UI reserve, and a goal-matched CTA.
+`authority-benchmark-matrix-v1` preserves the original four-format experiment. `authority-benchmark-expanded-v2` adds contrarian deconstruction, proof-led screen walkthrough, and before/after reveal for seven original Isaiah variants from one completed HeyGen source. Each format enforces a non-duplicative spoken/written/visual triple hook, stable no-flicker captions, style-specific semantic asset selection, face-safe vertical framing, an unobstructed platform UI reserve, and a goal-matched CTA.
 
 ```bash
 python3 scripts/analyze_creator_benchmark.py \
@@ -90,6 +90,7 @@ python3 scripts/analyze_creator_benchmark.py \
 
 node cli.js board-submit examples/authority-benchmark-isaiah-board.json --run
 node cli.js board-status isaiah-tool-stack-vs-content-system-v1
+node cli.js short-campaign-submit examples/authority-benchmark-isaiah-short-campaign.json --run
 ```
 
 The benchmark is an editorial reference, not a media library or script source. Generated posts use original Isaiah topics, claims, language, footage, graphics, colors, and offers.

@@ -105,6 +105,18 @@ test("creator benchmark campaign exposes four independently measurable format fa
     assert.ok(preset.experiment.guardrails.includes("engagement_rate"));
 });
 
+test("expanded creator benchmark campaign adds three independently measurable formats", () => {
+    const preset = campaignPreset("authority-benchmark-expanded-v2");
+    assert.equal(preset.styles.length, 7);
+    assert.deepEqual(preset.styles.slice(-3), [
+        "benchmark-contrarian-deconstruction",
+        "benchmark-screen-proof-walkthrough",
+        "benchmark-before-after-reveal",
+    ]);
+    assert.equal(new Set(preset.styles).size, 7);
+    assert.equal(preset.experiment.primaryVariable, "benchmark_format_family");
+});
+
 test("job schema accepts autonomous derivatives only for HeyGen generation", () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "premiere-campaign-schema-"));
     const config = configFor(root);

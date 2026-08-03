@@ -219,6 +219,66 @@ Each item receives a fast visible judgment and one reason. It works because the 
 
 The edit alternates personal chronology, visual proof, and a transferable belief. It uses more archival footage and fewer repeated diagrams. Best use for Isaiah: building the Premiere plugin, failures that forced the receipt system, creator journey from manual edits to autonomous production, a client or product result with evidence.
 
+### Contrarian Deconstruction
+
+This family turns a familiar belief into an unresolved question: state the accepted advice, reject it immediately, explain the causal failure, and replace it with a usable rule. It is grounded in the corpus's contrarian/direct claims, especially the pattern behind “More Cuts = More Engagement,” but it avoids copying the benchmark's wording or examples.
+
+Production contract:
+
+- Spoken hook: one sentence naming the belief and the contradiction, finished by 1.8 seconds.
+- Written hook: three to seven words; label the consequence rather than transcribing the sentence.
+- Visual hook: tight 1.065x punch, direct eye contact, and a yellow myth/reality headline.
+- Body: myth, why it feels true, failure mechanism, replacement rule, one real proof receipt.
+- Captions: three-word groups at y 66%; emphasize the causal word, not every noun.
+- Visual mix: presenter remains primary; one 2D mechanism diagram and one real proof insert.
+- Cadence: 1.6-second target reset, mostly hard cuts; no decorative transition pack.
+- Audio: restrained tension pulse; one strike when the myth breaks and one reveal cue for the replacement rule.
+- CTA: soft follow for recurring education, or a keyword comment only when a relevant framework was shown.
+
+Thirty-second beat map: 0.0-1.8 belief reversal; 1.8-5.0 why people believe it; 5.0-13.0 causal failure; 13.0-21.0 replacement rule; 21.0-26.0 proof; 26.0-30.0 synthesis and CTA. Reject the edit if it only says “this is wrong” without explaining why, if the callout repeats the caption, or if stock footage substitutes for causal proof.
+
+Best Isaiah topics: more AI tools do not create autonomy; more cuts do not guarantee retention; more generated assets do not create a coherent scene; automation without receipts cannot learn.
+
+### Screen-Proof Walkthrough
+
+This family treats the interface as evidence. The outcome appears first, then a short sequence of visible actions demonstrates how it happened, and Isaiah returns on camera to interpret the result. It borrows the benchmark's presenter-plus-example rhythm while raising the evidence standard with real Premiere projects, timelines, manifests, and metrics.
+
+Production contract:
+
+- Spoken hook: result before process, with the exact thing being demonstrated named by 2 seconds.
+- Written hook: a proof promise, not “watch me” filler; three to seven words in green.
+- Visual hook: result frame or completed timeline, then return to the presenter.
+- Body: outcome, action one, action two, verification receipt, interpretation.
+- Captions: five-word groups at y 71% so they remain below the screen focal area and above platform controls.
+- Visual mix: real video demonstrations only; diagrams are excluded from this preset.
+- Cadence: action-matched hard cuts around 1.5 seconds; hold longer only when the cursor or timeline movement carries information.
+- Audio: minimal technical pulse; interface sound only when an actual click, marker, export, or state change is visible.
+- CTA: keyword comment after the project or map has been shown; no CTA before the verification receipt.
+
+Thirty-six-second beat map: 0.0-2.0 outcome; 2.0-5.0 presenter promise; 5.0-19.0 two or three screen actions; 19.0-26.0 verification; 26.0-32.0 interpretation; 32.0-36.0 CTA. Reject the edit when the screen is unreadable, when B-roll does not match the narrated action, or when the presenter narrates clicks without explaining why they matter.
+
+Best Isaiah topics: autonomous Premiere project creation, caption continuity checks, asset-provenance receipts, face-safe reframing, and retention metrics feeding the next production run.
+
+### Before/After Reveal
+
+This family opens on the finished state, deliberately returns to the weak starting state, compresses the mechanism into a few beats, and earns a second reveal. It is for transformations with inspectable evidence, not vague motivational claims.
+
+Production contract:
+
+- Spoken hook: name the transformation and the cost of the old state.
+- Written hook: a directional promise such as `FROM TOOL PILE TO SYSTEM`.
+- Visual hook: 0.4-0.8 second after-state flash, immediate before-state contrast, then presenter explanation.
+- Body: after, before, two mechanism beats, proof, after revisited.
+- Captions: four-word groups at y 67%; highlight changed states and mechanism verbs.
+- Visual mix: complete evidence sequence, including real footage and the 2D process explanation.
+- Cadence: 1.9-second target reset; strongest 1.07x crop pulse in the opening and a smaller 1.04x final reveal.
+- Audio: rising proof pulse; one restrained cue on each state transition.
+- CTA: ask for the map, checklist, or project only after the second after-state is visible.
+
+Twenty-eight-second beat map: 0.0-1.2 after; 1.2-4.0 before; 4.0-8.0 stakes; 8.0-18.0 mechanism; 18.0-23.0 proof; 23.0-26.0 after revisited; 26.0-28.0 CTA. Reject the edit when before and after use unmatched conditions, when the result cannot be verified, or when the reveal is delayed so long that the promise feels withheld.
+
+Best Isaiah topics: caption flicker before versus continuous overlays after; disconnected tools versus a traced content system; black-bar exports versus face-safe vertical framing; one-off generation versus a seven-style learning campaign.
+
 ## Exact 32-Second Comparison Template
 
 | Time | Spoken function | Picture | Text/audio |
@@ -267,9 +327,9 @@ Implemented format IDs:
 Shared gates:
 
 - vertical 1080x1920, safe-fill only, no black bars;
-- face anchored near x 50%, y 36-37% after crop compensation;
-- top headline at y 9%, maximum eight words;
-- caption anchor y 68%, bottom reserve 20%;
+- face anchored near x 50%, y 34-37% after crop compensation;
+- top headline at y 8-10%, maximum eight words;
+- caption anchor y 66-71%, bottom reserve 20%;
 - one continuous alpha caption overlay;
 - no caption/callout duplication;
 - explanatory visuals only, six to eight maximum depending on format;
@@ -277,7 +337,7 @@ Shared gates:
 - dialogue-first mix;
 - approval required before publishing benchmark experiments.
 
-The active campaign preset `authority-benchmark-matrix-v1` creates four controlled variants from the same completed HeyGen source, schedules styles 48 hours apart, and records average percentage viewed as the primary metric with completion, three-second view rate, and engagement as guardrails.
+The original `authority-benchmark-matrix-v1` preset preserves the four-format baseline. The active expanded preset `authority-benchmark-expanded-v2` creates seven controlled variants from the same completed HeyGen source, schedules styles 48 hours apart, and records average percentage viewed as the primary metric with completion, three-second view rate, and engagement as guardrails.
 
 ## Original Isaiah Adaptation
 
@@ -293,7 +353,7 @@ Core lesson: a content system connects five receipts: audience problem, script d
 
 CTA: `Comment SYSTEM and I will share the production map I am building.`
 
-The production-ready HeyGen/ElevenLabs/Premiere board is `../examples/authority-benchmark-isaiah-board.json`. It uses the portrait Isaiah avatar, `IsaiahDupree_v2` through ElevenLabs, semantic Pexels/Pixabay requests, one generated 2D process explainer, native captions, the no-flicker overlay path, and the four-style derivative experiment matrix.
+The production-ready HeyGen/ElevenLabs/Premiere board is `../examples/authority-benchmark-isaiah-board.json`. It uses the portrait Isaiah avatar, `IsaiahDupree_v2` through ElevenLabs, semantic Pexels/Pixabay requests, one generated 2D process explainer, native captions, the no-flicker overlay path, and the seven-style derivative experiment matrix.
 
 ## QA Checklist
 
@@ -328,8 +388,18 @@ The final derivative campaign is `isaiah-authority-benchmark-style-matrix-v4`. I
 
 The final release was copied to My Passport under `VideoFactory/ProductionBoards/isaiah-authority-benchmark-v1`, and the derivative projects/renders were copied under `VideoFactory/ShortForm`.
 
+The three-format expansion was then validated in campaign `isaiah-authority-benchmark-three-new-styles-v1` against the same clean HeyGen source range:
+
+- all three Premiere projects and 1080x1920 renders are 23.4 seconds and approval-gated;
+- contrarian deconstruction uses the generated mechanism diagram plus analytics proof;
+- screen-proof walkthrough uses the Premiere and analytics video demonstrations and excludes the diagram;
+- before/after reveal keeps the complete three-asset evidence sequence;
+- every variant has 21 frame-aligned caption graphics, a 12-frame minimum, and zero rapid transitions, accidental gaps, micro-gaps, or off-frame boundaries;
+- all three passed structural, pixel, framing, duration, and audio checks at -16.2 LUFS and -1.2 dBFS true peak;
+- the nine new publication cells remain unpublished.
+
 ## Experiment Plan
 
-Use one HeyGen performance and one source range for all four styles. Do not change voice, topic, duration band, post time class, thumbnail promise, or CTA while comparing editing families. Run at least two replications per style and 500 views per style before promotion. Primary metric: average percentage viewed. Guardrails: three-second view rate, completion rate, engagement rate, and negative comment quality. Promote only when the practical improvement is at least 8%; otherwise replicate.
+Use one HeyGen performance and one source range for all seven styles. Do not change voice, topic, duration band, post time class, thumbnail promise, or CTA while comparing editing families. Run at least two replications per style and 500 views per style before promotion. Primary metric: average percentage viewed. Guardrails: three-second view rate, completion rate, engagement rate, and negative comment quality. Promote only when the practical improvement is at least 8%; otherwise replicate.
 
 This benchmark is a quality floor, not a creative ceiling. The goal is recognizably clear, comparison-led education with better proof, safer audio, more explanatory first-party visuals, stable captions, and a learning loop the benchmark creator cannot supply for Isaiah's business.

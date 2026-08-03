@@ -159,15 +159,18 @@
     },
     "derivative_campaign": {
       "enabled": true,
-      "preset": "authority-benchmark-matrix-v1",
-      "styles": ["benchmark-comparison-ladder", "benchmark-hook-test", "benchmark-rating-list", "benchmark-story-authority"],
+      "preset": "authority-benchmark-expanded-v2",
+      "styles": ["benchmark-comparison-ladder", "benchmark-hook-test", "benchmark-rating-list", "benchmark-story-authority", "benchmark-contrarian-deconstruction", "benchmark-screen-proof-walkthrough", "benchmark-before-after-reveal"],
       "clips_per_source": 1,
       "platforms": ["youtube", "instagram", "tiktok"],
       "headlines": {
         "benchmark-comparison-ladder": "TOOLS VS. SYSTEM",
         "benchmark-hook-test": "WHY TOOL STACKS FAIL",
         "benchmark-rating-list": "AI STACK: 3 OUT OF 10",
-        "benchmark-story-authority": "I BUILT THE WRONG THING"
+        "benchmark-story-authority": "I BUILT THE WRONG THING",
+        "benchmark-contrarian-deconstruction": "MORE TOOLS MAKE IT WORSE",
+        "benchmark-screen-proof-walkthrough": "WATCH THE SYSTEM CONNECT",
+        "benchmark-before-after-reveal": "FROM TOOL PILE TO SYSTEM"
       },
       "archive": {"enabled": true, "mode": "copy", "destination_root": "/Volumes/My Passport/VideoFactory/ShortForm"}
     },

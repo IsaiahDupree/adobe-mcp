@@ -1,22 +1,14 @@
 {
-  "campaign_id": "isaiah-authority-benchmark-style-matrix-v5",
+  "campaign_id": "isaiah-authority-benchmark-three-new-styles-v1",
   "preset": "authority-benchmark-expanded-v2",
   "source_job_ids": ["isaiah-tool-stack-vs-content-system-v1-v1"],
   "clips_per_source": 1,
   "styles": [
-    "benchmark-comparison-ladder",
-    "benchmark-hook-test",
-    "benchmark-rating-list",
-    "benchmark-story-authority",
     "benchmark-contrarian-deconstruction",
     "benchmark-screen-proof-walkthrough",
     "benchmark-before-after-reveal"
   ],
   "headlines": {
-    "benchmark-comparison-ladder": "TOOLS VS. SYSTEM",
-    "benchmark-hook-test": "WHY TOOL STACKS FAIL",
-    "benchmark-rating-list": "AI STACK: 3 OUT OF 10",
-    "benchmark-story-authority": "I BUILT THE WRONG THING",
     "benchmark-contrarian-deconstruction": "MORE TOOLS MAKE IT WORSE",
     "benchmark-screen-proof-walkthrough": "WATCH THE SYSTEM CONNECT",
     "benchmark-before-after-reveal": "FROM TOOL PILE TO SYSTEM"
