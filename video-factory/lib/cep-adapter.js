@@ -142,11 +142,17 @@ class CepAdapter {
         }
         if(presetPath){
             if(!new File(presetPath).exists)return JSON.stringify({success:false,error:"Sequence preset not found: "+presetPath});
-            if(!project.createNewSequence(sequenceName,presetPath))return JSON.stringify({success:false,error:"Premiere could not create the preset sequence"});
+            if(!project.newSequence(sequenceName,presetPath))return JSON.stringify({success:false,error:"Premiere could not create the preset sequence"});
             for(var s2=0;s2<project.sequences.numSequences;s2++)if(project.sequences[s2].name===sequenceName)sequence=project.sequences[s2];
             if(!sequence)return JSON.stringify({success:false,error:"Created sequence not found"});
             var cursor="0";
             for(var p=0;p<items.length;p++){
+                if(clips[p].durationSeconds){
+                    var presetSourceStart=Number(clips[p].sourceStartSeconds||0);
+                    var presetIn=new Time();presetIn.seconds=presetSourceStart;
+                    var presetOut=new Time();presetOut.seconds=presetSourceStart+Number(clips[p].durationSeconds);
+                    items[p].setInPoint(presetIn,4);items[p].setOutPoint(presetOut,4);
+                }
                 var requested=clips[p].insertionTimeTicks;
                 var insertion=requested!==null&&requested!==undefined?String(requested):cursor;
                 sequence.insertClip(items[p],insertion,Number(clips[p].videoTrackIndex||0),Number(clips[p].audioTrackIndex||0));
@@ -171,8 +177,9 @@ class CepAdapter {
                     var explicitClip=clips[explicitClipIndex];
                     var explicitItem=items[explicitClipIndex];
                     if(explicitClip.durationSeconds){
-                        var explicitIn=new Time();explicitIn.seconds=0;
-                        var explicitOut=new Time();explicitOut.seconds=Number(explicitClip.durationSeconds);
+                        var explicitSourceStart=Number(explicitClip.sourceStartSeconds||0);
+                        var explicitIn=new Time();explicitIn.seconds=explicitSourceStart;
+                        var explicitOut=new Time();explicitOut.seconds=explicitSourceStart+Number(explicitClip.durationSeconds);
                         explicitItem.setInPoint(explicitIn,4);explicitItem.setOutPoint(explicitOut,4);
                     }
                     var explicitTime=String(explicitClip.insertionTimeTicks||"0");
@@ -218,6 +225,7 @@ class CepAdapter {
         }
         return null;
     }
+
     for(var s=0;s<project.sequences.numSequences;s++)if(project.sequences[s].name===sequenceName)sequence=project.sequences[s];
     if(!sequence)return JSON.stringify({success:false,error:"Sequence not found"});
     var captionItem=findByPath(project.rootItem,srtPath);
@@ -243,6 +251,107 @@ class CepAdapter {
         };
         writeJsonAtomic(receiptPath, receipt);
         return receipt;
+    }
+
+    async applyShortFormPlan({ sequenceName, shortForm }) {
+        const script = `(function(){try{
+    var sequenceName=${JSON.stringify(sequenceName)};
+    var plan=${JSON.stringify(shortForm)};
+    var sequence=null;
+    for(var i=0;i<app.project.sequences.numSequences;i++)if(app.project.sequences[i].name===sequenceName)sequence=app.project.sequences[i];
+    if(!sequence)return JSON.stringify({success:false,error:"Short-form sequence not found"});
+    var settings=sequence.getSettings();
+    if(Number(settings.videoFrameWidth)>=Number(settings.videoFrameHeight))return JSON.stringify({success:false,error:"Short-form sequence is not vertical"});
+    if(!sequence.videoTracks.numTracks||!sequence.videoTracks[0].clips.numItems)return JSON.stringify({success:false,error:"Short-form sequence has no base clip"});
+    var clip=sequence.videoTracks[0].clips[0];
+    var audioClip=sequence.audioTracks.numTracks&&sequence.audioTracks[0].clips.numItems?sequence.audioTracks[0].clips[0]:null;
+    var baseScale=Number(plan.transform.scalePercent);
+    var position=plan.transform.position;
+    var introMultiplier=Number(plan.motion.introScaleMultiplier||1);
+    var outroMultiplier=Number(plan.motion.outroScaleMultiplier||1);
+    var introSeconds=Math.max(0.1,Number(plan.motion.introSeconds||0.6));
+    var clipStart=Number(clip.start.seconds);
+    var clipEnd=Number(clip.end.seconds);
+    var scaleReceipt=[];
+    var positionReceipt=null;
+    var dialogueGainReceipt=null;
+    for(var componentIndex=0;componentIndex<clip.components.numItems;componentIndex++){
+        var component=clip.components[componentIndex];
+        if(component.matchName==="AE.ADBE Motion"||component.displayName==="Motion"){
+            var componentNormalized=null;
+            for(var coordinateIndex=0;coordinateIndex<component.properties.numItems;coordinateIndex++){
+                var coordinateProperty=component.properties[coordinateIndex];
+                if(coordinateProperty.displayName==="Anchor Point"&&coordinateProperty.getValue){
+                    var anchorValue=coordinateProperty.getValue();
+                    componentNormalized=Number(anchorValue[0])<=2&&Number(anchorValue[1])<=2;
+                }
+            }
+            for(var propertyIndex=0;propertyIndex<component.properties.numItems;propertyIndex++){
+                var property=component.properties[propertyIndex];
+                if(property.displayName==="Position"){
+                    var currentPosition=property.getValue?property.getValue():[0.5,0.5];
+                    var normalizedPosition=componentNormalized===null?
+                        Number(currentPosition[0])<=2&&Number(currentPosition[1])<=2:
+                        componentNormalized;
+                    var targetWidth=Number(plan.target.width);
+                    var targetHeight=Number(plan.target.height);
+                    var premierePosition=normalizedPosition?
+                        [Number(position.x)/targetWidth,Number(position.y)/targetHeight]:
+                        [Number(position.x),Number(position.y)];
+                    property.setValue(premierePosition,true);
+                    positionReceipt={value:premierePosition,coordinateMode:normalizedPosition?"normalized":"pixels"};
+                }
+                if(property.displayName==="Scale"){
+                    var times=[clipStart,Math.min(clipEnd,clipStart+introSeconds),clipEnd];
+                    var values=[baseScale*introMultiplier,baseScale,baseScale*outroMultiplier];
+                    if(property.setTimeVarying&&property.addKey&&property.setValueAtKey){
+                        property.setTimeVarying(true);
+                        var oldKeys=property.getKeys?(property.getKeys()||[]):[];
+                        if(property.removeKey)for(var keyIndex=0;keyIndex<oldKeys.length;keyIndex++)property.removeKey(oldKeys[keyIndex]);
+                        for(var scaleIndex=0;scaleIndex<times.length;scaleIndex++){
+                            property.addKey(times[scaleIndex]);
+                            property.setValueAtKey(times[scaleIndex],values[scaleIndex],true);
+                            scaleReceipt.push({time:times[scaleIndex],value:values[scaleIndex]});
+                        }
+                    }else{
+                        property.setValue(baseScale,true);
+                        scaleReceipt.push({mode:"static",value:baseScale});
+                    }
+                }
+            }
+        }
+    }
+    if(audioClip){
+        var gainDb=Number(plan.editing.dialogueGainDb||0);
+        for(var audioComponentIndex=0;audioComponentIndex<audioClip.components.numItems;audioComponentIndex++){
+            var audioComponent=audioClip.components[audioComponentIndex];
+            if(audioComponent.matchName==="AE.ADBE Audio Volume"||audioComponent.displayName==="Volume"){
+                for(var audioPropertyIndex=0;audioPropertyIndex<audioComponent.properties.numItems;audioPropertyIndex++){
+                    var audioProperty=audioComponent.properties[audioPropertyIndex];
+                    if(audioProperty.displayName==="Level"){
+                        var levelValue=Math.min(1,Math.max(0,Math.pow(10,(gainDb-15)/20)));
+                        audioProperty.setValue(levelValue,true);
+                        dialogueGainReceipt={gainDb:gainDb,levelValue:levelValue};
+                    }
+                }
+            }
+        }
+    }
+    app.project.save();
+    return JSON.stringify({
+        success:true,
+        sequenceName:sequence.name,
+        frameSize:{width:Number(settings.videoFrameWidth),height:Number(settings.videoFrameHeight)},
+        clipDurationSeconds:Number(clip.duration.seconds),
+        sourceRange:plan.sourceRange,
+        styleId:plan.styleId,
+        scale:scaleReceipt,
+        position:positionReceipt,
+        dialogueGain:dialogueGainReceipt,
+        exposedCanvas:Boolean(plan.transform.exposedCanvas)
+    });
+}catch(error){return JSON.stringify({success:false,error:String(error)});}})();`;
+        return this.executeScript(script, 120000);
     }
 
     async applyRetentionPlan({ sequenceName, plan, captionAssets = [], showcaseAssets = {}, dialogueGainDb = 0 }) {

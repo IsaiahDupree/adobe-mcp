@@ -85,6 +85,7 @@ class JobStore {
             retention: job.retention,
             showcase: job.showcase,
             composition: job.composition,
+            shortForm: job.shortForm,
             archive: job.archive,
         });
     }

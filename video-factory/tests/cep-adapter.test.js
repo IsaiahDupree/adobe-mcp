@@ -126,6 +126,71 @@ test("CEP project close saves and closes only the requested active project", asy
     assert.match(capturedScript, /closeDocument\(1,0\)/);
 });
 
+test("preset sequence assembly uses Premiere's non-modal preset API", async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "premiere-preset-sequence-"));
+    const adapter = new CepAdapter({
+        PREMIERE_CEP_TEMP_DIR: root,
+        PREMIERE_CEP_TIMEOUT_MS: 100,
+        PREMIERE_H264_PRESET: path.join(root, "unused.epr"),
+    });
+    let capturedScript = "";
+    adapter.executeScript = async (script) => {
+        capturedScript = script;
+        return { success: true };
+    };
+
+    await adapter.assembleRoughCut({
+        sequenceName: "SHORT_9X16",
+        presetPath: "/Applications/Adobe Premiere Pro 2026/portrait.sqpreset",
+        clips: [{
+            assetPath: "/tmp/master.mp4",
+            sourceStartSeconds: 30,
+            durationSeconds: 20,
+            insertionTimeTicks: "0",
+            videoTrackIndex: 0,
+            audioTrackIndex: 0,
+        }],
+    });
+
+    assert.match(capturedScript, /project\.newSequence\(sequenceName,presetPath\)/);
+    assert.doesNotMatch(capturedScript, /project\.createNewSequence\(sequenceName,presetPath\)/);
+    assert.match(capturedScript, /presetSourceStart/);
+});
+
+test("short-form Motion adapts pixel plans to Premiere's coordinate mode", async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "premiere-short-position-"));
+    const adapter = new CepAdapter({
+        PREMIERE_CEP_TEMP_DIR: root,
+        PREMIERE_CEP_TIMEOUT_MS: 100,
+        PREMIERE_H264_PRESET: path.join(root, "unused.epr"),
+    });
+    let capturedScript = "";
+    adapter.executeScript = async (script) => {
+        capturedScript = script;
+        return { success: true };
+    };
+
+    await adapter.applyShortFormPlan({
+        sequenceName: "SHORT_9X16",
+        shortForm: {
+            target: { width: 1080, height: 1920 },
+            transform: { scalePercent: 266.667, position: { x: 540, y: 960 } },
+            motion: { introScaleMultiplier: 1.05, outroScaleMultiplier: 1.02, introSeconds: 0.7 },
+            editing: { dialogueGainDb: 1 },
+            sourceRange: { start: 30, end: 50, duration: 20 },
+            styleId: "kinetic-proof",
+        },
+    });
+
+    assert.match(capturedScript, /normalizedPosition/);
+    assert.match(capturedScript, /coordinateProperty\.displayName==="Anchor Point"/);
+    assert.match(capturedScript, /componentNormalized===null/);
+    assert.match(capturedScript, /Number\(position\.x\)\/targetWidth/);
+    assert.match(capturedScript, /coordinateMode:normalizedPosition\?"normalized":"pixels"/);
+    assert.match(capturedScript, /audioProperty\.displayName==="Level"/);
+    assert.match(capturedScript, /Math\.pow\(10,\(gainDb-15\)\/20\)/);
+});
+
 test("Premiere dB conversion accounts for the Level property's +15 dB ceiling", () => {
     assert.equal(premiereDbToLevel(15), 1);
     assert.ok(Math.abs(premiereDbToLevel(6.9) - 0.3935500755) < 1e-9);

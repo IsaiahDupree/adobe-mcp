@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "styles": [
+    {
+      "id": "kinetic-proof",
+      "description": "Evidence-first pacing with a quick crop pulse and frequent hard visual resets.",
+      "selectionKeywords": ["result", "proof", "evidence", "before", "after", "quality", "test"],
+      "duration": { "minimumSeconds": 18, "idealSeconds": 32, "maximumSeconds": 45 },
+      "captions": { "mode": "native", "safeBottomRatio": 0.18 },
+      "motion": { "introScaleMultiplier": 1.05, "outroScaleMultiplier": 1.02, "introSeconds": 0.7 },
+      "editing": {
+        "hookMode": "result-first",
+        "transition": "hard-cut",
+        "visualChangeIntervalSeconds": 2.2,
+        "calloutMode": "proof-takeaway",
+        "audioPriority": "dialogue-first",
+        "dialogueGainDb": 1
+      }
+    },
+    {
+      "id": "clean-authority",
+      "description": "Restrained expert framing with a slow push and fewer competing treatments.",
+      "selectionKeywords": ["decision", "system", "process", "important", "project", "strategy"],
+      "duration": { "minimumSeconds": 24, "idealSeconds": 42, "maximumSeconds": 60 },
+      "captions": { "mode": "native", "safeBottomRatio": 0.16 },
+      "motion": { "introScaleMultiplier": 1, "outroScaleMultiplier": 1.035, "introSeconds": 1.2 },
+      "editing": {
+        "hookMode": "claim-first",
+        "transition": "hard-cut",
+        "visualChangeIntervalSeconds": 3.5,
+        "calloutMode": "single-takeaway",
+        "audioPriority": "dialogue-first",
+        "dialogueGainDb": 0.5
+      }
+    },
+    {
+      "id": "rapid-explainer",
+      "description": "Compact instructional pacing with an early punch-in and dense semantic changes.",
+      "selectionKeywords": ["how", "step", "first", "then", "workflow", "edit", "create"],
+      "duration": { "minimumSeconds": 15, "idealSeconds": 28, "maximumSeconds": 40 },
+      "captions": { "mode": "native", "safeBottomRatio": 0.2 },
+      "motion": { "introScaleMultiplier": 1.08, "outroScaleMultiplier": 1.03, "introSeconds": 0.45 },
+      "editing": {
+        "hookMode": "open-loop",
+        "transition": "hard-cut",
+        "visualChangeIntervalSeconds": 1.8,
+        "calloutMode": "step-label",
+        "audioPriority": "dialogue-first",
+        "dialogueGainDb": -0.5
+      }
+    }
+  ]
+}

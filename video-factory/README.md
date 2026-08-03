@@ -46,6 +46,19 @@ Use absolute paths for source media, sequence presets, existing projects, export
 
 Jobs use immutable `v001` Premiere project output. When `existing_project_path` is supplied, the worker opens it and immediately saves the active work into the job workspace before editing.
 
+## Short-form vertical editions
+
+Compile one finished Premiere project, a set of finished jobs, a production board's winning jobs, or a composition batch into independent 9:16 edits. The compiler scores semantic scene ranges, trims and rebases the source captions, applies a safe-fill Motion transform, creates a native Premiere caption track, and remasks horizontal caption pixels when the source receipt proves captions were already embedded. It exports through Adobe and rejects incorrect duration, exposed canvas, persistent bars, clipped audio, or non-vertical output.
+
+```bash
+node cli.js shorts-styles
+node cli.js shorts-submit examples/premiere-master-to-shorts.json
+node cli.js shorts-run premiere-agent-factory-v2-shorts-v3
+node cli.js shorts-status premiere-agent-factory-v2-shorts-v3
+```
+
+Use `variant_mode: "rotate"` to spread selected moments across distinct editing styles, or `variant_mode: "all-styles"` to render controlled style experiments from the same moment. `kinetic-proof` emphasizes proof beats and stronger punch-ins, `clean-authority` uses restrained motion and longer holds, and `rapid-explainer` favors tighter visual-change intervals. Every child preserves source job, project, render, range, caption, style, and archive lineage in its job receipt. Children are held until `shorts-run` is called and remain approval-gated after export.
+
 ## HeyGen retention pipeline
 
 Submit `examples/heygen-retention-job.json` to run the complete presenter workflow. The factory generates each script beat independently through HeyGen v3, downloads the clean MP4 and SRT, and records a resumable generation manifest. Premiere creates the semantic cuts, applies Motion reframes, builds a native editable caption track, and exports the finished sequence. Animated caption graphics remain available through `caption_mode: "animated"` or `"both"`.

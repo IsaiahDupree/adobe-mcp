@@ -30,6 +30,7 @@ const { ResponsiveLayoutEngine } = require("./lib/responsive-layout-engine");
 const { AnimationGrammarRenderer } = require("./lib/animation-grammar-renderer");
 const { CompositionQa } = require("./lib/composition-qa");
 const { CompositionBatchRunner, CompositionBatchStore } = require("./lib/composition-batch");
+const { ShortFormBatchRunner, ShortFormBatchStore, styleRegistry } = require("./lib/short-form-batch");
 const { FramingTracker } = require("./lib/framing-tracker");
 const { ReviseRunner } = require("./lib/revise-runner");
 const { ReviseStore } = require("./lib/revise-store");
@@ -52,6 +53,10 @@ Usage:
   node cli.js composition-submit <composition.json> [--run]
   node cli.js composition-run <composition-id>
   node cli.js composition-status [composition-id]
+  node cli.js shorts-submit <short-form.json> [--run]
+  node cli.js shorts-run <short-form-id>
+  node cli.js shorts-status [short-form-id]
+  node cli.js shorts-styles
   node cli.js framing-status [job-id]
   node cli.js revise-submit <revise.json> [--design] [--run]
   node cli.js revise-design <revise-id>
@@ -133,6 +138,8 @@ function createRuntime() {
         boardRunner,
         jobStore: store,
     });
+    const shortFormStore = new ShortFormBatchStore(config, store, boardStore, compositionStore);
+    const shortFormRunner = new ShortFormBatchRunner(shortFormStore, store, runner);
     return {
         adapter,
         heygenManager,
@@ -144,6 +151,8 @@ function createRuntime() {
         boardRunner,
         compositionStore,
         compositionRunner,
+        shortFormStore,
+        shortFormRunner,
         framingTracker,
         reviseStore,
         reviseRunner,
@@ -257,6 +266,8 @@ async function main() {
         boardRunner,
         compositionStore,
         compositionRunner,
+        shortFormStore,
+        shortFormRunner,
         framingTracker,
         reviseStore,
         reviseRunner,
@@ -356,6 +367,26 @@ async function main() {
     }
     if (command === "composition-status") {
         print(args[1] ? compositionStore.get(args[1]) : { compositions: compositionStore.list() });
+        return;
+    }
+    if (command === "shorts-submit") {
+        if (!args[1]) throw new Error("shorts-submit requires a short-form JSON file.");
+        const spec = JSON.parse(fs.readFileSync(path.resolve(args[1]), "utf8"));
+        const batch = shortFormStore.submit(spec);
+        print(args.includes("--run") ? await shortFormRunner.run(batch.id) : batch);
+        return;
+    }
+    if (command === "shorts-run") {
+        if (!args[1]) throw new Error("shorts-run requires a short-form ID.");
+        print(await shortFormRunner.run(args[1]));
+        return;
+    }
+    if (command === "shorts-status") {
+        print(args[1] ? shortFormStore.get(args[1]) : { shortFormBatches: shortFormStore.list() });
+        return;
+    }
+    if (command === "shorts-styles") {
+        print(styleRegistry);
         return;
     }
     if (command === "framing-status") {

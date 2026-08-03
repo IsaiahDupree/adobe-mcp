@@ -244,3 +244,64 @@ test("provider-only jobs reject pre-existing local creative assets", () => {
         },
     }), /cannot include pre-existing local B-roll or SFX/);
 });
+
+test("job schema preserves a bounded vertical short-form edit contract", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "premiere-factory-short-schema-"));
+    const store = new JobStore({
+        JOBS_DIR: path.join(root, "jobs"),
+        CAMPAIGNS_DIR: path.join(root, "campaigns"),
+    });
+    const job = store.submit({
+        request: { topic: "Vertical proof cut" },
+        short_form: {
+            batch_id: "proof-shorts",
+            style_id: "kinetic-proof",
+            source_project_path: path.join(root, "source.prproj"),
+            source_render_path: path.join(root, "source.mp4"),
+            source_range: { id: "proof", start: 12, end: 35, duration: 23 },
+            target: { format: "9:16", width: 1080, height: 1920 },
+            transform: {
+                mode: "safe-fill",
+                scalePercent: 266.667,
+                position: { x: 540, y: 960 },
+                exposedCanvas: false,
+            },
+            captions: { required: true, mode: "native" },
+        },
+    });
+
+    assert.equal(job.shortForm.enabled, true);
+    assert.equal(job.shortForm.sourceRange.duration, 23);
+    assert.equal(job.shortForm.target.format, "9:16");
+    assert.equal(job.shortForm.transform.mode, "safe-fill");
+    assert.equal(job.shortForm.transform.exposedCanvas, false);
+    assert.equal(job.shortForm.captions.mode, "native");
+});
+
+test("job schema rejects unsafe or malformed short-form edit contracts", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "premiere-factory-short-invalid-"));
+    const store = new JobStore({
+        JOBS_DIR: path.join(root, "jobs"),
+        CAMPAIGNS_DIR: path.join(root, "campaigns"),
+    });
+    const base = {
+        source_project_path: path.join(root, "source.prproj"),
+        source_render_path: path.join(root, "source.mp4"),
+        source_range: { start: 0, end: 20, duration: 20 },
+        target: { format: "9:16", width: 1080, height: 1920 },
+        transform: { scalePercent: 266.667, position: { x: 540, y: 960 } },
+    };
+
+    assert.throws(() => store.submit({
+        request: { topic: "Landscape short" },
+        short_form: { ...base, target: { format: "16:9", width: 1920, height: 1080 } },
+    }), /vertical 9:16/);
+    assert.throws(() => store.submit({
+        request: { topic: "Bad timing" },
+        short_form: { ...base, source_range: { start: 0, end: 20, duration: 15 } },
+    }), /duration must match/);
+    assert.throws(() => store.submit({
+        request: { topic: "Unsafe fill" },
+        short_form: { ...base, transform: { scalePercent: 80, position: { x: 540, y: 960 } } },
+    }), /at least 100/);
+});

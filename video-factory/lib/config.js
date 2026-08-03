@@ -35,6 +35,7 @@ module.exports = {
     COMPOSITIONS_DIR: path.join(FACTORY_HOME, "compositions"),
     FRAMING_DIR: path.join(FACTORY_HOME, "framing"),
     REVISE_DIR: path.join(FACTORY_HOME, "revise"),
+    SHORT_FORM_DIR: path.join(FACTORY_HOME, "short-form"),
     CAMPAIGNS_DIR: path.join(FACTORY_HOME, "campaigns"),
     BOARDS_DIR: path.join(FACTORY_HOME, "boards"),
     PROXY_URL: process.env.PROXY_URL || "http://127.0.0.1:3031",
@@ -70,6 +71,9 @@ module.exports = {
     PREMIERE_H264_PRESET:
         process.env.PREMIERE_H264_PRESET ||
         "/Applications/Adobe Media Encoder 2026/Adobe Media Encoder 2026.app/Contents/MediaIO/systempresets/4E49434B_48323634/00 - Match Source - High bitrate.epr",
+    PREMIERE_VERTICAL_SEQUENCE_PRESET:
+        process.env.PREMIERE_VERTICAL_SEQUENCE_PRESET ||
+        "/Applications/Adobe Premiere Pro 2026/Adobe Premiere Pro 2026.app/Contents/Settings/SequencePresets/Social/Social Media Portrait 9x16 30 fps.sqpreset",
     IMAGEMAGICK_BIN: process.env.IMAGEMAGICK_BIN || "/opt/homebrew/bin/magick",
     FFMPEG_BIN: process.env.FFMPEG_BIN || "/opt/homebrew/bin/ffmpeg",
     FFPROBE_BIN: process.env.FFPROBE_BIN || "ffprobe",

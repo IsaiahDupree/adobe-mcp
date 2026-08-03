@@ -439,6 +439,87 @@ function normalizeShowcase(spec) {
     };
 }
 
+function normalizeShortForm(spec) {
+    const input = spec.short_form || spec.shortForm;
+    if (!input || input.enabled === false) return { enabled: false };
+    const sourceProjectPath = path.normalize(input.source_project_path || input.sourceProjectPath || "");
+    const sourceRenderPath = path.normalize(input.source_render_path || input.sourceRenderPath || "");
+    if (!path.isAbsolute(sourceProjectPath)) {
+        throw new Error("short_form.source_project_path must be absolute.");
+    }
+    if (!path.isAbsolute(sourceRenderPath)) {
+        throw new Error("short_form.source_render_path must be absolute.");
+    }
+    const rangeInput = input.source_range || input.sourceRange || {};
+    const start = Number(rangeInput.start);
+    const end = Number(rangeInput.end);
+    const duration = Number(rangeInput.duration ?? end - start);
+    if (![start, end, duration].every(Number.isFinite) || start < 0 || end <= start) {
+        throw new Error("short_form.source_range requires a valid start and end.");
+    }
+    if (duration < 3 || duration > 60 || Math.abs(duration - (end - start)) > 0.1) {
+        throw new Error("short_form.source_range duration must match a 3-60 second range.");
+    }
+    const targetInput = input.target || {};
+    const target = {
+        format: targetInput.format || "9:16",
+        width: Number(targetInput.width || 1080),
+        height: Number(targetInput.height || 1920),
+    };
+    if (target.format !== "9:16" || target.width >= target.height) {
+        throw new Error("short_form.target must be a vertical 9:16 frame.");
+    }
+    const transformInput = input.transform || {};
+    const scalePercent = Number(transformInput.scalePercent || transformInput.scale_percent);
+    const position = transformInput.position || { x: target.width / 2, y: target.height / 2 };
+    if (!Number.isFinite(scalePercent) || scalePercent < 100) {
+        throw new Error("short_form.transform.scalePercent must be at least 100.");
+    }
+    if (![position.x, position.y].every(Number.isFinite)) {
+        throw new Error("short_form.transform.position must contain finite x and y values.");
+    }
+    const sourceCaptionsPath = input.source_captions_path || input.sourceCaptionsPath || null;
+    if (sourceCaptionsPath && !path.isAbsolute(sourceCaptionsPath)) {
+        throw new Error("short_form.source_captions_path must be absolute.");
+    }
+    const captions = input.captions || {};
+    return {
+        enabled: true,
+        batchId: input.batch_id || input.batchId || null,
+        styleId: input.style_id || input.styleId || "clean-authority",
+        sourceJobId: input.source_job_id || input.sourceJobId || null,
+        sourceProjectPath,
+        sourceRenderPath,
+        sourceCaptionsPath: sourceCaptionsPath ? path.normalize(sourceCaptionsPath) : null,
+        sourceRange: {
+            id: rangeInput.id || null,
+            sceneId: rangeInput.sceneId || rangeInput.scene_id || null,
+            title: rangeInput.title || null,
+            start,
+            end,
+            duration,
+        },
+        target,
+        transform: {
+            mode: transformInput.mode || "safe-fill",
+            scalePercent,
+            position: { x: Number(position.x), y: Number(position.y) },
+            sourceFrame: transformInput.sourceFrame || transformInput.source_frame || null,
+            targetFrame: transformInput.targetFrame || transformInput.target_frame || target,
+            focus: transformInput.focus || { x: 0.5, y: 0.5 },
+            exposedCanvas: Boolean(transformInput.exposedCanvas),
+        },
+        motion: { ...(input.motion || {}) },
+        editing: { ...(input.editing || {}) },
+        captions: {
+            ...(captions || {}),
+            required: captions.required !== false,
+            mode: captions.mode || "native",
+        },
+        captionPath: input.caption_path || input.captionPath || null,
+    };
+}
+
 function normalizeJobSpec(
     spec,
     campaignsDir,
@@ -484,6 +565,7 @@ function normalizeJobSpec(
     const retention = normalizeRetention(spec, defaults);
     const showcase = normalizeShowcase(spec);
     const composition = normalizeComposition(spec, generation);
+    const shortForm = normalizeShortForm(spec);
     const render = production.render
         ? {
               ...production.render,
@@ -535,6 +617,7 @@ function normalizeJobSpec(
         retention,
         showcase,
         composition,
+        shortForm,
         archive,
         workspace,
         outputPaths: {
@@ -553,6 +636,7 @@ function normalizeJobSpec(
             compositionQa: path.join(workspace, "qc", "composition-qa.json"),
             framingSourceAudit: path.join(workspace, "qc", "heygen-source-framing.json"),
             framingAudit: path.join(workspace, "qc", "final-framing-audit.json"),
+            shortFormManifest: path.join(workspace, "edit-plans", "short-form-manifest.json"),
         },
     };
 }
@@ -564,4 +648,4 @@ function validateAssets(job) {
     return { valid: missing.length === 0, missing };
 }
 
-module.exports = { normalizeComposition, normalizeJobSpec, validateAssets };
+module.exports = { normalizeComposition, normalizeJobSpec, normalizeShortForm, validateAssets };

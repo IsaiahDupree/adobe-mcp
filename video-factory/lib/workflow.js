@@ -351,9 +351,12 @@ class VideoJobRunner {
         let snapshot = await this.inspectProject(sequenceName);
         let sequence = snapshot.sequences.find((item) => item.name === sequenceName);
         const clips = this.timelineClips(job);
+        const requiresSourceRanges = clips.some((clip) => Number(
+            clip.source_start_seconds ?? clip.sourceStartSeconds ?? 0
+        ) > 0);
 
         if (!sequence) {
-            if (!(await this.canUseUxp())) {
+            if (!(await this.canUseUxp()) || requiresSourceRanges) {
                 await this.cepAdapter.assembleRoughCut({
                     sequenceName,
                     presetPath: job.production.sequencePresetPath,
@@ -365,6 +368,9 @@ class VideoJobRunner {
                             ? clip.insertion_time_ticks
                             : null,
                         durationSeconds: Number(clip.duration_seconds || 0),
+                        sourceStartSeconds: Number(
+                            clip.source_start_seconds ?? clip.sourceStartSeconds ?? 0
+                        ),
                         overwrite: clip.overwrite === true,
                     })),
                 });
@@ -433,6 +439,44 @@ class VideoJobRunner {
         }
         const stats = fs.statSync(job.outputPaths.project);
         return { projectPath: job.outputPaths.project, bytes: stats.size, response: packet.response || packet };
+    }
+
+    async applyPremiereShortForm(job) {
+        if (!job.shortForm?.enabled) return { skipped: true };
+        if (!this.cepAdapter) throw new Error("Short-form editing requires the Premiere CEP bridge.");
+        const captionPath = job.shortForm.captionPath || job.outputPaths.combinedCaptions;
+        let nativeCaptionTrack = null;
+        if (job.shortForm.captions.required) {
+            if (!fs.existsSync(captionPath) || fs.statSync(captionPath).size === 0) {
+                throw new WorkflowValidationError("Short-form edit requires non-empty trimmed captions.");
+            }
+            nativeCaptionTrack = job.shortForm.captions.sourceEmbedded && !job.shortForm.captions.remaskPath
+                ? {
+                      success: true,
+                      created: false,
+                      reused: true,
+                      verification: "source-render-inherits-native-caption-track",
+                      source: job.shortForm.sourceRenderPath,
+                  }
+                : await this.cepAdapter.createNativeCaptionTrack({
+                      sequenceName: job.production.sequenceName,
+                      srtPath: captionPath,
+                      requestedTrackName: "C1_SHORT_FORM_EN",
+                  });
+        }
+        const plan = {
+            schemaVersion: 1,
+            jobId: job.id,
+            sequenceName: job.production.sequenceName,
+            ...job.shortForm,
+            captionPath,
+        };
+        writeJsonAtomic(job.outputPaths.shortFormManifest, plan);
+        const premiereEdit = await this.cepAdapter.applyShortFormPlan({
+            sequenceName: job.production.sequenceName,
+            shortForm: plan,
+        });
+        return { plan, premiereEdit, nativeCaptionTrack };
     }
 
     async runStructuralQc(job) {
@@ -519,6 +563,34 @@ class VideoJobRunner {
                     severity: "critical",
                     problem: "Premiere did not place every requested benchmark asset.",
                 });
+            }
+        }
+        if (job.shortForm?.enabled) {
+            const shortResult = job.checkpoints["short-form-edit"]?.result;
+            if (!sequence || sequence.frameSize.width >= sequence.frameSize.height) {
+                issues.push({
+                    severity: "critical",
+                    problem: "Short-form sequence is not vertical.",
+                    frameSize: sequence?.frameSize || null,
+                });
+            }
+            const duration = sequence?.videoTracks?.[0]?.tracks?.[0]?.durationSeconds || 0;
+            if (Math.abs(duration - job.shortForm.sourceRange.duration) > 0.15) {
+                issues.push({
+                    severity: "critical",
+                    problem: "Short-form sequence duration does not match its selected source range.",
+                    expected: job.shortForm.sourceRange.duration,
+                    actual: duration,
+                });
+            }
+            if (job.shortForm.captions.required && !shortResult?.nativeCaptionTrack?.success) {
+                issues.push({
+                    severity: "critical",
+                    problem: "Short-form native caption-track creation was not verified.",
+                });
+            }
+            if (shortResult?.premiereEdit?.exposedCanvas) {
+                issues.push({ severity: "critical", problem: "Short-form safe-fill predicts exposed canvas." });
             }
         }
         const passed = issues.every((issue) => issue.severity !== "critical");
@@ -621,7 +693,7 @@ class VideoJobRunner {
             throw new WorkflowValidationError("Rendered file has no readable video stream.", probe);
         }
         let pixelQa = null;
-        if (job.generation.enabled && job.production.sourceAssets[0]?.path) {
+        if ((job.generation.enabled || job.shortForm?.enabled) && job.production.sourceAssets[0]?.path) {
             // FFmpeg is only decoding sparse frames for validation; Premiere remains the editor and exporter.
             const [renderAverageLuma, sourceAverageLuma] = await Promise.all([
                 averageVideoLuma(render.output_file),
@@ -665,6 +737,19 @@ class VideoJobRunner {
             pixelQa,
             audioQa,
         };
+        if (job.shortForm?.enabled) {
+            const video = probe.streams.find((stream) => stream.codec_type === "video");
+            const durationDelta = Math.abs(Number(probe.format.duration) - job.shortForm.sourceRange.duration);
+            report.shortFormQa = {
+                expectedFrame: job.shortForm.target,
+                expectedDurationSeconds: job.shortForm.sourceRange.duration,
+                durationDeltaSeconds: Number(durationDelta.toFixed(4)),
+                passed: Boolean(video && video.height > video.width && durationDelta <= 0.2),
+            };
+            if (!report.shortFormQa.passed) {
+                throw new WorkflowValidationError("Rendered short-form video failed vertical frame or duration QA.", report.shortFormQa);
+            }
+        }
         writeJsonAtomic(path.join(job.workspace, "qc", "render-validation.json"), report);
         if (pixelQa && !pixelQa.passed) {
             throw new WorkflowValidationError("Rendered video is materially darker than its source and may be blank.", pixelQa);
@@ -891,6 +976,7 @@ class VideoJobRunner {
             let compositionQa = null;
             let framingSourceAudit = null;
             let framingAudit = null;
+            let shortFormFraming = null;
             if (this.store.get(id).generation.enabled) {
                 if (this.store.get(id).composition?.enabled) {
                     visualScenePlan = await this.executeStage(
@@ -1016,6 +1102,11 @@ class VideoJobRunner {
             await this.executeStage(id, "rough-cut", "ROUGH_CUT", (current) =>
                 this.assembleRoughCut(current)
             );
+            if (this.store.get(id).shortForm?.enabled) {
+                await this.executeStage(id, "short-form-edit", "SHORT_FORM_EDITING", (current) =>
+                    this.applyPremiereShortForm(current)
+                );
+            }
             if (this.store.get(id).generation.enabled) {
                 await this.executeStage(id, "retention-edit", "RETENTION_EDITING", (current) =>
                     this.applyPremiereRetention(current)
@@ -1030,6 +1121,31 @@ class VideoJobRunner {
             const render = await this.executeStage(id, "render", "EXPORTING", (current) =>
                 this.renderAndValidate(current)
             );
+            if (this.store.get(id).shortForm?.enabled && render && !render.skipped) {
+                shortFormFraming = await this.executeStage(
+                    id,
+                    "short-form-framing-qc",
+                    "AUDITING_SHORT_FORM_FRAMING",
+                    async (current) => {
+                        if (!this.framingTracker) throw new Error("Framing tracker is not configured.");
+                        const output = await this.framingTracker.analyzeMedia(render.outputFile);
+                        const report = {
+                            schemaVersion: 1,
+                            jobId: current.id,
+                            generatedAt: nowIso(),
+                            provider: "short-form-persistent-bar-audit",
+                            output,
+                            maximumBarAreaRatio: 0.003,
+                            passed: output.barAreaRatio <= 0.003,
+                        };
+                        writeJsonAtomic(path.join(current.workspace, "qc", "short-form-framing.json"), report);
+                        if (!report.passed) {
+                            throw new WorkflowValidationError("Short-form output contains persistent bars.", report);
+                        }
+                        return report;
+                    }
+                );
+            }
             if (this.store.get(id).generation.provider === "heygen" && render && !render.skipped) {
                 framingAudit = await this.executeStage(
                     id,
@@ -1088,6 +1204,10 @@ class VideoJobRunner {
                     responsiveLayout,
                     assets: compositionAssets,
                     qa: compositionQa,
+                } : null,
+                shortForm: this.store.get(id).shortForm?.enabled ? {
+                    edit: this.store.get(id).checkpoints["short-form-edit"]?.result || null,
+                    framing: shortFormFraming,
                 } : null,
             };
             this.store.save(job);
