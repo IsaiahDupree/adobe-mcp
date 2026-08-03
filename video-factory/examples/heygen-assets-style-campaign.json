@@ -1,0 +1,20 @@
+{
+  "campaign_id": "premiere-agent-factory-heygen-style-matrix-v1",
+  "preset": "heygen-style-matrix-v1",
+  "source_job_ids": [
+    "ops-campaign-2-premiere-agent-factory-v2-elevenlabs"
+  ],
+  "styles": [
+    "kinetic-proof",
+    "clean-authority",
+    "rapid-explainer"
+  ],
+  "clips_per_source": 1,
+  "platforms": ["youtube", "instagram", "tiktok"],
+  "start_at": "2026-08-04T16:00:00.000Z",
+  "archive": {
+    "enabled": true,
+    "mode": "copy",
+    "destination_root": "/Volumes/My Passport/VideoFactory/ShortForm"
+  }
+}

@@ -13,6 +13,31 @@ function styleById(id) {
     return JSON.parse(JSON.stringify(style));
 }
 
+function loudnessCorrection(job, details) {
+    if (details?.provider !== "ffmpeg-ebur128-read-only" || !job.shortForm?.enabled) return null;
+    const currentGainDb = Number(job.shortForm.editing?.dialogueGainDb ?? 0);
+    const targetLufs = Number(details.targetIntegratedLufs);
+    const integratedLufs = Number(details.integratedLufs);
+    const truePeakDb = Number(details.truePeakDb);
+    const maximumTruePeakDb = Number(details.maximumTruePeakDb);
+    if (![currentGainDb, targetLufs, integratedLufs, truePeakDb, maximumTruePeakDb].every(Number.isFinite)) {
+        return null;
+    }
+    const targetDeltaDb = targetLufs - integratedLufs;
+    const peakSafeDeltaDb = maximumTruePeakDb - 0.2 - truePeakDb;
+    const appliedDeltaDb = Math.min(targetDeltaDb, peakSafeDeltaDb);
+    const dialogueGainDb = Math.max(-3, Math.min(3, currentGainDb + appliedDeltaDb));
+    if (Math.abs(dialogueGainDb - currentGainDb) < 0.05) return null;
+    return {
+        provider: "premiere-dialogue-gain-correction",
+        measured: { integratedLufs, truePeakDb },
+        target: { integratedLufs: targetLufs, maximumTruePeakDb, safetyMarginDb: 0.2 },
+        previousDialogueGainDb: currentGainDb,
+        appliedDeltaDb: Number((dialogueGainDb - currentGainDb).toFixed(2)),
+        dialogueGainDb: Number(dialogueGainDb.toFixed(2)),
+    };
+}
+
 function probeVideo(filePath, ffprobeBin = "ffprobe") {
     const output = execFileSync(ffprobeBin, [
         "-v", "error", "-select_streams", "v:0",
@@ -473,22 +498,91 @@ class ShortFormBatchRunner {
         this.activeBatchId = null;
     }
 
+    resetPremiereStages(job) {
+        for (const stage of ["project", "short-form-edit", "save", "structural-qc", "render", "short-form-framing-qc", "archive"]) {
+            delete job.checkpoints[stage];
+        }
+        const renderPath = job.production?.render?.output_file;
+        const workspace = `${path.resolve(job.workspace)}${path.sep}`;
+        if (renderPath && path.resolve(renderPath).startsWith(workspace) && fs.existsSync(renderPath)) {
+            fs.unlinkSync(renderPath);
+        }
+        job.status = "FAILED_RECOVERABLE";
+        job.error = null;
+        job.result = null;
+    }
+
+    syncStyleContract(job) {
+        const baseline = styleById(job.shortForm.styleId).editing.dialogueGainDb;
+        const normalizationBaseline = job.shortForm.audioNormalization?.previousDialogueGainDb;
+        const current = job.shortForm.editing.dialogueGainDb;
+        const stale = normalizationBaseline === undefined
+            ? current !== baseline
+            : normalizationBaseline !== baseline;
+        if (!stale) return false;
+        job.shortForm.presetSyncHistory = [
+            ...(job.shortForm.presetSyncHistory || []),
+            {
+                syncedAt: nowIso(),
+                styleId: job.shortForm.styleId,
+                previousDialogueGainDb: current,
+                previousNormalizationBaselineDb: normalizationBaseline ?? null,
+                dialogueGainDb: baseline,
+                invalidatedStages: ["project", "short-form-edit", "save", "structural-qc", "render", "short-form-framing-qc", "archive"],
+            },
+        ];
+        job.shortForm.editing.dialogueGainDb = baseline;
+        delete job.shortForm.audioNormalization;
+        this.resetPremiereStages(job);
+        this.jobStore.save(job);
+        return true;
+    }
+
+    applyLoudnessRecovery(job) {
+        const correction = loudnessCorrection(job, job.error?.details);
+        if (!correction) return false;
+        job.shortForm.editing.dialogueGainDb = correction.dialogueGainDb;
+        job.shortForm.audioNormalization = { ...correction, correctedAt: nowIso() };
+        this.resetPremiereStages(job);
+        this.jobStore.save(job);
+        return true;
+    }
+
+    async runChild(id) {
+        let current = this.jobStore.get(id);
+        this.applyLoudnessRecovery(current);
+        current = this.jobStore.get(id);
+        if (current.status.startsWith("FAILED") && current.checkpoints.project) {
+            delete current.checkpoints.project;
+            this.jobStore.save(current);
+        }
+        try {
+            return await this.jobRunner.run(id);
+        } catch (error) {
+            current = this.jobStore.get(id);
+            if (!this.applyLoudnessRecovery(current)) throw error;
+            return this.jobRunner.run(id);
+        }
+    }
+
     async run(id) {
         if (this.activeBatchId && this.activeBatchId !== id) {
             throw new Error(`Short-form runner is busy with ${this.activeBatchId}.`);
         }
         let batch = this.store.get(id);
-        if (["COMPLETE", "APPROVAL_REQUIRED"].includes(batch.status)) return batch;
         this.activeBatchId = id;
         batch.status = "RUNNING";
         batch.error = null;
         this.store.save(batch);
         try {
             for (const child of batch.childJobs) {
-                const current = this.jobStore.get(child.jobId);
+                let current = this.jobStore.get(child.jobId);
+                if (current.shortForm?.enabled && this.syncStyleContract(current)) {
+                    current = this.jobStore.get(child.jobId);
+                }
                 const result = ["COMPLETE", "APPROVAL_REQUIRED"].includes(current.status)
                     ? current
-                    : await this.jobRunner.run(child.jobId);
+                    : await this.runChild(child.jobId);
                 child.status = result.status;
                 child.projectPath = result.result?.projectPath || result.outputPaths.project;
                 child.render = result.result?.render || null;
@@ -522,6 +616,7 @@ module.exports = {
     captionCues,
     coverTransform,
     createCaptionRemask,
+    loudnessCorrection,
     probeVideo,
     styleById,
     styleRegistry,

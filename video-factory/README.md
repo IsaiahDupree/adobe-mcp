@@ -59,6 +59,21 @@ node cli.js shorts-status premiere-agent-factory-v2-shorts-v3
 
 Use `variant_mode: "rotate"` to spread selected moments across distinct editing styles, or `variant_mode: "all-styles"` to render controlled style experiments from the same moment. `kinetic-proof` emphasizes proof beats and stronger punch-ins, `clean-authority` uses restrained motion and longer holds, and `rapid-explainer` favors tighter visual-change intervals. Every child preserves source job, project, render, range, caption, style, and archive lineage in its job receipt. Children are held until `shorts-run` is called and remain approval-gated after export.
 
+### Autonomous HeyGen style campaigns
+
+`heygen-style-matrix-v1` reuses a completed HeyGen generation receipt and applies all three styles to the same semantic source range. It does not purchase another HeyGen generation. Each render becomes a matched YouTube, Instagram, and TikTok experiment cell with an approval-gated posting payload, scheduled slot, source lineage, style ID, and metric history.
+
+```bash
+node cli.js short-campaign-submit examples/heygen-assets-style-campaign.json --run
+node cli.js short-campaign-status premiere-agent-factory-heygen-style-matrix-v1
+node cli.js short-campaign-metrics <campaign-id> /absolute/path/metrics.json
+node cli.js short-campaign-evaluate <campaign-id>
+node cli.js short-campaign-approve <campaign-id> <cell-id|all>
+node cli.js short-campaign-presets
+```
+
+New HeyGen jobs can include `derivative_campaign.enabled: true`, as shown in `examples/heygen-retention-job.json`. `submit --run`, API job runs, and scheduler ticks then continue from the approved master into the derivative campaign automatically. The matrix uses average percentage viewed as its primary metric, completion and three-second retention as guardrails, balanced style ordering across source families, minimum exposure gates, and practical-significance checks before promoting a preferred style preset. Dialogue gain is locked across style variants; an out-of-bounds render triggers a bounded Premiere gain correction and selective project/QC/export retry with an audit receipt. Every post stays approval-gated until `short-campaign-approve` explicitly releases its publisher payload.
+
 ## HeyGen retention pipeline
 
 Submit `examples/heygen-retention-job.json` to run the complete presenter workflow. The factory generates each script beat independently through HeyGen v3, downloads the clean MP4 and SRT, and records a resumable generation manifest. Premiere creates the semantic cuts, applies Motion reframes, builds a native editable caption track, and exports the finished sequence. Animated caption graphics remain available through `caption_mode: "animated"` or `"both"`.

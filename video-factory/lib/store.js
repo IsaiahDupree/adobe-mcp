@@ -86,6 +86,7 @@ class JobStore {
             showcase: job.showcase,
             composition: job.composition,
             shortForm: job.shortForm,
+            derivativeCampaign: job.derivativeCampaign,
             archive: job.archive,
         });
     }

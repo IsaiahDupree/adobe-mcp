@@ -30,6 +30,18 @@
     "caption_style": "bold-safe",
     "punch_in_scale": 1.08
   },
+  "derivative_campaign": {
+    "enabled": true,
+    "preset": "heygen-style-matrix-v1",
+    "styles": ["kinetic-proof", "clean-authority", "rapid-explainer"],
+    "clips_per_source": 1,
+    "platforms": ["youtube", "instagram", "tiktok"],
+    "archive": {
+      "enabled": true,
+      "mode": "copy",
+      "destination_root": "/Volumes/My Passport/VideoFactory/ShortForm"
+    }
+  },
   "production": {
     "project_name": "heygen-retention-test",
     "sequence_name": "HEYGEN_RETENTION_MASTER",

@@ -30,7 +30,7 @@
         "visualChangeIntervalSeconds": 3.5,
         "calloutMode": "single-takeaway",
         "audioPriority": "dialogue-first",
-        "dialogueGainDb": 0.5
+        "dialogueGainDb": 1
       }
     },
     {
@@ -46,7 +46,7 @@
         "visualChangeIntervalSeconds": 1.8,
         "calloutMode": "step-label",
         "audioPriority": "dialogue-first",
-        "dialogueGainDb": -0.5
+        "dialogueGainDb": 1
       }
     }
   ]

@@ -33,6 +33,10 @@ function createFactoryServer({
     framingTracker = null,
     reviseStore = null,
     reviseRunner = null,
+    shortFormStore = null,
+    shortFormRunner = null,
+    shortFormCampaignStore = null,
+    shortFormCampaignRunner = null,
 }) {
     let schedulerTimer = null;
 
@@ -62,6 +66,10 @@ function createFactoryServer({
                             out[item.status] = (out[item.status] || 0) + 1;
                             return out;
                         }, {}),
+                    } : null,
+                    shortFormCampaigns: shortFormCampaignStore ? {
+                        total: shortFormCampaignStore.list().length,
+                        activeCampaignId: shortFormCampaignRunner.activeCampaignId,
                     } : null,
                     queue: {
                         total: jobs.length,
@@ -148,6 +156,87 @@ function createFactoryServer({
                 if (request.method === "POST" && segments[3] === "run") {
                     setImmediate(() => compositionRunner.run(id).catch(() => {}));
                     sendJson(response, 202, { accepted: true, compositionId: id });
+                    return;
+                }
+            }
+
+            if (shortFormStore && request.method === "GET" && url.pathname === "/api/shorts") {
+                sendJson(response, 200, {
+                    shortFormBatches: shortFormStore.list(),
+                    activeBatchId: shortFormRunner.activeBatchId,
+                });
+                return;
+            }
+
+            if (shortFormStore && request.method === "POST" && url.pathname === "/api/shorts") {
+                sendJson(response, 201, shortFormStore.submit(await readBody(request)));
+                return;
+            }
+
+            if (shortFormStore && segments[0] === "api" && segments[1] === "shorts" && segments[2]) {
+                const id = decodeURIComponent(segments[2]);
+                if (request.method === "GET" && segments.length === 3) {
+                    sendJson(response, 200, shortFormStore.get(id));
+                    return;
+                }
+                if (request.method === "POST" && segments[3] === "run") {
+                    setImmediate(() => shortFormRunner.run(id).catch(() => {}));
+                    sendJson(response, 202, { accepted: true, shortFormBatchId: id });
+                    return;
+                }
+            }
+
+            if (shortFormCampaignStore && request.method === "GET" && url.pathname === "/api/short-campaigns") {
+                sendJson(response, 200, {
+                    campaigns: shortFormCampaignStore.list(),
+                    activeCampaignId: shortFormCampaignRunner.activeCampaignId,
+                });
+                return;
+            }
+
+            if (shortFormCampaignStore && request.method === "POST" && url.pathname === "/api/short-campaigns") {
+                sendJson(response, 201, shortFormCampaignStore.submit(await readBody(request)));
+                return;
+            }
+
+            if (shortFormCampaignStore && request.method === "GET" && url.pathname === "/api/short-campaigns/presets") {
+                sendJson(response, 200, {
+                    configured: require("../config/short-form-campaign-presets.json"),
+                    validated: shortFormCampaignStore.validatedPresets(),
+                });
+                return;
+            }
+
+            if (
+                shortFormCampaignStore &&
+                segments[0] === "api" && segments[1] === "short-campaigns" && segments[2]
+            ) {
+                const id = decodeURIComponent(segments[2]);
+                if (request.method === "GET" && segments.length === 3) {
+                    sendJson(response, 200, shortFormCampaignStore.get(id));
+                    return;
+                }
+                if (request.method === "POST" && segments[3] === "run") {
+                    setImmediate(() => shortFormCampaignRunner.run(id).catch(() => {}));
+                    sendJson(response, 202, { accepted: true, campaignId: id });
+                    return;
+                }
+                if (request.method === "POST" && segments[3] === "metrics") {
+                    const body = await readBody(request);
+                    const rows = Array.isArray(body) ? body : [body];
+                    sendJson(response, 201, rows.map((row) => shortFormCampaignStore.recordMetrics(id, row)));
+                    return;
+                }
+                if (request.method === "POST" && segments[3] === "evaluate") {
+                    sendJson(response, 200, shortFormCampaignStore.evaluate(id));
+                    return;
+                }
+                if (request.method === "POST" && segments[3] === "approve") {
+                    const body = await readBody(request);
+                    sendJson(response, 200, shortFormCampaignStore.approve(
+                        id,
+                        body.cellIds || body.cell_ids || body.cellId || "all"
+                    ));
                     return;
                 }
             }

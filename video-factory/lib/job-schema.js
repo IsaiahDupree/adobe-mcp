@@ -520,6 +520,40 @@ function normalizeShortForm(spec) {
     };
 }
 
+function normalizeDerivativeCampaign(spec, generation, defaultArchiveRoot) {
+    const input = spec.derivative_campaign || spec.derivativeCampaign;
+    if (!input || input.enabled === false) return { enabled: false };
+    if (!generation.enabled || generation.provider !== "heygen") {
+        throw new Error("derivative_campaign requires generation.provider heygen.");
+    }
+    const styles = input.styles || ["kinetic-proof", "clean-authority", "rapid-explainer"];
+    if (!Array.isArray(styles) || styles.length < 2 || new Set(styles).size !== styles.length) {
+        throw new Error("derivative_campaign.styles must contain at least two unique styles.");
+    }
+    const platforms = input.platforms || ["youtube", "instagram", "tiktok"];
+    if (!Array.isArray(platforms) || platforms.length === 0) {
+        throw new Error("derivative_campaign.platforms must be a non-empty array.");
+    }
+    const startAt = input.start_at || input.startAt || new Date(Date.now() + 24 * 3600000).toISOString();
+    if (Number.isNaN(Date.parse(startAt))) throw new Error("derivative_campaign.start_at must be a valid ISO date.");
+    return {
+        enabled: true,
+        campaignId: input.campaign_id || input.campaignId || null,
+        presetId: input.preset || input.preset_id || input.presetId || "heygen-style-matrix-v1",
+        styles: styles.map(String),
+        clipsPerSource: Math.max(1, Math.min(5, Number(input.clips_per_source || input.clipsPerSource || 1))),
+        platforms: platforms.map((item) => String(item).toLowerCase()),
+        startAt: new Date(startAt).toISOString(),
+        schedule: { ...(input.schedule || {}) },
+        experiment: { ...(input.experiment || {}) },
+        archive: {
+            enabled: input.archive?.enabled !== false,
+            mode: input.archive?.mode || "copy",
+            destination_root: input.archive?.destination_root || path.join(defaultArchiveRoot, "ShortForm"),
+        },
+    };
+}
+
 function normalizeJobSpec(
     spec,
     campaignsDir,
@@ -566,6 +600,7 @@ function normalizeJobSpec(
     const showcase = normalizeShowcase(spec);
     const composition = normalizeComposition(spec, generation);
     const shortForm = normalizeShortForm(spec);
+    const derivativeCampaign = normalizeDerivativeCampaign(spec, generation, defaultArchiveRoot);
     const render = production.render
         ? {
               ...production.render,
@@ -618,6 +653,7 @@ function normalizeJobSpec(
         showcase,
         composition,
         shortForm,
+        derivativeCampaign,
         archive,
         workspace,
         outputPaths: {
@@ -648,4 +684,10 @@ function validateAssets(job) {
     return { valid: missing.length === 0, missing };
 }
 
-module.exports = { normalizeComposition, normalizeJobSpec, normalizeShortForm, validateAssets };
+module.exports = {
+    normalizeComposition,
+    normalizeDerivativeCampaign,
+    normalizeJobSpec,
+    normalizeShortForm,
+    validateAssets,
+};

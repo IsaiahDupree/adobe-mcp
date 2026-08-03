@@ -7,10 +7,12 @@ const baseConfig = require("../lib/config");
 const { JobStore } = require("../lib/store");
 const {
     ShortFormBatchStore,
+    ShortFormBatchRunner,
     candidateRanges,
     captionCues,
     coverTransform,
     createCaptionRemask,
+    loudnessCorrection,
     styleById,
     styleRegistry,
     trimCaptions,
@@ -82,6 +84,7 @@ test("short-form style registry contains distinct, bounded editing contracts", (
         "rapid-explainer",
     ]);
     assert.equal(new Set(styleRegistry.styles.map((style) => style.editing.visualChangeIntervalSeconds)).size, 3);
+    assert.equal(new Set(styleRegistry.styles.map((style) => style.editing.dialogueGainDb)).size, 1);
     assert.ok(styleRegistry.styles.every((style) =>
         style.duration.minimumSeconds >= 15 &&
         style.duration.maximumSeconds <= 60 &&
@@ -91,6 +94,21 @@ test("short-form style registry contains distinct, bounded editing contracts", (
         style.editing.dialogueGainDb <= 3
     ));
     assert.throws(() => styleById("unknown-style"), /Unknown short-form style/);
+});
+
+test("short-form loudness recovery targets dialogue while preserving true-peak headroom", () => {
+    const correction = loudnessCorrection({
+        shortForm: { enabled: true, editing: { dialogueGainDb: -0.5 } },
+    }, {
+        provider: "ffmpeg-ebur128-read-only",
+        integratedLufs: -19.7,
+        truePeakDb: -4.2,
+        targetIntegratedLufs: -16,
+        maximumTruePeakDb: -1,
+    });
+    assert.equal(correction.dialogueGainDb, 2.5);
+    assert.equal(correction.appliedDeltaDb, 3);
+    assert.equal(correction.target.safetyMarginDb, 0.2);
 });
 
 test("safe-fill transform covers a vertical frame and clamps off-center focus", () => {
@@ -202,6 +220,40 @@ test("all-styles mode creates controlled style variants from the same source ran
     assert.equal(new Set(batch.childJobs.map((child) =>
         jobStore.get(child.jobId).shortForm.motion.introScaleMultiplier
     )).size, 3);
+});
+
+test("resumed batches invalidate Premiere stages when a style contract changes", async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "premiere-short-style-sync-"));
+    const config = testConfig(root);
+    const source = await sourceFixture(root, "style-sync-master");
+    const jobStore = new JobStore(config);
+    const batchStore = new ShortFormBatchStore(config, jobStore);
+    const batch = batchStore.submit({
+        short_form_id: "style-sync",
+        sources: [source],
+        styles: ["clean-authority"],
+        archive: { enabled: false },
+    });
+    const child = jobStore.get(batch.childJobs[0].jobId);
+    child.status = "APPROVAL_REQUIRED";
+    child.shortForm.editing.dialogueGainDb = 0.5;
+    child.checkpoints["short-form-edit"] = { status: "COMPLETE" };
+    child.checkpoints.project = { status: "COMPLETE" };
+    child.checkpoints.render = { status: "COMPLETE" };
+    child.result = { render: { outputFile: child.outputPaths.render } };
+    jobStore.save(child);
+
+    const runner = new ShortFormBatchRunner(batchStore, jobStore, null);
+    assert.equal(runner.syncStyleContract(jobStore.get(child.id)), true);
+    const updated = jobStore.get(child.id);
+    assert.equal(updated.shortForm.editing.dialogueGainDb, 1);
+    assert.equal(updated.status, "FAILED_RECOVERABLE");
+    assert.equal(updated.checkpoints["short-form-edit"], undefined);
+    assert.equal(updated.checkpoints.project, undefined);
+    assert.equal(updated.checkpoints.render, undefined);
+    assert.equal(updated.result, null);
+    assert.equal(updated.shortForm.presetSyncHistory[0].previousDialogueGainDb, 0.5);
+    assert.ok(updated.shortForm.presetSyncHistory[0].invalidatedStages.includes("project"));
 });
 
 test("a project collection expands every completed source with preserved lineage", async () => {

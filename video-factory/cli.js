@@ -31,6 +31,12 @@ const { AnimationGrammarRenderer } = require("./lib/animation-grammar-renderer")
 const { CompositionQa } = require("./lib/composition-qa");
 const { CompositionBatchRunner, CompositionBatchStore } = require("./lib/composition-batch");
 const { ShortFormBatchRunner, ShortFormBatchStore, styleRegistry } = require("./lib/short-form-batch");
+const {
+    ShortFormCampaignRunner,
+    ShortFormCampaignStore,
+    campaignPresets,
+} = require("./lib/short-form-campaign");
+const { AutonomousProductionCoordinator } = require("./lib/autonomous-production-coordinator");
 const { FramingTracker } = require("./lib/framing-tracker");
 const { ReviseRunner } = require("./lib/revise-runner");
 const { ReviseStore } = require("./lib/revise-store");
@@ -57,6 +63,13 @@ Usage:
   node cli.js shorts-run <short-form-id>
   node cli.js shorts-status [short-form-id]
   node cli.js shorts-styles
+  node cli.js short-campaign-submit <campaign.json> [--run]
+  node cli.js short-campaign-run <campaign-id>
+  node cli.js short-campaign-status [campaign-id]
+  node cli.js short-campaign-metrics <campaign-id> <metrics.json>
+  node cli.js short-campaign-evaluate <campaign-id>
+  node cli.js short-campaign-approve <campaign-id> <cell-id|all>
+  node cli.js short-campaign-presets
   node cli.js framing-status [job-id]
   node cli.js revise-submit <revise.json> [--design] [--run]
   node cli.js revise-design <revise-id>
@@ -140,6 +153,19 @@ function createRuntime() {
     });
     const shortFormStore = new ShortFormBatchStore(config, store, boardStore, compositionStore);
     const shortFormRunner = new ShortFormBatchRunner(shortFormStore, store, runner);
+    const shortFormCampaignStore = new ShortFormCampaignStore(config, store, shortFormStore);
+    const shortFormCampaignRunner = new ShortFormCampaignRunner(
+        shortFormCampaignStore,
+        store,
+        runner,
+        shortFormStore,
+        shortFormRunner
+    );
+    const productionRunner = new AutonomousProductionCoordinator(
+        runner,
+        shortFormCampaignStore,
+        shortFormCampaignRunner
+    );
     return {
         adapter,
         heygenManager,
@@ -147,12 +173,15 @@ function createRuntime() {
         store,
         appManager,
         runner,
+        productionRunner,
         boardStore,
         boardRunner,
         compositionStore,
         compositionRunner,
         shortFormStore,
         shortFormRunner,
+        shortFormCampaignStore,
+        shortFormCampaignRunner,
         framingTracker,
         reviseStore,
         reviseRunner,
@@ -262,12 +291,15 @@ async function main() {
         store,
         appManager,
         runner,
+        productionRunner,
         boardStore,
         boardRunner,
         compositionStore,
         compositionRunner,
         shortFormStore,
         shortFormRunner,
+        shortFormCampaignStore,
+        shortFormCampaignRunner,
         framingTracker,
         reviseStore,
         reviseRunner,
@@ -334,7 +366,7 @@ async function main() {
         if (!args[1]) throw new Error("submit requires a job JSON file.");
         const spec = JSON.parse(fs.readFileSync(path.resolve(args[1]), "utf8"));
         const job = store.submit(spec);
-        print(args.includes("--run") ? await runner.run(job.id) : job);
+        print(args.includes("--run") ? await productionRunner.run(job.id) : job);
         return;
     }
     if (command === "board-submit") {
@@ -389,6 +421,45 @@ async function main() {
         print(styleRegistry);
         return;
     }
+    if (command === "short-campaign-submit") {
+        if (!args[1]) throw new Error("short-campaign-submit requires a campaign JSON file.");
+        const spec = JSON.parse(fs.readFileSync(path.resolve(args[1]), "utf8"));
+        const campaign = shortFormCampaignStore.submit(spec);
+        print(args.includes("--run") ? await shortFormCampaignRunner.run(campaign.id) : campaign);
+        return;
+    }
+    if (command === "short-campaign-run") {
+        if (!args[1]) throw new Error("short-campaign-run requires a campaign ID.");
+        print(await shortFormCampaignRunner.run(args[1]));
+        return;
+    }
+    if (command === "short-campaign-status") {
+        print(args[1]
+            ? shortFormCampaignStore.get(args[1])
+            : { campaigns: shortFormCampaignStore.list() });
+        return;
+    }
+    if (command === "short-campaign-metrics") {
+        if (!args[1] || !args[2]) throw new Error("short-campaign-metrics requires a campaign ID and metrics JSON file.");
+        const metrics = JSON.parse(fs.readFileSync(path.resolve(args[2]), "utf8"));
+        const rows = Array.isArray(metrics) ? metrics : [metrics];
+        print(rows.map((row) => shortFormCampaignStore.recordMetrics(args[1], row)));
+        return;
+    }
+    if (command === "short-campaign-evaluate") {
+        if (!args[1]) throw new Error("short-campaign-evaluate requires a campaign ID.");
+        print(shortFormCampaignStore.evaluate(args[1]));
+        return;
+    }
+    if (command === "short-campaign-approve") {
+        if (!args[1] || !args[2]) throw new Error("short-campaign-approve requires a campaign ID and cell ID or all.");
+        print(shortFormCampaignStore.approve(args[1], args[2]));
+        return;
+    }
+    if (command === "short-campaign-presets") {
+        print({ active: campaignPresets, validated: shortFormCampaignStore.validatedPresets() });
+        return;
+    }
     if (command === "framing-status") {
         print(framingTracker.status(args[1] || null));
         return;
@@ -433,7 +504,7 @@ async function main() {
     }
     if (command === "run") {
         if (!args[1]) throw new Error("run requires a job ID.");
-        print(await runner.run(args[1]));
+        print(await productionRunner.run(args[1]));
         return;
     }
     if (command === "status") {
@@ -441,7 +512,7 @@ async function main() {
         return;
     }
     if (command === "tick") {
-        print(await runner.tick());
+        print(await productionRunner.tick());
         return;
     }
     if (command === "approve") {
@@ -467,7 +538,7 @@ async function main() {
         const port = Number(optionValue(args, "--port", config.FACTORY_PORT));
         const { server, startScheduler } = createFactoryServer({
             store,
-            runner,
+            runner: productionRunner,
             appManager,
             config,
             boardStore,
@@ -477,6 +548,10 @@ async function main() {
             framingTracker,
             reviseStore,
             reviseRunner,
+            shortFormStore,
+            shortFormRunner,
+            shortFormCampaignStore,
+            shortFormCampaignRunner,
         });
         server.listen(port, "127.0.0.1", () => {
             process.stdout.write(`Premiere Video Factory listening on http://127.0.0.1:${port}\n`);
