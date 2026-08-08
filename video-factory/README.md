@@ -12,6 +12,27 @@ node cli.js install-service
 curl http://127.0.0.1:3032/api/health
 ```
 
+## Managed Premiere/UXP startup
+
+Use the managed stack scripts when you want the software to bring Premiere back up and load the UXP plugin through the visible Adobe UXP Developer Tools UI:
+
+```bash
+npm run stack:stop
+npm run stack:start
+```
+
+`stack:start` opens the local proxy, the Video Factory service, Adobe UXP Developer Tools, and Adobe Premiere Pro 2026. It then runs the AppleScript/screenshot loader that clicks the `Premiere MCP Agent` Load button and writes screenshots plus `uxp-load-receipt.json` under the startup run's `uxp-loader/` evidence folder.
+
+Every startup now also writes a dedicated software configuration journal under `/Users/isaiahdupree/Documents/Software/premiere-autonomy/factory/startup/<timestamp>-<pid>/`. That run folder contains `startup-config.json`, `startup-run.ndjson`, `startup-summary.json`, the UXP service probe, and the colocated loader evidence folder. The journal records the exact proxy/factory/readiness URLs, git revision, safe environment settings, loader arguments, phase timings, and startup failure point without writing secrets.
+
+For a no-click probe:
+
+```bash
+npm run uxp:load-ui -- --dry-run
+```
+
+See [docs/premiere-stack-startup-configuration.md](docs/premiere-stack-startup-configuration.md) for the software startup journal, recovered known-good configuration signals, timing policy, and recreation steps. See [docs/premiere-uxp-ui-loader.md](docs/premiere-uxp-ui-loader.md) for coordinate tuning, Accessibility permissions, retries, recovery, evidence receipts, and stop/start behavior. See [docs/api-error-codes.md](docs/api-error-codes.md) for structured API error codes, including UXP Load-button failures.
+
 Submit jobs over HTTP:
 
 ```bash
@@ -180,6 +201,7 @@ node cli.js submit benchmarks/youtube-retention-showcase.json --run
 - `POST /api/jobs/:id/approve` complete an approval-gated job
 - `POST /api/jobs/:id/cancel` cancel a job
 - `GET /api/health` inspect node, apps, bridge, and queue
+- `GET /api/errors` inspect stable API error codes and HTTP statuses
 - `POST /api/node/ensure` start/reconnect managed applications
 - `POST /api/worker/tick` execute the next due job
 - `POST /api/compositions` create independent format masters

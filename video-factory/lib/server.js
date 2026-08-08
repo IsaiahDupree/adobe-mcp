@@ -1,10 +1,167 @@
 const http = require("http");
 const { URL } = require("url");
 
+const API_ERROR_CODES = Object.freeze({
+    API_NOT_FOUND: {
+        status: 404,
+        description: "No route matches the requested API path or method.",
+    },
+    API_RESOURCE_NOT_FOUND: {
+        status: 404,
+        description: "The requested job, board, campaign, composition, or loop does not exist.",
+    },
+    API_INVALID_JSON: {
+        status: 400,
+        description: "The request body could not be parsed as JSON.",
+    },
+    API_BODY_TOO_LARGE: {
+        status: 413,
+        description: "The JSON request body exceeded the 2 MB API limit.",
+    },
+    API_VALIDATION_FAILED: {
+        status: 422,
+        description: "The request was valid JSON but failed contract validation.",
+    },
+    API_CONFLICT: {
+        status: 409,
+        description: "The request conflicts with existing factory state.",
+    },
+    API_REQUEST_FAILED: {
+        status: 400,
+        description: "The request failed for a known but uncategorized client-side reason.",
+    },
+    APP_NOT_READY: {
+        status: 503,
+        description: "Premiere, UXP Developer Tools, the plugin bridge, or another local dependency is not ready.",
+    },
+    UXP_PLUGIN_MANIFEST_MISSING: {
+        status: 503,
+        description: "The Premiere MCP Agent manifest is missing from the configured UXP plugin directory.",
+    },
+    UXP_APP_OPEN_FAILED: {
+        status: 503,
+        description: "Adobe UXP Developer Tools could not be opened or activated.",
+    },
+    UXP_ACCESSIBILITY_DENIED: {
+        status: 503,
+        description: "macOS Accessibility permissions prevented AppleScript UI control.",
+    },
+    UXP_WINDOW_NOT_FOUND: {
+        status: 503,
+        description: "Adobe UXP Developer Tools did not expose a controllable window.",
+    },
+    UXP_SCREENSHOT_FAILED: {
+        status: 503,
+        description: "The UXP loader could not capture a diagnostic screenshot.",
+    },
+    UXP_LOAD_CLICK_FAILED: {
+        status: 503,
+        description: "The UXP loader could not click the plugin Load button.",
+    },
+    UXP_LOAD_CLICK_TIMED_OUT: {
+        status: 503,
+        description: "AppleScript click control timed out before the plugin Load button could be pressed.",
+    },
+    UXP_PLUGIN_LOAD_FAILED: {
+        status: 503,
+        description: "Adobe UXP Developer Tools displayed or logged Plugin Load Failed.",
+    },
+    UXP_HOST_APP_NOT_CONNECTED: {
+        status: 503,
+        description: "UXP Developer Tools reported that no Premiere host application is connected to the service.",
+    },
+    UXP_HOST_APP_UNAVAILABLE: {
+        status: 503,
+        description: "UXP Developer Tools reported that the target Premiere host application is unavailable.",
+    },
+    UXP_PLUGIN_LOAD_NOT_CONFIRMED: {
+        status: 503,
+        description: "The UXP loader clicked or inspected the plugin row, but bridge or UI loaded state was not confirmed.",
+    },
+    UXP_PLUGIN_DISPLAY_NOT_CONFIRMED: {
+        status: 503,
+        description: "Premiere bridge connected, but UXP Developer Tools did not visibly report the plugin as Loaded.",
+    },
+    UXP_LOAD_RETRY_EXHAUSTED: {
+        status: 503,
+        description: "All configured UXP plugin load attempts and recovery retries were exhausted.",
+    },
+    WORKFLOW_VALIDATION_FAILED: {
+        status: 422,
+        description: "A deterministic production or QC gate rejected the workflow result.",
+    },
+    WAITING_FOR_ASSETS: {
+        status: 409,
+        description: "The job cannot continue until required local source assets are available.",
+    },
+    RENDER_TIMEOUT: {
+        status: 504,
+        description: "Adobe export did not complete before the configured render timeout.",
+    },
+});
+
+function requestId() {
+    return `vf-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
 function sendJson(response, status, body) {
     response.writeHead(status, {
         "content-type": "application/json; charset=utf-8",
         "cache-control": "no-store",
+    });
+    response.end(`${JSON.stringify(body, null, 2)}\n`);
+}
+
+class ApiError extends Error {
+    constructor(code, message, details = undefined) {
+        super(message);
+        this.name = "ApiError";
+        this.code = code;
+        this.details = details;
+        this.status = API_ERROR_CODES[code]?.status || 400;
+    }
+}
+
+function normalizeApiError(error) {
+    if (error instanceof ApiError) return error;
+    if (error && API_ERROR_CODES[error.code]) {
+        const apiError = new ApiError(error.code, error.message || error.code, error.details);
+        if (error.status) apiError.status = error.status;
+        return apiError;
+    }
+
+    const message = error?.message || String(error || "Request failed.");
+    if (/not found/i.test(message)) {
+        return new ApiError("API_RESOURCE_NOT_FOUND", message, error?.details);
+    }
+    if (/already exists/i.test(message)) {
+        return new ApiError("API_CONFLICT", message, error?.details);
+    }
+    if (/(requires?|required|must|invalid|not approval_required)/i.test(message)) {
+        return new ApiError("API_VALIDATION_FAILED", message, error?.details);
+    }
+    return new ApiError("API_REQUEST_FAILED", message, error?.details);
+}
+
+function sendError(response, error) {
+    const normalized = normalizeApiError(error);
+    const id = requestId();
+    const body = {
+        error: {
+            code: normalized.code,
+            message: normalized.message,
+            status: normalized.status,
+            requestId: id,
+            details: normalized.details || undefined,
+        },
+        code: normalized.code,
+        message: normalized.message,
+        requestId: id,
+    };
+    response.writeHead(normalized.status, {
+        "content-type": "application/json; charset=utf-8",
+        "cache-control": "no-store",
+        "x-request-id": id,
     });
     response.end(`${JSON.stringify(body, null, 2)}\n`);
 }
@@ -14,11 +171,17 @@ async function readBody(request) {
     let size = 0;
     for await (const chunk of request) {
         size += chunk.length;
-        if (size > 2 * 1024 * 1024) throw new Error("Request body exceeds 2 MB.");
+        if (size > 2 * 1024 * 1024) {
+            throw new ApiError("API_BODY_TOO_LARGE", "Request body exceeds 2 MB.");
+        }
         chunks.push(chunk);
     }
     if (chunks.length === 0) return {};
-    return JSON.parse(Buffer.concat(chunks).toString("utf8"));
+    try {
+        return JSON.parse(Buffer.concat(chunks).toString("utf8"));
+    } catch (error) {
+        throw new ApiError("API_INVALID_JSON", `Invalid JSON request body: ${error.message}`);
+    }
 }
 
 function createFactoryServer({
@@ -80,6 +243,14 @@ function createFactoryServer({
                             return out;
                         }, {}),
                     },
+                });
+                return;
+            }
+
+            if (request.method === "GET" && url.pathname === "/api/errors") {
+                sendJson(response, 200, {
+                    schemaVersion: 1,
+                    errorCodes: API_ERROR_CODES,
                 });
                 return;
             }
@@ -323,13 +494,12 @@ function createFactoryServer({
                 return;
             }
 
-            sendJson(response, 404, { error: "Not found." });
+            throw new ApiError(
+                "API_NOT_FOUND",
+                `No API route matches ${request.method} ${url.pathname}.`
+            );
         } catch (error) {
-            const status = /not found/i.test(error.message) ? 404 : 400;
-            sendJson(response, status, {
-                error: error.message,
-                code: error.code || "REQUEST_FAILED",
-            });
+            sendError(response, error);
         }
     });
 
@@ -349,4 +519,4 @@ function createFactoryServer({
     return { server, startScheduler, stopScheduler };
 }
 
-module.exports = { createFactoryServer };
+module.exports = { API_ERROR_CODES, ApiError, createFactoryServer, normalizeApiError };
