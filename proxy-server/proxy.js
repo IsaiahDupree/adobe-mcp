@@ -57,6 +57,7 @@ app.get('/status', (req, res) => {
 });
 // Track clients by application
 const applicationClients = {};
+const activeApplicationClients = {};
 
 io.on('connection', (socket) => {
   console.log(`User connected: ${socket.id}`);
@@ -72,6 +73,7 @@ io.on('connection', (socket) => {
       applicationClients[application] = new Set();
     }
     applicationClients[application].add(socket.id);
+    activeApplicationClients[application] = socket.id;
     
     // Optionally confirm registration
     socket.emit('registration_response', { 
@@ -135,6 +137,9 @@ io.on('connection', (socket) => {
       // Clean up empty sets
       if (applicationClients[app].size === 0) {
         delete applicationClients[app];
+        delete activeApplicationClients[app];
+      } else if (activeApplicationClients[app] === socket.id) {
+        activeApplicationClients[app] = Array.from(applicationClients[app]).at(-1);
       }
     }
   });
@@ -145,6 +150,13 @@ function sendToApplication(packet) {
 
     let application = packet.application
     if (applicationClients[application]) {
+        const activeClientId = activeApplicationClients[application];
+        if (activeClientId && applicationClients[application].has(activeClientId)) {
+            console.log(`Sending to active client ${activeClientId} for ${application}`);
+            io.to(activeClientId).emit('command_packet', packet);
+            return true;
+        }
+
         console.log(`Sending to ${applicationClients[application].size} clients for ${application}`);
     
         let senderId = packet.senderId
