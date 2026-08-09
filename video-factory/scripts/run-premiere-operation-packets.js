@@ -100,6 +100,32 @@ function unresolvedPlaceholders(value, found = []) {
   return found;
 }
 
+function recoverExportResultFromFile(op, options, result) {
+  if (op.action !== "exportSequence" || result.ok || !options.outputFile) return result;
+  if (result.status !== "TIMEOUT") return result;
+  try {
+    const stat = fs.statSync(options.outputFile);
+    if (stat.size <= 0) return result;
+    return {
+      ...result,
+      ok: true,
+      status: "EXPORT_FILE_CREATED_RESPONSE_TIMEOUT",
+      message: (
+        "Premiere did not return a bridge response before timeout, "
+        + "but the requested export file exists on disk."
+      ),
+      recovered: true,
+      recovery: {
+        code: "EXPORT_FILE_CREATED_RESPONSE_TIMEOUT",
+        outputFile: options.outputFile,
+        bytes: stat.size,
+      },
+    };
+  } catch (_) {
+    return result;
+  }
+}
+
 function collectPaths(obj, keys, acc = []) {
   if (Array.isArray(obj)) obj.forEach((v) => collectPaths(v, keys, acc));
   else if (obj && typeof obj === "object") {
@@ -224,17 +250,22 @@ async function preflight(cfg, doc) {
       continue;
     }
 
-    const result = await sendCommand(cfg.proxyUrl, op.command_packet.action, options, cfg.commandTimeoutMs);
+    const result = recoverExportResultFromFile(
+      op,
+      options,
+      await sendCommand(cfg.proxyUrl, op.command_packet.action, options, cfg.commandTimeoutMs)
+    );
     const record = {
       n: human,
       operation_id: op.operation_id,
       action: op.action,
       declared_safe_to_execute: op.safe_to_execute,
       sent_options: options,
-      status: result.ok ? "SUCCESS" : result.status,
+      status: result.ok ? result.status : result.status,
       duration_ms: result.durationMs,
       message: result.message || (result.packet && result.packet.message) || null,
       response: result.packet ? result.packet.response : null,
+      recovery: result.recovery || null,
     };
     fs.writeFileSync(
       path.join(cfg.evidenceDir, `op-${String(human).padStart(2, "0")}-${op.operation_id}.json`),
