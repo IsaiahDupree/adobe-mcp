@@ -78,10 +78,13 @@ test("allows ordinary video insert, markers, trim, QC, and export", () => {
         op(1, "addMediaToSequence", { itemName: "IMG_2360.MOV" }),
         op(2, "addMarkerToSequence", { markerName: "CAPTION 001" }),
         op(3, "setClipStartEndTimes", { trackType: "video" }),
-        op(4, "exportFrame", { filePath: "/tmp/frame.png" }),
+        op(4, "exportFrame", { filePath: "/tmp/narrative-no-caption-frame.png" }),
         op(5, "exportSequence", { outputFile: "/tmp/out.mp4" }),
     ]);
 
+    assert.equal(isCaptionOverlayMedia(op(4, "exportFrame", {
+        filePath: "/tmp/narrative-no-caption-frame.png",
+    })), false);
     assert.equal(result.passed, true);
     assert.equal(result.violations.length, 0);
 });

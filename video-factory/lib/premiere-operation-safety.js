@@ -20,6 +20,7 @@ function mediaExtension(op) {
 }
 
 function isCaptionOverlayMedia(op) {
+    if (op.action !== "addMediaToSequence") return false;
     const options = operationOptions(op);
     const text = [
         op.operation_id,
