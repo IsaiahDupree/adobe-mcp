@@ -321,6 +321,24 @@ async function preflight(cfg, doc) {
     not_published: doc.not_published,
   });
 
+  const outputDirectoryErrors = [];
+  for (const [, p] of outputs) {
+    if (!p.startsWith("/")) continue;
+    try {
+      fs.mkdirSync(path.dirname(p), { recursive: true });
+    } catch (e) {
+      outputDirectoryErrors.push({
+        output: p,
+        directory: path.dirname(p),
+        error: String(e && e.message || e),
+      });
+    }
+  }
+  add("output_directories_ready", outputDirectoryErrors.length === 0, {
+    checked: outputs.filter(([, p]) => p.startsWith("/")).length,
+    errors: outputDirectoryErrors,
+  });
+
   // 5. explicit approval recorded
   add("execution_approved", Boolean(cfg.approve), { approveFlag: Boolean(cfg.approve) });
 
@@ -441,8 +459,13 @@ async function preflight(cfg, doc) {
       const idField = op.metadata && op.metadata.response_id_field;
       const sym = op.metadata && op.metadata.symbolic_sequence_id;
       if (idField && sym) {
-        const resp = result.packet && result.packet.response;
-        const val = resp && (resp[idField] != null ? resp[idField] : (resp.sequence && resp.sequence[idField]));
+        const packet = result.packet || {};
+        const resp = packet.response;
+        let val = resp && (resp[idField] != null ? resp[idField] : (resp.sequence && resp.sequence[idField]));
+        if (val == null && Array.isArray(packet.sequences)) {
+          const sequence = packet.sequences.find((item) => item && item.isActive) || packet.sequences[0];
+          val = sequence && sequence[idField];
+        }
         if (val != null) {
           const key = sym.replace(/^\$\{|\}$/g, "");
           symbols.set(key, val);

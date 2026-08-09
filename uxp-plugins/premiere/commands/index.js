@@ -488,6 +488,84 @@ const findProjectItem = async (itemName, project) => {
     return insertItem
 }
 
+const _tickTimeFromOptions = (options, ticksKey, secondsKey) => {
+    if(options[ticksKey] !== undefined && options[ticksKey] !== null) {
+        return app.TickTime.createWithTicks(options[ticksKey].toString())
+    }
+    if(options[secondsKey] !== undefined && options[secondsKey] !== null) {
+        return app.TickTime.createWithSeconds(Number(options[secondsKey]))
+    }
+    throw new Error(`Missing ${ticksKey} or ${secondsKey}`)
+}
+
+const setProjectItemInOutPoints = async (command) => {
+    const options = command.options
+    const project = await app.Project.getActiveProject()
+    const item = app.ClipProjectItem.cast(await findProjectItem(options.itemName, project))
+
+    if(typeof item.createSetInOutPointsAction !== "function") {
+        throw new Error(`setProjectItemInOutPoints : item [${options.itemName}] does not support in/out actions`)
+    }
+
+    const inPoint = _tickTimeFromOptions(options, "inPointTicks", "inPointSeconds")
+    const outPoint = _tickTimeFromOptions(options, "outPointTicks", "outPointSeconds")
+
+    execute(() => {
+        const action = item.createSetInOutPointsAction(inPoint, outPoint)
+        return [action]
+    }, project)
+
+    return {
+        itemName: options.itemName,
+        inPointTicks: options.inPointTicks ?? null,
+        outPointTicks: options.outPointTicks ?? null,
+        inPointSeconds: options.inPointSeconds ?? null,
+        outPointSeconds: options.outPointSeconds ?? null,
+    }
+}
+
+const createSubClipFromProjectItem = async (command) => {
+    const options = command.options
+    const project = await app.Project.getActiveProject()
+    const item = app.ClipProjectItem.cast(await findProjectItem(options.itemName, project))
+
+    if(typeof item.createSubClipAction !== "function") {
+        throw new Error(`createSubClipFromProjectItem : item [${options.itemName}] does not support subclip actions`)
+    }
+
+    const subClipName = options.subClipName || `${options.itemName}_subclip`
+    const startTime = _tickTimeFromOptions(options, "startTicks", "startSeconds")
+    const endTime = _tickTimeFromOptions(options, "endTicks", "endSeconds")
+    const hasHardBoundaries = options.hasHardBoundaries !== false
+    const subClipOptions = {
+        takeVideo: options.takeVideo !== false,
+        takeAudio: options.takeAudio !== false,
+    }
+
+    execute(() => {
+        const action = item.createSubClipAction(
+            subClipName,
+            startTime,
+            endTime,
+            hasHardBoundaries,
+            subClipOptions
+        )
+        return [action]
+    }, project)
+
+    return {
+        itemName: options.itemName,
+        subClipName,
+        startTicks: options.startTicks ?? null,
+        endTicks: options.endTicks ?? null,
+        startSeconds: options.startSeconds ?? null,
+        endSeconds: options.endSeconds ?? null,
+        hasHardBoundaries,
+        takeVideo: subClipOptions.takeVideo,
+        takeAudio: subClipOptions.takeAudio,
+    }
+}
+
 //note: right now, we just always add to the active sequence. Need to add support
 //for specifying sequence
 const addMediaToSequence = async (command) => {
@@ -983,6 +1061,8 @@ const commandHandlers = {
     setVideoClipProperties,
     createSequenceFromMedia,
     setAudioTrackMute,
+    setProjectItemInOutPoints,
+    createSubClipFromProjectItem,
     setAudioClipDisabled,
     setVideoClipDisabled,
     appendVideoTransition,
