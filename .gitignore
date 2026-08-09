@@ -63,9 +63,19 @@ htmlcov/
 
 # UXP Developer Tool
 .debug/
+.uxprc
+**/.uxprc
+
+# Local startup journals and screenshot evidence
+video-factory/startup/
+video-factory/uxp-loader/
+video-factory/.startup/
 
 # Claude Code session tracking
 claude-progress.txt
 
 # Live provider inventories (regenerated with video-factory voices-sync)
 video-factory/config/*-live.json
+
+# Runtime evidence + error logs (regenerated per run)
+video-factory/work/

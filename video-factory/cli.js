@@ -212,6 +212,8 @@ function servicePlist() {
   <key>WorkingDirectory</key><string>${escape(__dirname)}</string>
   <key>RunAtLoad</key><true/>
   <key>KeepAlive</key><true/>
+  <key>LimitLoadToSessionType</key><string>Aqua</string>
+  <key>ProcessType</key><string>Interactive</string>
   <key>ThrottleInterval</key><integer>10</integer>
   <key>StandardOutPath</key><string>${escape(path.join(logDir, "service.log"))}</string>
   <key>StandardErrorPath</key><string>${escape(path.join(logDir, "service.err.log"))}</string>
