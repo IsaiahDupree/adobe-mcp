@@ -19,11 +19,14 @@ FACTORY_READY_ATTEMPTS="${VIDEO_FACTORY_READY_ATTEMPTS:-20}"
 APP_READY_ATTEMPTS="${PREMIERE_APP_READY_ATTEMPTS:-30}"
 STARTUP_JOURNAL_ACTIVE=0
 
-LOADER_ARGS=("$@")
+declare -a LOADER_ARGS=()
+for arg in "$@"; do
+  LOADER_ARGS+=("$arg")
+done
 
 has_loader_arg() {
   local wanted="$1"
-  for arg in "${LOADER_ARGS[@]}"; do
+  for arg in "${LOADER_ARGS[@]+"${LOADER_ARGS[@]}"}"; do
     if [[ "$arg" == "$wanted" || "$arg" == "$wanted="* ]]; then
       return 0
     fi

@@ -214,9 +214,19 @@ async function waitForStableFile(filePath, waitMs, pollMs, stableMs) {
   }
 }
 
-async function recoverExportResultFromFile(op, options, result, cfg) {
-  if (op.action !== "exportSequence" || result.ok || !options.outputFile) return result;
-  if (result.status !== "TIMEOUT") return result;
+function shouldWaitForExportFile(options, result) {
+  if (!options.outputFile) return false;
+  if (result.status === "TIMEOUT") return true;
+  if (!result.ok) return false;
+  if (options.startQueueImmediately === true) return true;
+  const exportType = String(options.exportType || "").toUpperCase();
+  return exportType.includes("DIRECT") || exportType.includes("IMMEDIATE");
+}
+
+async function finalizeExportResultFromFile(op, options, result, cfg) {
+  if (op.action !== "exportSequence" || !shouldWaitForExportFile(options, result)) {
+    return result;
+  }
   const file = await waitForStableFile(
     options.outputFile,
     cfg.exportRecoveryWaitMs,
@@ -224,17 +234,27 @@ async function recoverExportResultFromFile(op, options, result, cfg) {
     cfg.exportRecoveryStableMs
   );
   if (file.exists && file.stable) {
+    const code = result.ok
+      ? "EXPORT_FILE_STABLE_AFTER_SUCCESS_RESPONSE"
+      : "EXPORT_FILE_STABLE_AFTER_RESPONSE_TIMEOUT";
     return {
       ...result,
       ok: true,
-      status: "EXPORT_FILE_STABLE_AFTER_RESPONSE_TIMEOUT",
-      message: (
+      status: result.ok ? result.status : code,
+      message: result.ok ? result.message : (
         "Premiere did not return a bridge response before timeout, "
         + "but the requested export file appeared and stabilized on disk."
       ),
-      recovered: true,
-      recovery: {
-        code: "EXPORT_FILE_STABLE_AFTER_RESPONSE_TIMEOUT",
+      recovered: !result.ok,
+      exportFile: {
+        code,
+        outputFile: options.outputFile,
+        bytes: file.bytes,
+        waitedMs: file.waitedMs,
+        stableMs: cfg.exportRecoveryStableMs,
+      },
+      recovery: result.ok ? null : {
+        code,
         outputFile: options.outputFile,
         bytes: file.bytes,
         waitedMs: file.waitedMs,
@@ -242,10 +262,25 @@ async function recoverExportResultFromFile(op, options, result, cfg) {
       },
     };
   }
+  const code = result.ok
+    ? "EXPORT_FILE_NOT_STABLE_AFTER_SUCCESS_RESPONSE"
+    : "EXPORT_FILE_NOT_STABLE_AFTER_RESPONSE_TIMEOUT";
   return {
     ...result,
-    recovery: {
-      code: "EXPORT_FILE_NOT_STABLE_AFTER_RESPONSE_TIMEOUT",
+    ok: false,
+    status: code,
+    message: result.ok
+      ? "Premiere accepted export, but the requested export file did not stabilize before approval."
+      : result.message,
+    exportFile: {
+      code,
+      outputFile: options.outputFile,
+      exists: file.exists,
+      bytes: file.bytes,
+      waitedMs: file.waitedMs,
+    },
+    recovery: result.ok ? null : {
+      code,
       outputFile: options.outputFile,
       exists: file.exists,
       bytes: file.bytes,
@@ -359,7 +394,7 @@ async function preflight(cfg, doc) {
   return { checks, passed: checks.every((c) => c.pass), probe };
 }
 
-(async () => {
+async function main() {
   const cfg = parseArgs(process.argv);
   const doc = JSON.parse(fs.readFileSync(cfg.packet, "utf8"));
   fs.mkdirSync(cfg.evidenceDir, { recursive: true });
@@ -477,7 +512,7 @@ async function preflight(cfg, doc) {
       continue;
     }
 
-    const result = await recoverExportResultFromFile(
+    const result = await finalizeExportResultFromFile(
       op,
       options,
       await sendCommand(cfg.proxyUrl, op.command_packet.action, options, cfg.commandTimeoutMs),
@@ -493,6 +528,7 @@ async function preflight(cfg, doc) {
       duration_ms: result.durationMs,
       message: result.message || (result.packet && result.packet.message) || null,
       response: result.packet ? result.packet.response : null,
+      export_file: result.exportFile || null,
       recovery: result.recovery || null,
     };
     fs.writeFileSync(
@@ -530,7 +566,17 @@ async function preflight(cfg, doc) {
   summary.status = summary.counts.failed === 0 ? "COMPLETED" : "COMPLETED_WITH_FAILURES";
   writeSummary();
   console.log("\n" + JSON.stringify({ status: summary.status, counts: summary.counts, summaryPath: path.join(cfg.evidenceDir, "run-summary.json") }, null, 2));
-})().catch((err) => {
-  console.error("RUNNER_ERROR:", err && err.stack || err);
-  process.exit(1);
-});
+}
+
+if (require.main === module) {
+  main().catch((err) => {
+    console.error("RUNNER_ERROR:", err && err.stack || err);
+    process.exit(1);
+  });
+}
+
+module.exports = {
+  finalizeExportResultFromFile,
+  shouldWaitForExportFile,
+  waitForStableFile,
+};
