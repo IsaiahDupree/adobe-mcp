@@ -51,6 +51,52 @@ When `PROJECT_HANDOFF_FAILED` appears:
 The runner does not force-close or discard projects. It fails closed because losing
 an edit project is worse than delaying a batch.
 
+## API State Awareness
+
+Integrations should call the read-only state APIs before asking the runner to render.
+
+```bash
+GET /api/premiere/state
+```
+
+Returns the bridge state, Premiere responsiveness, and current active project from
+`getProjectInfo`.
+
+```bash
+POST /api/premiere/packet-readiness
+```
+
+Request:
+
+```json
+{
+  "packet_path": "/absolute/path/edit.premiere-operations.json"
+}
+```
+
+or:
+
+```json
+{
+  "packet": {}
+}
+```
+
+Response includes:
+
+- `status`: `READY_TO_RENDER` or `BLOCKED`
+- `readyToRender`: boolean
+- `currentProject`
+- `requestedProject`
+- `projectHandoffPlan`
+- checks for operation safety, project save planning, bridge connection, Premiere
+  responsiveness, source-media presence, local-only exports, and output directory
+  readiness
+
+This endpoint does not mutate Premiere. It plans whether the runner would skip an
+already-active project, save/close a different active project, or block the packet
+before render.
+
 ## Marketing Representative Review
 
 `MarketingDepartmentRepresentative` is a deterministic local reviewer. It judges

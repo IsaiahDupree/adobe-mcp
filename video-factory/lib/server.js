@@ -1,6 +1,12 @@
 const http = require("http");
+const fs = require("fs");
+const path = require("path");
 const { URL } = require("url");
 const { MarketingDepartmentRepresentative } = require("./marketing-review-judge");
+const {
+    evaluatePacketReadiness,
+    inspectPremiereState,
+} = require("./premiere-packet-readiness");
 const uxpUiDriver = require("./uxp-ui-driver");
 
 const API_ERROR_CODES = Object.freeze({
@@ -321,6 +327,41 @@ function createFactoryServer({
                     runSummary,
                     outputMeasurement: body.outputMeasurement || body.output_measurement || {},
                     qcFrames: body.qcFrames || body.qc_frames || [],
+                }));
+                return;
+            }
+
+            if (request.method === "GET" && url.pathname === "/api/premiere/state") {
+                sendJson(response, 200, await inspectPremiereState(appManager));
+                return;
+            }
+
+            if (request.method === "POST" && url.pathname === "/api/premiere/packet-readiness") {
+                const body = await readBody(request);
+                let packet = body.packet || body.receipt || body.operation_packet;
+                if (!packet && body.packet_path) {
+                    const packetPath = path.resolve(String(body.packet_path));
+                    packet = JSON.parse(fs.readFileSync(packetPath, "utf8"));
+                }
+                if (!packet || typeof packet !== "object") {
+                    throw new ApiError(
+                        "API_VALIDATION_FAILED",
+                        "packet-readiness requires packet, receipt, operation_packet, or packet_path.",
+                        {
+                            hasPacket: Boolean(packet && typeof packet === "object"),
+                            packet_path: body.packet_path || null,
+                        }
+                    );
+                }
+                const state = await inspectPremiereState(appManager);
+                sendJson(response, 200, evaluatePacketReadiness(packet, state, {
+                    policy: body.policy || {},
+                    selection: {
+                        only: Array.isArray(body.only) ? new Set(body.only.map(Number)) : null,
+                        skip: Array.isArray(body.skip) ? new Set(body.skip.map(Number)) : null,
+                        from: body.from == null ? null : Number(body.from),
+                        to: body.to == null ? null : Number(body.to),
+                    },
                 }));
                 return;
             }
