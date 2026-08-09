@@ -25,6 +25,7 @@ const CATEGORY_WEIGHTS = {
     audioAndSoundDesign: 10,
     analyticsTraceability: 10,
 };
+const PREMIERE_TICKS_PER_SECOND = 254016000000;
 
 function safeArray(value) {
     return Array.isArray(value) ? value : [];
@@ -44,6 +45,21 @@ function opOptions(operation) {
         || {};
 }
 
+function packetOperations(packet) {
+    return safeArray(packet?.operations || packet?.premiere_operations);
+}
+
+function retentionPlans(packet) {
+    return packetOperations(packet)
+        .filter((operation) => opAction(operation) === "applyRetentionPlan")
+        .map((operation) => opOptions(operation).plan)
+        .filter((plan) => plan && typeof plan === "object");
+}
+
+function firstRetentionPlan(packet) {
+    return retentionPlans(packet)[0] || null;
+}
+
 function statusSucceeded(status) {
     return SUCCESS_STATUSES.has(status) || String(status || "").startsWith("SUCCESS");
 }
@@ -55,7 +71,7 @@ function hasSucceededAction(runSummary, action) {
 }
 
 function packetHasAction(packet, action) {
-    return safeArray(packet?.operations || packet?.premiere_operations).some((operation) =>
+    return packetOperations(packet).some((operation) =>
         opAction(operation) === action
     );
 }
@@ -70,7 +86,7 @@ function extractNumber(...values) {
 
 function timelineStart(operation) {
     const options = opOptions(operation);
-    return extractNumber(
+    const seconds = extractNumber(
         options.startTimeSeconds,
         options.timeline_start_seconds,
         options.timelineStartSeconds,
@@ -80,6 +96,15 @@ function timelineStart(operation) {
         options.timeSeconds,
         options.time
     );
+    if (seconds != null) return seconds;
+    const ticks = extractNumber(
+        options.insertionTimeTicks,
+        options.startTimeTicks,
+        options.timelineStartTicks,
+        options.ticks
+    );
+    if (ticks != null) return Number((ticks / PREMIERE_TICKS_PER_SECOND).toFixed(3));
+    return null;
 }
 
 function isLikelyBroll(operation) {
@@ -96,7 +121,7 @@ function isLikelyBroll(operation) {
 }
 
 function extractBrollCadence(packet) {
-    const starts = safeArray(packet?.operations || packet?.premiere_operations)
+    const starts = packetOperations(packet)
         .filter(isLikelyBroll)
         .map(timelineStart)
         .filter((value) => Number.isFinite(value))
@@ -125,7 +150,7 @@ function captionRequired(packet) {
 }
 
 function hasCaptionEvidence(packet, runSummary) {
-    const operations = safeArray(packet?.operations || packet?.premiere_operations);
+    const operations = packetOperations(packet);
     const hasPacketEvidence = operations.some((operation) => {
         const action = String(opAction(operation) || "").toLowerCase();
         const id = String(operation?.operation_id || "").toLowerCase();
@@ -140,16 +165,24 @@ function hasCaptionEvidence(packet, runSummary) {
 }
 
 function hasNarrativeEvidence(packet) {
+    const plan = firstRetentionPlan(packet);
     const cutRules = packet?.cut_rules || packet?.premiere_contract?.cut_rules || {};
     const style = packet?.style_profile || {};
-    const operations = safeArray(packet?.operations || packet?.premiere_operations);
+    const operations = packetOperations(packet);
     return Boolean(
         cutRules.jump_cut_pauses
         || cutRules.remove_silence
+        || safeArray(plan?.scenes).some((scene) => scene?.cutRules?.jumpCutPauses || scene?.cutRules?.removeSilence)
+        || plan?.bRollRules
+        || plan?.styleProfile?.visual_treatment
         || style.narrative_style
         || operations.some((operation) => {
             const id = String(operation?.operation_id || "").toLowerCase();
-            return id.includes("marker") || id.includes("story") || id.includes("beat") || id.includes("cut");
+            return id.includes("marker")
+                || id.includes("story")
+                || id.includes("beat")
+                || id.includes("cut")
+                || id.includes("retention");
         })
     );
 }
@@ -232,7 +265,8 @@ function evaluateRights(packet) {
 }
 
 function platformExpected(packet) {
-    const platform = packet?.platform_format || packet?.platformFormat || {};
+    const plan = firstRetentionPlan(packet);
+    const platform = packet?.platform_format || packet?.platformFormat || plan?.platformFormat || {};
     const exportSettings = packet?.export_settings || packet?.premiere_contract?.export_settings || {};
     return {
         platform: platform.platform || packet?.platform || null,
@@ -276,8 +310,10 @@ function overallScore(categories) {
 }
 
 function buildTrace(packet, runSummary, outputMeasurement) {
+    const plan = firstRetentionPlan(packet);
     const output = packet?.outputs || {};
-    const campaign = packet?.campaign_objective || {};
+    const campaign = packet?.campaign_objective || plan?.campaignObjective || {};
+    const platform = packet?.platform_format || packet?.platformFormat || plan?.platformFormat || null;
     return {
         edit_plan_id: packet?.edit_plan_id || null,
         job_id: packet?.job_id || null,
@@ -291,7 +327,7 @@ function buildTrace(packet, runSummary, outputMeasurement) {
         audience: campaign.audience || null,
         cta: campaign.cta || null,
         primary_metric: campaign.primary_metric || null,
-        platform_format: packet?.platform_format || packet?.platformFormat || null,
+        platform_format: platform,
         output_path: outputPathFromEvidence(packet, runSummary, outputMeasurement),
         output_sha256: output.sha256 || outputMeasurement?.sha256 || null,
         runner_status: runSummary?.status || null,
@@ -307,7 +343,7 @@ class MarketingDepartmentRepresentative {
     }
 
     review({ packet, runSummary, outputMeasurement = {}, qcFrames = [] }) {
-        const operations = safeArray(packet?.operations || packet?.premiere_operations);
+        const operations = packetOperations(packet);
         const expected = platformExpected(packet);
         const outputPath = outputPathFromEvidence(packet, runSummary, outputMeasurement);
         const broll = extractBrollCadence(packet);
@@ -403,10 +439,10 @@ class MarketingDepartmentRepresentative {
                 "audio_design_present",
                 packetHasAction(packet, "setAudioGain")
                     || packetHasAction(packet, "setAudioMix")
-                    || Boolean(packet?.audio_mix || packet?.premiere_contract?.audio_mix),
+                    || Boolean(packet?.audio_mix || packet?.premiere_contract?.audio_mix || firstRetentionPlan(packet)?.audioMix),
                 "medium",
                 "The edit should include voice/music/SFX mix instructions or executed audio commands.",
-                { audio_mix: packet?.audio_mix || packet?.premiere_contract?.audio_mix || null }
+                { audio_mix: packet?.audio_mix || packet?.premiere_contract?.audio_mix || firstRetentionPlan(packet)?.audioMix || null }
             ),
             makeCheck(
                 "social_analytics_trace_ids_present",

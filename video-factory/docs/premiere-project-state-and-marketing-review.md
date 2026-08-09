@@ -131,6 +131,30 @@ If the edit needs more work, the route still returns `200` with
 `verdict: "NEEDS_EDITING_REVISION"` and a `requiredFixes` list. Malformed requests
 return `API_VALIDATION_FAILED`.
 
+## Artifact Review Script
+
+For canary folders and CI-style checks, use the local artifact-only script. It does
+not call Premiere, UXP, providers, or publishing APIs.
+
+```bash
+node video-factory/scripts/review-premiere-edit.js \
+  --packet /absolute/path/edit.premiere-operations.json \
+  --run-summary /absolute/path/evidence/run-summary.json \
+  --output /absolute/path/export.mp4 \
+  --width 1080 \
+  --height 1920 \
+  --write /absolute/path/evidence/marketing-review.json
+```
+
+Exit codes:
+
+| Exit | Meaning |
+| ---: | --- |
+| `0` | Marketing approved the edit for internal handoff. |
+| `10` | Marketing returned `NEEDS_EDITING_REVISION`; inspect `requiredFixes`. |
+| `2` | Required command arguments were missing. |
+| `1` | The script itself failed before producing a review. |
+
 ## Test Coverage
 
 Focused tests:
@@ -139,6 +163,7 @@ Focused tests:
 node --test \
   video-factory/tests/premiere-project-handoff.test.js \
   video-factory/tests/marketing-review-judge.test.js \
+  video-factory/tests/marketing-review-script.test.js \
   video-factory/tests/marketing-review-api.test.js \
   video-factory/tests/server-errors.test.js \
   video-factory/tests/premiere-operation-safety.test.js
@@ -155,3 +180,5 @@ Covered cases:
 - marketing blocks external YouTube direct use without rights
 - no-caption narrative styles can pass with story-edit evidence
 - API route returns review verdicts and typed validation failures
+- artifact script writes review receipts and exits with a revision code when the
+  edit is not ready
