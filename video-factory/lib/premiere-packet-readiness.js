@@ -141,6 +141,14 @@ function evaluatePacketReadiness(packet, premiereState, options = {}) {
         }),
         check("bridge_connected", Boolean(premiereState?.proxy?.bridgeConnected), {
             premiereClients: premiereState?.proxy?.premiereClients || 0,
+            // Audit F-18: the spec's error model names this code; surface it
+            // here so recovery tooling can match on it.
+            error_code: premiereState?.proxy?.bridgeConnected
+                ? null
+                : "PREMIERE_BRIDGE_DISCONNECTED",
+            recovery: premiereState?.proxy?.bridgeConnected
+                ? null
+                : "Reload the Premiere MCP Agent plugin, verify the proxy on 3031, then restart the stack if needed.",
         }),
         check("premiere_responsive", Boolean(premiereState?.premiere?.responsive), {
             project: premiereState?.premiere?.project || null,

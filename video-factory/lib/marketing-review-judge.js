@@ -383,6 +383,19 @@ class MarketingDepartmentRepresentative {
                 { not_published: packet?.not_published, execution_policy: packet?.execution_policy || null }
             ),
             makeCheck(
+                "execution_flag_consistent_with_live_run",
+                Number(runSummary?.counts?.success || 0) === 0
+                    || packet?.execution_policy?.premiere_actions_executed === true,
+                "high",
+                "A receipt for a live run must report premiere_actions_executed=true; "
+                    + "a stale dry-run flag must not be rubber-stamped (audit F-05).",
+                {
+                    live_executed_operations: Number(runSummary?.counts?.success || 0),
+                    premiere_actions_executed:
+                        packet?.execution_policy?.premiere_actions_executed ?? null,
+                }
+            ),
+            makeCheck(
                 "direct_use_assets_have_rights",
                 rights.passed,
                 "critical",
@@ -410,19 +423,39 @@ class MarketingDepartmentRepresentative {
             ),
             makeCheck(
                 "output_file_evidence_exists",
-                Boolean(outputPath && fs.existsSync(outputPath)),
+                (() => {
+                    if (!outputPath || !fs.existsSync(outputPath)) return false;
+                    try {
+                        return fs.statSync(outputPath).size > 0;
+                    } catch (_) {
+                        return false;
+                    }
+                })(),
                 "high",
-                "The reviewer needs a local exported file as evidence.",
-                { output_path: outputPath }
+                "The reviewer needs a local, non-empty exported file as evidence.",
+                {
+                    output_path: outputPath,
+                    output_bytes: (() => {
+                        try {
+                            return outputPath && fs.existsSync(outputPath)
+                                ? fs.statSync(outputPath).size
+                                : null;
+                        } catch (_) {
+                            return null;
+                        }
+                    })(),
+                }
             ),
             makeCheck(
                 "broll_cadence_three_to_five_seconds",
+                // Audit F-15: aligned with the planner's 3-5s contract; the
+                // ±0.25s is measurement tolerance only, not a different rule.
                 broll.starts.length >= 2
                     && broll.maxGap != null
                     && broll.maxGap <= 5.25
-                    && broll.minGap >= 2.5,
+                    && broll.minGap >= 2.75,
                 "medium",
-                "B-roll should be showcased every three to five seconds without becoming frantic.",
+                "B-roll should be showcased every three to five seconds (3-5s contract, ±0.25s measurement tolerance).",
                 broll
             ),
             makeCheck(
@@ -466,7 +499,11 @@ class MarketingDepartmentRepresentative {
         ];
         const categories = {
             businessObjectiveFit: categoryScore(checks, ["social_analytics_trace_ids_present"]),
-            rightsAndProvenance: categoryScore(checks, ["direct_use_assets_have_rights", "no_publish_policy_preserved"]),
+            rightsAndProvenance: categoryScore(checks, [
+                "direct_use_assets_have_rights",
+                "no_publish_policy_preserved",
+                "execution_flag_consistent_with_live_run",
+            ]),
             premiereProjectDiscipline: categoryScore(checks, [
                 "premiere_project_handoff_safe",
                 "project_saved_after_create_or_open",

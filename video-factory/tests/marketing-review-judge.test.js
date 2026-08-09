@@ -356,3 +356,45 @@ test("marketing review understands Premiere ticks and nested retention plans", (
     assert.equal(review.verdict, "APPROVED_FOR_INTERNAL_MARKETING_HANDOFF");
     assert.equal(review.socialAnalyticsTrace.campaign_objective, "Prove the Premiere edit workflow to software founders.");
 });
+
+test("stale dry-run execution flag on a live run is not rubber-stamped (audit F-05)", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "marketing-review-stale-flag-"));
+    const { packet, output, frames } = approvedPacket(root);
+    packet.execution_policy = {
+        premiere_actions_executed: false,
+        provider_write_apis_called: false,
+        publish_actions_allowed: false,
+    };
+
+    const review = new MarketingDepartmentRepresentative().review({
+        packet,
+        runSummary: completedRunSummary(),
+        outputMeasurement: { path: output, width: 1080, height: 1920, durationSeconds: 15 },
+        qcFrames: frames,
+    });
+
+    const check = review.checks.find(
+        (item) => item.id === "execution_flag_consistent_with_live_run"
+    );
+    assert.ok(check, "consistency check must exist");
+    assert.equal(check.pass, false);
+    assert.ok(review.requiredFixes.some(
+        (fix) => fix.code === "execution_flag_consistent_with_live_run"
+    ));
+});
+
+test("empty exported file is not accepted as output evidence", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "marketing-review-empty-out-"));
+    const { packet, output, frames } = approvedPacket(root);
+    fs.writeFileSync(output, "");
+
+    const review = new MarketingDepartmentRepresentative().review({
+        packet,
+        runSummary: completedRunSummary(),
+        outputMeasurement: { path: output, width: 1080, height: 1920, durationSeconds: 15 },
+        qcFrames: frames,
+    });
+
+    const check = review.checks.find((item) => item.id === "output_file_evidence_exists");
+    assert.equal(check.pass, false);
+});

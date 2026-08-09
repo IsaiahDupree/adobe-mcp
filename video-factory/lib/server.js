@@ -126,6 +126,10 @@ const API_ERROR_CODES = Object.freeze({
         status: 503,
         description: "The UXP UI driver's click backend failed to post the click event.",
     },
+    PREMIERE_BRIDGE_DISCONNECTED: {
+        status: 503,
+        description: "The Premiere proxy reports no connected Premiere client (clients.premiere < 1); reload the UXP plugin, verify the proxy, or restart the stack.",
+    },
     PREMIERE_PROJECT_SAVE_REQUIRED: {
         status: 422,
         description: "A live packet creates or opens a Premiere project but does not include saveProject/saveProjectAs.",

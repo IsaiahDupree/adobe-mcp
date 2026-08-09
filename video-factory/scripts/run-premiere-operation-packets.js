@@ -13,6 +13,7 @@
  *     [--preflight-only] [--only 1,2,3] [--skip 27] [--from N] [--to N]
  *     [--stop-on-error] [--command-timeout-ms 20000]
  */
+const crypto = require("crypto");
 const fs = require("fs");
 const path = require("path");
 const { io } = require(path.join(__dirname, "../../proxy-server/node_modules/socket.io-client"));
@@ -41,6 +42,10 @@ function parseArgs(argv) {
     allowStillImageTimelineMedia: false,
     maxStillImageTimelineMedia: 0,
     allowAudioMediaPlacement: false,
+    allowTimelineMarkers: false,
+    allowBinOrganization: false,
+    awaitQueuedExports: true,
+    queuedExportWaitMs: 1800000,
   };
   for (let i = 2; i < argv.length; i++) {
     const a = argv[i];
@@ -61,6 +66,10 @@ function parseArgs(argv) {
       case "--allow-still-image-timeline-media": out.allowStillImageTimelineMedia = true; break;
       case "--max-still-image-timeline-media": out.maxStillImageTimelineMedia = Number(next()); break;
       case "--allow-audio-media-placement": out.allowAudioMediaPlacement = true; break;
+      case "--allow-timeline-markers": out.allowTimelineMarkers = true; break;
+      case "--allow-bin-organization": out.allowBinOrganization = true; break;
+      case "--no-await-queued-exports": out.awaitQueuedExports = false; break;
+      case "--queued-export-wait-ms": out.queuedExportWaitMs = Number(next()); break;
       case "--only": out.only = new Set(next().split(",").map((n) => Number(n.trim()))); break;
       case "--skip": out.skip = new Set(next().split(",").map((n) => Number(n.trim()))); break;
       case "--from": out.from = Number(next()); break;
@@ -163,6 +172,8 @@ function liveSafetyPolicy(cfg) {
       ? Number.MAX_SAFE_INTEGER
       : cfg.maxStillImageTimelineMedia,
     allowAudioMediaPlacement: cfg.allowAudioMediaPlacement || cfg.allowUnstableLiveOps,
+    allowTimelineMarkers: cfg.allowTimelineMarkers || cfg.allowUnstableLiveOps,
+    allowBinOrganization: cfg.allowBinOrganization || cfg.allowUnstableLiveOps,
   };
 }
 
@@ -214,22 +225,51 @@ async function waitForStableFile(filePath, waitMs, pollMs, stableMs) {
   }
 }
 
-function shouldWaitForExportFile(options, result) {
+function isQueuedExport(options) {
+  const exportType = String(options.exportType || "").toUpperCase();
+  return exportType.includes("QUEUE") || options.startQueueImmediately === true;
+}
+
+function shouldWaitForExportFile(options, result, cfg = {}) {
   if (!options.outputFile) return false;
   if (result.status === "TIMEOUT") return true;
   if (!result.ok) return false;
   if (options.startQueueImmediately === true) return true;
   const exportType = String(options.exportType || "").toUpperCase();
-  return exportType.includes("DIRECT") || exportType.includes("IMMEDIATE");
+  if (exportType.includes("DIRECT") || exportType.includes("IMMEDIATE")) return true;
+  // F-06: AME-queued exports previously took the no-wait path on SUCCESS, so a
+  // queue-accept was treated as evidence the file rendered. Await them by
+  // default (long window); opting out must leave explicit not-awaited evidence.
+  return isQueuedExport(options) && cfg.awaitQueuedExports !== false;
 }
 
 async function finalizeExportResultFromFile(op, options, result, cfg) {
-  if (op.action !== "exportSequence" || !shouldWaitForExportFile(options, result)) {
+  if (op.action !== "exportSequence") return result;
+  if (!shouldWaitForExportFile(options, result, cfg)) {
+    if (result.ok && isQueuedExport(options) && options.outputFile) {
+      // Never silently skip: downstream review must see the export was queued
+      // but the rendered file was not awaited or verified by this runner.
+      return {
+        ...result,
+        exportFile: {
+          code: "EXPORT_QUEUED_NOT_AWAITED",
+          outputFile: options.outputFile,
+          awaited: false,
+          message:
+            "AME queue accepted the export, but the runner did not await file "
+            + "stabilization (--no-await-queued-exports). File evidence must be "
+            + "collected before approval.",
+        },
+      };
+    }
     return result;
   }
+  const waitMs = isQueuedExport(options) && result.ok
+    ? (Number.isFinite(cfg.queuedExportWaitMs) ? cfg.queuedExportWaitMs : cfg.exportRecoveryWaitMs)
+    : cfg.exportRecoveryWaitMs;
   const file = await waitForStableFile(
     options.outputFile,
-    cfg.exportRecoveryWaitMs,
+    waitMs,
     cfg.exportRecoveryPollMs,
     cfg.exportRecoveryStableMs
   );
@@ -287,6 +327,43 @@ async function finalizeExportResultFromFile(op, options, result, cfg) {
       waitedMs: file.waitedMs,
     },
   };
+}
+
+function finalizeExportFrameResult(op, options, result) {
+  // Audit F-14: bridges have written QC frames to "<requested>.png" (double
+  // extension) while receipts recorded the requested path. Verify the frame on
+  // disk, repair a doubled extension back to the requested path, and record
+  // truthful evidence either way.
+  if (op.action !== "exportFrame" || !result.ok) return result;
+  const requested = options.filePath || options.outputFile;
+  if (!requested) return result;
+  const frame = { requested_path: requested, written_path: null, renamed: false, bytes: null };
+  const doubled = `${requested}${path.extname(requested)}`;
+  try {
+    if (fs.existsSync(requested)) {
+      frame.written_path = requested;
+    } else if (fs.existsSync(doubled)) {
+      fs.renameSync(doubled, requested);
+      frame.written_path = requested;
+      frame.renamed = true;
+      frame.renamed_from = doubled;
+    }
+    if (frame.written_path) frame.bytes = fs.statSync(frame.written_path).size;
+  } catch (e) {
+    frame.error = String((e && e.message) || e);
+  }
+  if (!frame.written_path || !frame.bytes) {
+    return {
+      ...result,
+      ok: false,
+      status: "QC_FRAME_NOT_ON_DISK_AFTER_SUCCESS_RESPONSE",
+      message:
+        "Premiere reported the frame export as successful, but no non-empty "
+        + "frame exists at the requested path (or its doubled-extension variant).",
+      qcFrame: frame,
+    };
+  }
+  return { ...result, qcFrame: frame };
 }
 
 function collectPaths(obj, keys, acc = []) {
@@ -396,8 +473,16 @@ async function preflight(cfg, doc) {
 
 async function main() {
   const cfg = parseArgs(process.argv);
-  const doc = JSON.parse(fs.readFileSync(cfg.packet, "utf8"));
+  const packetBytes = fs.readFileSync(cfg.packet);
+  const doc = JSON.parse(packetBytes.toString("utf8"));
   fs.mkdirSync(cfg.evidenceDir, { recursive: true });
+
+  // F-07: preserve the exact executed packet bytes with the evidence, so the
+  // receipt never references a packet variant that later goes missing or
+  // diverges from what actually ran.
+  const executedPacketPath = path.join(cfg.evidenceDir, "executed-packet.json");
+  fs.writeFileSync(executedPacketPath, packetBytes);
+  const packetSha256 = crypto.createHash("sha256").update(packetBytes).digest("hex");
 
   const startedAt = new Date().toISOString();
   const gate = await preflight(cfg, doc);
@@ -406,6 +491,8 @@ async function main() {
     schema_version: "1.0",
     runner: "run-premiere-operation-packets",
     packet_file: path.resolve(cfg.packet),
+    executed_packet_copy: executedPacketPath,
+    packet_sha256: packetSha256,
     edit_plan_id: doc.edit_plan_id,
     proxy_url: cfg.proxyUrl,
     started_at: startedAt,
@@ -512,11 +599,15 @@ async function main() {
       continue;
     }
 
-    const result = await finalizeExportResultFromFile(
+    const result = finalizeExportFrameResult(
       op,
       options,
-      await sendCommand(cfg.proxyUrl, op.command_packet.action, options, cfg.commandTimeoutMs),
-      cfg
+      await finalizeExportResultFromFile(
+        op,
+        options,
+        await sendCommand(cfg.proxyUrl, op.command_packet.action, options, cfg.commandTimeoutMs),
+        cfg
+      )
     );
     const record = {
       n: human,
@@ -529,6 +620,7 @@ async function main() {
       message: result.message || (result.packet && result.packet.message) || null,
       response: result.packet ? result.packet.response : null,
       export_file: result.exportFile || null,
+      qc_frame: result.qcFrame || null,
       recovery: result.recovery || null,
     };
     fs.writeFileSync(
@@ -576,6 +668,7 @@ if (require.main === module) {
 }
 
 module.exports = {
+  finalizeExportFrameResult,
   finalizeExportResultFromFile,
   shouldWaitForExportFile,
   waitForStableFile,

@@ -79,3 +79,6 @@ video-factory/config/*-live.json
 
 # Runtime evidence + error logs (regenerated per run)
 video-factory/work/
+
+# audit transfer scratch (cowork session)
+_audit_sync/

@@ -40,6 +40,9 @@ function fixture(root, { publishAllowed = false } = {}) {
         variant_id: "script-review-variant",
         not_published: !publishAllowed,
         execution_policy: {
+            // Live-run receipt: the run summary below reports executed
+            // operations, so the truthful flag is true (audit F-05).
+            premiere_actions_executed: true,
             provider_write_apis_called: false,
             publish_actions_allowed: publishAllowed,
         },

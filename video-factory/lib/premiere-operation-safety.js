@@ -3,6 +3,15 @@ const path = require("path");
 const IMAGE_EXTENSIONS = new Set([".png", ".jpg", ".jpeg", ".webp", ".tif", ".tiff"]);
 const AUDIO_EXTENSIONS = new Set([".wav", ".mp3", ".aif", ".aiff", ".m4a", ".aac"]);
 
+// Crash-class operations quarantined by the operating spec: these caused a live
+// Premiere/bridge disconnect during the 2026-08-09 canary work and must stay
+// blocked in render transactions until isolated single-op stability tests pass.
+const QUARANTINED_MARKER_ACTIONS = new Set(["addMarkerToSequence"]);
+const QUARANTINED_BIN_ACTIONS = new Set([
+    "createBinInActiveProject",
+    "moveProjectItemsToBin",
+]);
+
 function operationNumber(op) {
     if (Number.isFinite(op.index)) return Number(op.index) + 1;
     if (Number.isFinite(op.step)) return Number(op.step);
@@ -67,6 +76,8 @@ function evaluatePremiereOperationSafety(operations, policy = {}) {
             ? Number(policy.maxStillImageTimelineMedia)
             : 0,
         allowAudioMediaPlacement: Boolean(policy.allowAudioMediaPlacement),
+        allowTimelineMarkers: Boolean(policy.allowTimelineMarkers),
+        allowBinOrganization: Boolean(policy.allowBinOrganization),
     };
     const violations = [];
     let stillTimelineMedia = 0;
@@ -77,6 +88,26 @@ function evaluatePremiereOperationSafety(operations, policy = {}) {
                 op,
                 "PREMIERE_DECLARED_UNSAFE_OPERATION",
                 "Operation is explicitly marked safe_to_execute=false."
+            ));
+        }
+
+        if (QUARANTINED_MARKER_ACTIONS.has(op.action) && !resolvedPolicy.allowTimelineMarkers) {
+            violations.push(violation(
+                op,
+                "PREMIERE_TIMELINE_MARKER_QUARANTINED",
+                "addMarkerToSequence is quarantined: marker bursts destabilized live "
+                    + "Premiere runs. Opt in with allowTimelineMarkers only for isolated "
+                    + "single-op stability tests, never inside a batch render transaction."
+            ));
+        }
+
+        if (QUARANTINED_BIN_ACTIONS.has(op.action) && !resolvedPolicy.allowBinOrganization) {
+            violations.push(violation(
+                op,
+                "PREMIERE_BIN_ORGANIZATION_QUARANTINED",
+                "Bin create/move operations are quarantined from render transactions "
+                    + "after a live Premiere disconnect. Run bin organization as an "
+                    + "isolated post-assembly transaction with allowBinOrganization."
             ));
         }
 

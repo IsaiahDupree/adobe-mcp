@@ -73,18 +73,71 @@ test("blocks declared unsafe and audio-only media placement by default", () => {
     );
 });
 
-test("allows ordinary video insert, markers, trim, QC, and export", () => {
+test("allows ordinary video insert, trim, QC, and export", () => {
     const result = evaluatePremiereOperationSafety([
         op(1, "addMediaToSequence", { itemName: "IMG_2360.MOV" }),
-        op(2, "addMarkerToSequence", { markerName: "CAPTION 001" }),
-        op(3, "setClipStartEndTimes", { trackType: "video" }),
-        op(4, "exportFrame", { filePath: "/tmp/narrative-no-caption-frame.png" }),
-        op(5, "exportSequence", { outputFile: "/tmp/out.mp4" }),
+        op(2, "setClipStartEndTimes", { trackType: "video" }),
+        op(3, "exportFrame", { filePath: "/tmp/narrative-no-caption-frame.png" }),
+        op(4, "exportSequence", { outputFile: "/tmp/out.mp4" }),
     ]);
 
-    assert.equal(isCaptionOverlayMedia(op(4, "exportFrame", {
+    assert.equal(isCaptionOverlayMedia(op(3, "exportFrame", {
         filePath: "/tmp/narrative-no-caption-frame.png",
     })), false);
     assert.equal(result.passed, true);
     assert.equal(result.violations.length, 0);
+});
+
+test("quarantines timeline markers by default and honors the opt-in", () => {
+    const marker = op(2, "addMarkerToSequence", { markerName: "CAPTION 001" });
+
+    const blocked = evaluatePremiereOperationSafety([marker]);
+    assert.equal(blocked.passed, false);
+    assert.deepEqual(
+        blocked.violations.map((item) => item.code),
+        ["PREMIERE_TIMELINE_MARKER_QUARANTINED"]
+    );
+
+    const optedIn = evaluatePremiereOperationSafety([marker], {
+        allowTimelineMarkers: true,
+    });
+    assert.equal(optedIn.passed, true);
+});
+
+test("quarantines bin create/move by default and honors the opt-in", () => {
+    const operations = [
+        op(1, "createBinInActiveProject", { binName: "A-Roll" }),
+        op(2, "moveProjectItemsToBin", { binName: "A-Roll", itemNames: ["IMG_2360.MOV"] }),
+    ];
+
+    const blocked = evaluatePremiereOperationSafety(operations);
+    assert.equal(blocked.passed, false);
+    assert.deepEqual(
+        blocked.violations.map((item) => item.code),
+        [
+            "PREMIERE_BIN_ORGANIZATION_QUARANTINED",
+            "PREMIERE_BIN_ORGANIZATION_QUARANTINED",
+        ]
+    );
+
+    const optedIn = evaluatePremiereOperationSafety(operations, {
+        allowBinOrganization: true,
+    });
+    assert.equal(optedIn.passed, true);
+});
+
+test("quarantine opt-ins do not unlock other blocked classes", () => {
+    const result = evaluatePremiereOperationSafety([
+        op(1, "addMarkerToSequence", { markerName: "CAPTION 001" }),
+        op(2, "setVideoClipProperties", { scalePercent: 118 }),
+    ], {
+        allowTimelineMarkers: true,
+        allowBinOrganization: true,
+    });
+
+    assert.equal(result.passed, false);
+    assert.deepEqual(
+        result.violations.map((item) => item.code),
+        ["PREMIERE_UNSTABLE_CLIP_PROPERTY_MUTATION"]
+    );
 });
