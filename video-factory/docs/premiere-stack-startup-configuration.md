@@ -61,12 +61,18 @@ Startup uses short bounded timings by default:
 | Proxy readiness attempts | `20` | `PREMIERE_PROXY_READY_ATTEMPTS` |
 | Factory readiness attempts | `20` | `VIDEO_FACTORY_READY_ATTEMPTS` |
 | App process visibility attempts | `30` | `PREMIERE_APP_READY_ATTEMPTS` |
-| UXP host wait | `30000` ms | `PREMIERE_UXP_HOST_TIMEOUT_MS` or `--host-timeout-ms` |
-| Loader confirmation timeout | `15000` ms | `PREMIERE_UXP_LOAD_TIMEOUT_MS` or `--timeout-ms` |
-| Loader retry delay | `1000` ms | `PREMIERE_UXP_RETRY_DELAY_MS` or `--retry-delay-ms` |
+| UXP host wait | `3000` ms | `PREMIERE_UXP_HOST_TIMEOUT_MS` or `--host-timeout-ms` |
+| Loader confirmation timeout | `3000` ms | `PREMIERE_UXP_LOAD_TIMEOUT_MS` or `--timeout-ms` |
+| Loader retry delay | `250` ms | `PREMIERE_UXP_RETRY_DELAY_MS` or `--retry-delay-ms` |
 | Loader retries | `1` | `PREMIERE_UXP_RETRIES` or `--retries` |
+| Loader click timeout | `500` ms | `PREMIERE_UXP_CLICK_TIMEOUT_MS` or `--click-timeout-ms` |
+| UXP window-bounds timeout | `750` ms | `PREMIERE_UXP_WINDOW_BOUNDS_TIMEOUT_MS` or `--window-bounds-timeout-ms` |
+| After-click settle delay | `100` ms | `PREMIERE_UXP_POST_CLICK_DELAY_MS` or `--post-click-delay-ms` |
+| Loader poll interval | `100` ms | `PREMIERE_UXP_POLL_INTERVAL_MS` or `--poll-interval-ms` |
+| UI text probe timeout | `300` ms | `PREMIERE_UXP_UI_STATE_TIMEOUT_MS` or `--ui-state-timeout-ms` |
+| Proxy status timeout | `300` ms | `PREMIERE_UXP_PROXY_TIMEOUT_MS` or `--proxy-timeout-ms` |
 
-Use longer timings only when the machine is cold-starting Adobe apps after a reboot.
+The UI-control path intentionally uses sub-second timings. Use longer timings only when the machine is cold-starting Adobe apps after a reboot.
 
 ## Recreate A Known-Good Startup
 

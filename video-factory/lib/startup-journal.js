@@ -20,6 +20,12 @@ const SAFE_ENV_KEYS = Object.freeze([
     "PREMIERE_UXP_LOADER_COMMAND_TIMEOUT_MS",
     "PREMIERE_UXP_RETRY_DELAY_MS",
     "PREMIERE_UXP_RETRIES",
+    "PREMIERE_UXP_CLICK_TIMEOUT_MS",
+    "PREMIERE_UXP_WINDOW_BOUNDS_TIMEOUT_MS",
+    "PREMIERE_UXP_POST_CLICK_DELAY_MS",
+    "PREMIERE_UXP_POLL_INTERVAL_MS",
+    "PREMIERE_UXP_UI_STATE_TIMEOUT_MS",
+    "PREMIERE_UXP_PROXY_TIMEOUT_MS",
     "PREMIERE_START_MEDIA_ENCODER",
     "PREMIERE_APP_NAME",
     "PREMIERE_APP_PATH",
@@ -28,6 +34,8 @@ const SAFE_ENV_KEYS = Object.freeze([
     "PREMIERE_UXP_PLUGIN_DIR",
     "UXP_CLI",
     "UXP_LOAD_X_FROM_RIGHT",
+    "UXP_LOAD_WATCH_X_FROM_RIGHT",
+    "UXP_UNLOAD_X_FROM_RIGHT",
     "UXP_LOAD_Y_FROM_TOP",
     "UXP_LOAD_ROW_HEIGHT",
 ]);
@@ -131,15 +139,33 @@ function buildTimingPolicy(env = process.env, loaderArgs = []) {
         factoryReadyAttempts: Number(env.VIDEO_FACTORY_READY_ATTEMPTS || 20),
         appReadyAttempts: Number(env.PREMIERE_APP_READY_ATTEMPTS || 30),
         loaderHostTimeoutMs: Number(
-            optionValue(loaderArgs, "--host-timeout-ms", env.PREMIERE_UXP_HOST_TIMEOUT_MS || 30000)
+            optionValue(loaderArgs, "--host-timeout-ms", env.PREMIERE_UXP_HOST_TIMEOUT_MS || 3000)
         ),
         loaderAttemptTimeoutMs: Number(
-            optionValue(loaderArgs, "--timeout-ms", env.PREMIERE_UXP_LOAD_TIMEOUT_MS || 15000)
+            optionValue(loaderArgs, "--timeout-ms", env.PREMIERE_UXP_LOAD_TIMEOUT_MS || 3000)
         ),
         loaderRetryDelayMs: Number(
-            optionValue(loaderArgs, "--retry-delay-ms", env.PREMIERE_UXP_RETRY_DELAY_MS || 1000)
+            optionValue(loaderArgs, "--retry-delay-ms", env.PREMIERE_UXP_RETRY_DELAY_MS || 250)
         ),
         loaderRetries: Number(optionValue(loaderArgs, "--retries", env.PREMIERE_UXP_RETRIES || 1)),
+        loaderClickTimeoutMs: Number(
+            optionValue(loaderArgs, "--click-timeout-ms", env.PREMIERE_UXP_CLICK_TIMEOUT_MS || 500)
+        ),
+        loaderWindowBoundsTimeoutMs: Number(
+            optionValue(loaderArgs, "--window-bounds-timeout-ms", env.PREMIERE_UXP_WINDOW_BOUNDS_TIMEOUT_MS || 750)
+        ),
+        loaderPostClickDelayMs: Number(
+            optionValue(loaderArgs, "--post-click-delay-ms", env.PREMIERE_UXP_POST_CLICK_DELAY_MS || 100)
+        ),
+        loaderPollIntervalMs: Number(
+            optionValue(loaderArgs, "--poll-interval-ms", env.PREMIERE_UXP_POLL_INTERVAL_MS || 100)
+        ),
+        loaderUiStateTimeoutMs: Number(
+            optionValue(loaderArgs, "--ui-state-timeout-ms", env.PREMIERE_UXP_UI_STATE_TIMEOUT_MS || 300)
+        ),
+        loaderProxyTimeoutMs: Number(
+            optionValue(loaderArgs, "--proxy-timeout-ms", env.PREMIERE_UXP_PROXY_TIMEOUT_MS || 300)
+        ),
     };
 }
 

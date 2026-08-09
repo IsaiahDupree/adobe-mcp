@@ -12,7 +12,7 @@ const ROOT = path.resolve(__dirname, "..");
 const config = require("../lib/config");
 
 const ERROR_CATALOG = Object.freeze({
-    UXP_PLUGIN_MANIFEST_MISSING: "Premiere MCP Agent manifest is missing from the configured UXP plugin directory.",
+    UXP_PLUGIN_MANIFEST_MISSING: "Configured UXP plugin manifest is missing from the selected plugin directory.",
     UXP_APP_OPEN_FAILED: "Adobe UXP Developer Tools could not be opened or activated.",
     UXP_ACCESSIBILITY_DENIED: "macOS Accessibility permissions prevented AppleScript UI control.",
     UXP_WINDOW_NOT_FOUND: "Adobe UXP Developer Tools did not expose a controllable window.",
@@ -27,6 +27,9 @@ const ERROR_CATALOG = Object.freeze({
     UXP_LOAD_RETRY_EXHAUSTED: "All configured UXP load attempts were exhausted.",
 });
 
+const DEFAULT_COMMAND_TIMEOUT_MS = finiteNumber(process.env.UXP_LOAD_COMMAND_TIMEOUT_MS, 3000, 1);
+const DEFAULT_OSASCRIPT_TIMEOUT_MS = finiteNumber(process.env.UXP_OSASCRIPT_TIMEOUT_MS, 750, 1);
+
 function usage() {
     console.error(`Usage:
   node scripts/uxp-load-premiere-plugin.js [options]
@@ -35,29 +38,82 @@ Options:
   --dry-run                  Capture evidence and print the intended click only
   --force-click              Click even when the Premiere bridge is already connected
   --require-ui-loaded        Fail unless UXP UI text explicitly reports Loaded
-  --button load|load-watch   Button target in the plugin row (default: load)
+  --button load|load-watch|unload
+                             Button target in the plugin row (default: load)
+  --plugin-name <name>       Expected plugin display name for receipts/UI checks
+  --plugin-dir <path>        Installed UXP plugin directory to verify
   --row-index <n>            1-based plugin row index (default: 1)
   --x-from-right <points>    Click X offset from UDT window right edge
   --y-from-top <points>      Click Y offset from UDT window top edge
+  --window-bounds <x,y,w,h>  Use known UDT bounds and skip AX window probing
   --evidence-dir <path>      Screenshot/receipt/log output directory
-  --timeout-ms <n>           Bridge verification timeout per attempt (default: 30000)
-  --host-timeout-ms <n>      Wait for Premiere to connect to UXP service before clicking (default: 60000)
+  --timeout-ms <n>           Bridge verification timeout per attempt (default: 3000)
+  --host-timeout-ms <n>      Wait for Premiere to connect to UXP service before clicking (default: 3000)
   --skip-host-wait           Do not wait for Premiere host connection before clicking
-  --retries <n>              Retries after the first attempt (default: 2)
-  --retry-delay-ms <n>       Delay before a retry (default: 3000)
+  --verification bridge|click-only
+                             Confirm bridge state or only prove the click/evidence (default: bridge)
+  --retries <n>              Retries after the first attempt (default: 1)
+  --retry-delay-ms <n>       Delay before a retry (default: 250)
   --recovery none|reopen-uxp Recovery method between retries (default: reopen-uxp)
   --click-backend <backend>  auto|applescript|cliclick|quartz (default: auto)
+  --activation-delay-ms <n>  Delay after focusing UDT before reading bounds (default: 50)
+  --window-bounds-timeout-ms <n>
+                             AppleScript window-bounds timeout (default: 750)
+  --click-timeout-ms <n>     Per-backend click timeout (default: 500)
+  --post-click-delay-ms <n>  Settle delay before after-click evidence (default: 100)
+  --poll-interval-ms <n>     Bridge verification poll interval (default: 100)
+  --ui-state-timeout-ms <n>  AX UI text probe timeout (default: 300)
+  --proxy-timeout-ms <n>     Local proxy status timeout (default: 300)
 
 Environment tuning:
   UXP_LOAD_X_FROM_RIGHT       Default Load-button X offset (default: 260)
   UXP_LOAD_WATCH_X_FROM_RIGHT Default Load & Watch X offset (default: 140)
+  UXP_UNLOAD_X_FROM_RIGHT     Default Unload-button X offset (default: 135)
   UXP_LOAD_Y_FROM_TOP         Default first-row Y offset (default: 203)
   UXP_LOAD_ROW_HEIGHT         Row height for --row-index > 1 (default: 33)`);
 }
 
 function optionValue(args, name, fallback = null) {
+    const equalsPrefix = `${name}=`;
+    const inline = args.find((arg) => arg.startsWith(equalsPrefix));
+    if (inline) return inline.slice(equalsPrefix.length);
     const index = args.indexOf(name);
     return index >= 0 && args[index + 1] ? args[index + 1] : fallback;
+}
+
+function finiteNumber(value, fallback, min = 0) {
+    const number = Number(value);
+    if (!Number.isFinite(number)) return fallback;
+    return Math.max(min, number);
+}
+
+function numberOption(args, name, fallback, min = 0) {
+    return finiteNumber(optionValue(args, name, fallback), Number(fallback), min);
+}
+
+function sleep(ms) {
+    const duration = finiteNumber(ms, 0, 0);
+    if (duration <= 0) return Promise.resolve();
+    return new Promise((resolve) => setTimeout(resolve, duration));
+}
+
+function escapeRegex(value) {
+    return String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function parseWindowBounds(value) {
+    if (!value) return null;
+    const [x, y, width, height] = String(value).split(",").map((item) => Number(item.trim()));
+    if (![x, y, width, height].every(Number.isFinite)) {
+        throw new Error("--window-bounds must use x,y,width,height numeric values");
+    }
+    return { x, y, width, height, right: x + width, bottom: y + height, source: "override" };
+}
+
+function defaultXFromRight(button) {
+    if (button === "load-watch") return process.env.UXP_LOAD_WATCH_X_FROM_RIGHT || "140";
+    if (button === "unload") return process.env.UXP_UNLOAD_X_FROM_RIGHT || "135";
+    return process.env.UXP_LOAD_X_FROM_RIGHT || "260";
 }
 
 function nowStamp() {
@@ -72,7 +128,7 @@ function ensureDir(directory) {
 async function run(command, args = [], options = {}) {
     return execFileAsync(command, args, {
         cwd: options.cwd || ROOT,
-        timeout: options.timeout || 30000,
+        timeout: options.timeout || DEFAULT_COMMAND_TIMEOUT_MS,
         maxBuffer: options.maxBuffer || 1024 * 1024,
         env: { ...process.env, ...(options.env || {}) },
     });
@@ -105,7 +161,7 @@ function errorDiagnostics(error) {
     };
 }
 
-async function osascript(script, timeout = 30000) {
+async function osascript(script, timeout = DEFAULT_OSASCRIPT_TIMEOUT_MS) {
     const { stdout } = await run("/usr/bin/osascript", ["-e", script], {
         timeout,
         maxBuffer: 1024 * 1024,
@@ -180,7 +236,11 @@ function diagnosticLogSources() {
 }
 
 function collectDiagnosticLogs(receipt) {
-    const interesting = /Premiere MCP Agent|Plugin Load Failed|ERR3_LOADFAIL|No applications are connected|Host Application specified is not available|premierepro\(.*\) connected|premierepro\(.*\) got disconnected|Connected to proxy|Registered with proxy|Disconnected from proxy/i;
+    const pluginPattern = escapeRegex(receipt.plugin?.expectedName || "Premiere MCP Agent");
+    const interesting = new RegExp(
+        `${pluginPattern}|Premiere MCP Agent|Plugin Load Failed|ERR3_LOADFAIL|No applications are connected|Host Application specified is not available|premierepro\\(.*\\) connected|premierepro\\(.*\\) got disconnected|Connected to proxy|Registered with proxy|Disconnected from proxy`,
+        "i"
+    );
     const sources = diagnosticLogSources().map((sourcePath) => ({
         sourcePath,
         matchedLines: tailLines(sourcePath)
@@ -207,10 +267,10 @@ function diagnoseFromLogs(diagnostics) {
     return null;
 }
 
-async function uxpAppsList() {
+async function uxpAppsList(timeoutMs = 1000) {
     try {
         const { stdout, stderr } = await run(config.UXP_CLI, ["apps", "list"], {
-            timeout: 10000,
+            timeout: timeoutMs,
         });
         return {
             ok: true,
@@ -228,11 +288,11 @@ function premiereHostConnected(output) {
     return /premierepro|Premiere Pro/i.test(output || "");
 }
 
-async function waitForPremiereHost(timeoutMs) {
+async function waitForPremiereHost(timeoutMs, pollIntervalMs = 100, uxpAppsTimeoutMs = 1000) {
     const started = Date.now();
     const probes = [];
     do {
-        const probe = await uxpAppsList();
+        const probe = await uxpAppsList(uxpAppsTimeoutMs);
         probe.at = new Date().toISOString();
         probe.connected = premiereHostConnected(probe.output);
         probes.push(probe);
@@ -244,7 +304,7 @@ async function waitForPremiereHost(timeoutMs) {
                 lastOutput: probe.output,
             };
         }
-        await new Promise((resolve) => setTimeout(resolve, 2000));
+        await sleep(Math.min(pollIntervalMs, Math.max(0, timeoutMs - (Date.now() - started))));
     } while (Date.now() - started < timeoutMs);
     return {
         connected: false,
@@ -254,12 +314,16 @@ async function waitForPremiereHost(timeoutMs) {
     };
 }
 
-async function activateUdt() {
+async function activateUdt(options = {}) {
     try {
-        await run("/usr/bin/open", ["-a", config.UDT_APP_NAME], { timeout: 15000 });
+        await run("/usr/bin/open", ["-a", config.UDT_APP_NAME], {
+            timeout: options.openTimeoutMs || 3000,
+        });
         await osascript(
-            `tell application ${appleScriptString(config.UDT_APP_NAME)} to activate`
+            `tell application ${appleScriptString(config.UDT_APP_NAME)} to activate`,
+            options.activationTimeoutMs || 1000
         );
+        await sleep(options.activationDelayMs || 0);
     } catch (error) {
         const code = classifyAppleScriptError(error, "UXP_APP_OPEN_FAILED");
         const wrapped = new Error(ERROR_CATALOG[code] || error.message);
@@ -275,7 +339,7 @@ tell application "System Events"
   if exists process ${appleScriptString(config.UDT_APP_NAME)} then
     tell application ${appleScriptString(config.UDT_APP_NAME)} to quit
   end if
-end tell`, 10000).catch(() => {});
+end tell`, 1000).catch(() => {});
 }
 
 async function recover(receipt, method, attemptNumber, retryDelayMs) {
@@ -288,33 +352,35 @@ async function recover(receipt, method, attemptNumber, retryDelayMs) {
     receipt.recovery.push(recovery);
     if (method === "none") {
         logEvent(receipt, "info", "UXP_RECOVERY_SKIPPED", "No recovery method configured.", recovery);
-        await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
+        await sleep(retryDelayMs);
         return recovery;
     }
 
     recovery.status = "RUNNING";
     logEvent(receipt, "warn", "UXP_RECOVERY_REOPEN_UXP", "Reopening Adobe UXP Developer Tools before retry.", recovery);
     await quitUdt();
-    await new Promise((resolve) => setTimeout(resolve, Math.max(1000, retryDelayMs)));
-    await activateUdt();
+    await sleep(retryDelayMs);
+    await activateUdt({ activationDelayMs: Math.min(retryDelayMs, 100) });
     recovery.status = "COMPLETE";
     recovery.completedAt = new Date().toISOString();
     return recovery;
 }
 
-async function windowBounds() {
+async function windowBounds(options = {}) {
+    if (options.windowBoundsOverride) return options.windowBoundsOverride;
     let output;
     try {
+        const delaySeconds = (finiteNumber(options.activationDelayMs, 50, 0) / 1000).toFixed(3);
         output = await osascript(`
 tell application "System Events"
   tell process ${appleScriptString(config.UDT_APP_NAME)}
     set frontmost to true
-    delay 0.4
+    delay ${delaySeconds}
     set p to position of window 1
     set s to size of window 1
     return (item 1 of p as text) & "," & (item 2 of p as text) & "," & (item 1 of s as text) & "," & (item 2 of s as text)
   end tell
-end tell`);
+end tell`, options.windowBoundsTimeoutMs || 750);
     } catch (error) {
         const code = classifyAppleScriptError(error, "UXP_WINDOW_NOT_FOUND");
         const wrapped = new Error(ERROR_CATALOG[code] || error.message);
@@ -328,7 +394,7 @@ end tell`);
         error.code = "UXP_WINDOW_NOT_FOUND";
         throw error;
     }
-    return { x, y, width, height, right: x + width, bottom: y + height };
+    return { x, y, width, height, right: x + width, bottom: y + height, source: "system-events" };
 }
 
 async function screenshot(filePath) {
@@ -344,27 +410,27 @@ async function screenshot(filePath) {
     }
 }
 
-async function applescriptClickAt(x, y) {
+async function applescriptClickAt(x, y, timeoutMs = 500) {
     await osascript(`
 tell application "System Events"
   tell process ${appleScriptString(config.UDT_APP_NAME)}
     set frontmost to true
   end tell
   click at {${Math.round(x)}, ${Math.round(y)}}
-end tell`, 8000);
+end tell`, timeoutMs);
 }
 
-async function cliclickAt(x, y) {
+async function cliclickAt(x, y, timeoutMs = 500) {
     const binary = process.env.CLICKLICK_BIN || "/opt/homebrew/bin/cliclick";
     if (!fs.existsSync(binary)) {
         const error = new Error(`cliclick is not installed at ${binary}.`);
         error.code = "CLICK_BACKEND_UNAVAILABLE";
         throw error;
     }
-    await run(binary, [`c:${Math.round(x)},${Math.round(y)}`], { timeout: 8000 });
+    await run(binary, [`c:${Math.round(x)},${Math.round(y)}`], { timeout: timeoutMs });
 }
 
-async function quartzClickAt(x, y) {
+async function quartzClickAt(x, y, timeoutMs = 500) {
     const script = `
 import sys
 import time
@@ -386,20 +452,20 @@ time.sleep(0.08)
 CGEventPost(kCGHIDEventTap, up)
 `;
     await run(config.PYTHON_BIN || "/usr/bin/python3", ["-c", script, String(Math.round(x)), String(Math.round(y))], {
-        timeout: 8000,
+        timeout: timeoutMs,
     });
 }
 
-async function clickAt(x, y, backend = "auto") {
+async function clickAt(x, y, backend = "auto", timeoutMs = 500) {
     const failures = [];
     const backends = backend === "auto"
         ? ["applescript", "cliclick", "quartz"]
         : [backend];
     for (const item of backends) {
         try {
-            if (item === "applescript") await applescriptClickAt(x, y);
-            else if (item === "cliclick") await cliclickAt(x, y);
-            else if (item === "quartz") await quartzClickAt(x, y);
+            if (item === "applescript") await applescriptClickAt(x, y, timeoutMs);
+            else if (item === "cliclick") await cliclickAt(x, y, timeoutMs);
+            else if (item === "quartz") await quartzClickAt(x, y, timeoutMs);
             else throw new Error(`Unknown click backend: ${item}`);
             return { backend: item, failures };
         } catch (error) {
@@ -424,7 +490,7 @@ async function clickAt(x, y, backend = "auto") {
     throw wrapped;
 }
 
-async function accessibleText() {
+async function accessibleText(timeoutMs = 300) {
     try {
         const output = await osascript(`
 on flattenValue(v)
@@ -453,14 +519,14 @@ tell application "System Events"
     end repeat
     return outputText
   end tell
-end tell`, 10000);
+end tell`, timeoutMs);
         return output.replace(/\s+/g, " ").trim();
     } catch (error) {
         return null;
     }
 }
 
-function pluginUiStateFromText(text) {
+function pluginUiStateFromText(text, pluginName = "Premiere MCP Agent") {
     if (!text) {
         return {
             observable: false,
@@ -471,7 +537,7 @@ function pluginUiStateFromText(text) {
         };
     }
     const normalized = text.replace(/\s+/g, " ").trim();
-    const pluginNameVisible = /Premiere MCP Agent/i.test(normalized);
+    const pluginNameVisible = new RegExp(escapeRegex(pluginName), "i").test(normalized);
     const notLoadedVisible = /Not loaded/i.test(normalized);
     const loadedVisible = !notLoadedVisible && /\bLoaded\b/i.test(normalized);
     return {
@@ -483,11 +549,11 @@ function pluginUiStateFromText(text) {
     };
 }
 
-async function pluginUiState() {
-    return pluginUiStateFromText(await accessibleText());
+async function pluginUiState(pluginName = "Premiere MCP Agent", timeoutMs = 300) {
+    return pluginUiStateFromText(await accessibleText(timeoutMs), pluginName);
 }
 
-function proxyStatus() {
+function proxyStatus(timeoutMs = 300) {
     return new Promise((resolve) => {
         const request = http.get(`${config.PROXY_URL}/status`, (response) => {
             let body = "";
@@ -504,26 +570,33 @@ function proxyStatus() {
             });
         });
         request.on("error", () => resolve(null));
-        request.setTimeout(3000, () => {
+        request.setTimeout(timeoutMs, () => {
             request.destroy();
             resolve(null);
         });
     });
 }
 
-async function waitForPremiereClient(timeoutMs, requireUiLoaded) {
+async function waitForPremiereClient(timeoutMs, requireUiLoaded, options = {}) {
     const started = Date.now();
     let lastStatus = null;
     let lastUiState = null;
-    while (Date.now() - started < timeoutMs) {
-        lastStatus = await proxyStatus();
-        lastUiState = await pluginUiState();
+    const expectedBridgeConnected = options.expectedBridgeConnected !== false;
+    do {
+        lastStatus = await proxyStatus(options.proxyTimeoutMs);
+        lastUiState = await pluginUiState(options.pluginName, options.uiStateTimeoutMs);
         const bridgeConnected = Number(lastStatus?.clients?.premiere || 0) > 0;
-        if (bridgeConnected && (!requireUiLoaded || lastUiState.loadedVisible === true)) {
+        const bridgeMatches = expectedBridgeConnected ? bridgeConnected : !bridgeConnected;
+        const uiMatches = !requireUiLoaded || (
+            expectedBridgeConnected
+                ? lastUiState.loadedVisible === true
+                : lastUiState.notLoadedVisible === true
+        );
+        if (bridgeMatches && uiMatches) {
             return { proxy: lastStatus, uiState: lastUiState };
         }
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-    }
+        await sleep(Math.min(options.pollIntervalMs || 100, Math.max(0, timeoutMs - (Date.now() - started))));
+    } while (Date.now() - started < timeoutMs);
     return { proxy: lastStatus, uiState: lastUiState };
 }
 
@@ -541,13 +614,15 @@ async function performAttempt(receipt, options, attemptNumber) {
         attempt: attemptNumber,
     });
 
-    await activateUdt();
-    attempt.proxyBefore = await proxyStatus();
-    attempt.uiStateBefore = await pluginUiState();
-    attempt.window = await windowBounds();
+    await activateUdt(options);
+    attempt.proxyBefore = await proxyStatus(options.proxyTimeoutMs);
+    attempt.uiStateBefore = await pluginUiState(options.pluginName, options.uiStateTimeoutMs);
+    attempt.window = await windowBounds(options);
     attempt.screenshots.before = await screenshot(path.join(receipt.evidenceDir, `attempt-${attemptNumber}-before-load.png`));
 
     const alreadyConnected = Number(attempt.proxyBefore?.clients?.premiere || 0) > 0;
+    const expectedBridgeConnected = options.button !== "unload";
+    const targetStateAlready = expectedBridgeConnected ? alreadyConnected : !alreadyConnected;
     const click = {
         x: attempt.window.right - options.xFromRight,
         y: attempt.window.y + options.yFromTop + (options.rowIndex - 1) * options.rowHeight,
@@ -557,6 +632,7 @@ async function performAttempt(receipt, options, attemptNumber) {
     };
     attempt.click = click;
     attempt.alreadyConnected = alreadyConnected;
+    attempt.expectedBridgeConnected = expectedBridgeConnected;
     attempt.clicked = false;
     attempt.skipReason = null;
 
@@ -567,8 +643,10 @@ async function performAttempt(receipt, options, attemptNumber) {
         });
     }
 
-    if (alreadyConnected && !options.forceClick) {
-        attempt.skipReason = "Premiere bridge was already connected before the UI click.";
+    if (targetStateAlready && !options.forceClick) {
+        attempt.skipReason = expectedBridgeConnected
+            ? "Premiere bridge was already connected before the UI click."
+            : "Premiere bridge was already disconnected before the UI click.";
         logEvent(receipt, "info", "UXP_LOAD_CLICK_SKIPPED", attempt.skipReason, {
             attempt: attemptNumber,
             proxyBefore: attempt.proxyBefore,
@@ -580,7 +658,7 @@ async function performAttempt(receipt, options, attemptNumber) {
             click,
         });
     } else {
-        const clickResult = await clickAt(click.x, click.y, options.clickBackend);
+        const clickResult = await clickAt(click.x, click.y, options.clickBackend, options.clickTimeoutMs);
         attempt.clicked = true;
         attempt.clickBackend = clickResult.backend;
         attempt.clickBackendFailures = clickResult.failures;
@@ -590,32 +668,58 @@ async function performAttempt(receipt, options, attemptNumber) {
             backend: clickResult.backend,
             fallbackFailures: clickResult.failures,
         });
-        await new Promise((resolve) => setTimeout(resolve, 2500));
+        await sleep(options.postClickDelayMs);
     }
 
     attempt.screenshots.afterClick = await screenshot(path.join(receipt.evidenceDir, `attempt-${attemptNumber}-after-click.png`));
-    const verification = alreadyConnected && !options.forceClick
-        ? { proxy: attempt.proxyBefore, uiState: await pluginUiState() }
-        : await waitForPremiereClient(options.timeoutMs, options.requireUiLoaded);
+    const verification = options.verification === "click-only"
+        ? {
+            proxy: await proxyStatus(options.proxyTimeoutMs),
+            uiState: await pluginUiState(options.pluginName, options.uiStateTimeoutMs),
+            clickOnly: true,
+        }
+        : targetStateAlready && !options.forceClick
+            ? { proxy: attempt.proxyBefore, uiState: await pluginUiState(options.pluginName, options.uiStateTimeoutMs) }
+            : await waitForPremiereClient(options.timeoutMs, options.requireUiLoaded, options);
     attempt.proxyAfter = verification.proxy;
     attempt.uiStateAfter = verification.uiState;
     attempt.bridgeConnected = Number(attempt.proxyAfter?.clients?.premiere || 0) > 0;
+    attempt.bridgeStateMatched = expectedBridgeConnected ? attempt.bridgeConnected : !attempt.bridgeConnected;
     attempt.uiLoadedVisible = attempt.uiStateAfter?.loadedVisible === true;
+    attempt.uiNotLoadedVisible = attempt.uiStateAfter?.notLoadedVisible === true;
+    attempt.verification = options.verification;
     attempt.completedAt = new Date().toISOString();
-    attempt.status = attempt.bridgeConnected && (!options.requireUiLoaded || attempt.uiLoadedVisible)
+    attempt.status = options.verification === "click-only"
+        ? "CLICK_RECORDED"
+        : attempt.bridgeStateMatched && (!options.requireUiLoaded || (expectedBridgeConnected ? attempt.uiLoadedVisible : attempt.uiNotLoadedVisible))
         ? "CONFIRMED"
         : "NOT_CONFIRMED";
 
     if (attempt.status === "CONFIRMED") {
-        logEvent(receipt, "info", "UXP_PLUGIN_LOAD_CONFIRMED", "Premiere UXP plugin load was confirmed.", {
+        logEvent(receipt, "info", "UXP_PLUGIN_LOAD_CONFIRMED", "Premiere UXP plugin action was confirmed.", {
             attempt: attemptNumber,
             bridgeConnected: attempt.bridgeConnected,
+            expectedBridgeConnected,
             uiLoadedVisible: attempt.uiLoadedVisible,
+            uiNotLoadedVisible: attempt.uiNotLoadedVisible,
+            verification: options.verification,
+        });
+    } else if (attempt.status === "CLICK_RECORDED") {
+        logEvent(receipt, "info", "UXP_CLICK_EVIDENCE_RECORDED", "Recorded UXP plugin row click evidence without asserting loaded state.", {
+            attempt: attemptNumber,
+            clicked: attempt.clicked,
+            dryRun: options.dryRun,
+            bridgeConnected: attempt.bridgeConnected,
+            expectedBridgeConnected,
+            uiLoadedVisible: attempt.uiLoadedVisible,
+            uiNotLoadedVisible: attempt.uiNotLoadedVisible,
+            verification: options.verification,
         });
     } else {
         logEvent(receipt, "warn", "UXP_PLUGIN_LOAD_NOT_CONFIRMED", ERROR_CATALOG.UXP_PLUGIN_LOAD_NOT_CONFIRMED, {
             attempt: attemptNumber,
             bridgeConnected: attempt.bridgeConnected,
+            expectedBridgeConnected,
             uiStateAfter: attempt.uiStateAfter,
             proxyAfter: attempt.proxyAfter,
         });
@@ -640,37 +744,44 @@ async function main() {
     const forceClick = args.includes("--force-click");
     const requireUiLoaded = args.includes("--require-ui-loaded");
     const button = optionValue(args, "--button", "load");
-    if (!["load", "load-watch"].includes(button)) {
-        throw new Error("--button must be load or load-watch");
+    if (!["load", "load-watch", "unload"].includes(button)) {
+        throw new Error("--button must be load, load-watch, or unload");
     }
+    const pluginName = optionValue(args, "--plugin-name", process.env.UXP_PLUGIN_NAME || "Premiere MCP Agent");
+    const installedPluginDir = path.resolve(
+        optionValue(args, "--plugin-dir", process.env.UXP_PLUGIN_DIR || config.INSTALLED_PLUGIN_DIR)
+    );
     const recovery = optionValue(args, "--recovery", "reopen-uxp");
     if (!["none", "reopen-uxp"].includes(recovery)) {
         throw new Error("--recovery must be none or reopen-uxp");
+    }
+    const verification = optionValue(args, "--verification", "bridge");
+    if (!["bridge", "click-only"].includes(verification)) {
+        throw new Error("--verification must be bridge or click-only");
     }
     const clickBackend = optionValue(args, "--click-backend", "auto");
     if (!["auto", "applescript", "cliclick", "quartz"].includes(clickBackend)) {
         throw new Error("--click-backend must be auto, applescript, cliclick, or quartz");
     }
 
-    const rowIndex = Math.max(1, Number(optionValue(args, "--row-index", "1")));
-    const xFromRight = Number(
-        optionValue(
-            args,
-            "--x-from-right",
-            button === "load-watch"
-                ? process.env.UXP_LOAD_WATCH_X_FROM_RIGHT || "140"
-                : process.env.UXP_LOAD_X_FROM_RIGHT || "260"
-        )
-    );
-    const yFromTop = Number(
-        optionValue(args, "--y-from-top", process.env.UXP_LOAD_Y_FROM_TOP || "203")
-    );
-    const rowHeight = Number(process.env.UXP_LOAD_ROW_HEIGHT || "33");
-    const timeoutMs = Number(optionValue(args, "--timeout-ms", "30000"));
-    const hostTimeoutMs = Number(optionValue(args, "--host-timeout-ms", dryRun ? "0" : "60000"));
+    const rowIndex = numberOption(args, "--row-index", "1", 1);
+    const xFromRight = numberOption(args, "--x-from-right", defaultXFromRight(button), 0);
+    const yFromTop = numberOption(args, "--y-from-top", process.env.UXP_LOAD_Y_FROM_TOP || "203", 0);
+    const rowHeight = finiteNumber(process.env.UXP_LOAD_ROW_HEIGHT || "33", 33, 1);
+    const timeoutMs = numberOption(args, "--timeout-ms", process.env.UXP_LOAD_TIMEOUT_MS || "3000", 0);
+    const hostTimeoutMs = numberOption(args, "--host-timeout-ms", dryRun ? "0" : process.env.UXP_HOST_TIMEOUT_MS || "3000", 0);
     const skipHostWait = args.includes("--skip-host-wait") || hostTimeoutMs <= 0;
-    const retries = Math.max(0, Number(optionValue(args, "--retries", dryRun ? "0" : "2")));
-    const retryDelayMs = Math.max(0, Number(optionValue(args, "--retry-delay-ms", "3000")));
+    const retries = numberOption(args, "--retries", dryRun ? "0" : process.env.UXP_LOAD_RETRIES || "1", 0);
+    const retryDelayMs = numberOption(args, "--retry-delay-ms", process.env.UXP_RETRY_DELAY_MS || "250", 0);
+    const activationDelayMs = numberOption(args, "--activation-delay-ms", process.env.UXP_ACTIVATION_DELAY_MS || "50", 0);
+    const windowBoundsTimeoutMs = numberOption(args, "--window-bounds-timeout-ms", process.env.UXP_WINDOW_BOUNDS_TIMEOUT_MS || "750", 1);
+    const clickTimeoutMs = numberOption(args, "--click-timeout-ms", process.env.UXP_CLICK_TIMEOUT_MS || "500", 1);
+    const postClickDelayMs = numberOption(args, "--post-click-delay-ms", process.env.UXP_POST_CLICK_DELAY_MS || "100", 0);
+    const pollIntervalMs = numberOption(args, "--poll-interval-ms", process.env.UXP_POLL_INTERVAL_MS || "100", 1);
+    const uiStateTimeoutMs = numberOption(args, "--ui-state-timeout-ms", process.env.UXP_UI_STATE_TIMEOUT_MS || "300", 1);
+    const proxyTimeoutMs = numberOption(args, "--proxy-timeout-ms", process.env.UXP_PROXY_TIMEOUT_MS || "300", 1);
+    const uxpAppsTimeoutMs = numberOption(args, "--uxp-apps-timeout-ms", process.env.UXP_APPS_TIMEOUT_MS || "1000", 1);
+    const windowBoundsOverride = parseWindowBounds(optionValue(args, "--window-bounds"));
     const evidenceDir = path.resolve(
         optionValue(
             args,
@@ -698,12 +809,31 @@ async function main() {
         skipHostWait,
         application: config.UDT_APP_NAME,
         plugin: {
-            expectedName: "Premiere MCP Agent",
-            installedPluginDir: config.INSTALLED_PLUGIN_DIR,
-            manifestPath: path.join(config.INSTALLED_PLUGIN_DIR, "manifest.json"),
-            manifestExists: fs.existsSync(path.join(config.INSTALLED_PLUGIN_DIR, "manifest.json")),
+            expectedName: pluginName,
+            installedPluginDir,
+            manifestPath: path.join(installedPluginDir, "manifest.json"),
+            manifestExists: fs.existsSync(path.join(installedPluginDir, "manifest.json")),
         },
         proxyUrl: config.PROXY_URL,
+        timing: {
+            timeoutMs,
+            hostTimeoutMs,
+            retryDelayMs,
+            activationDelayMs,
+            windowBoundsTimeoutMs,
+            clickTimeoutMs,
+            postClickDelayMs,
+            pollIntervalMs,
+            uiStateTimeoutMs,
+            proxyTimeoutMs,
+            uxpAppsTimeoutMs,
+        },
+        coordinates: {
+            xFromRight,
+            yFromTop,
+            rowHeight,
+            windowBoundsOverride,
+        },
         evidenceDir,
         logs: {
             run: path.join(evidenceDir, "uxp-load-run.ndjson"),
@@ -727,6 +857,17 @@ async function main() {
         rowHeight,
         timeoutMs,
         clickBackend,
+        verification,
+        pluginName,
+        activationDelayMs,
+        windowBoundsTimeoutMs,
+        clickTimeoutMs,
+        postClickDelayMs,
+        pollIntervalMs,
+        uiStateTimeoutMs,
+        proxyTimeoutMs,
+        uxpAppsTimeoutMs,
+        windowBoundsOverride,
     };
 
     try {
@@ -736,19 +877,20 @@ async function main() {
                 details: { manifestPath: receipt.plugin.manifestPath },
             });
         }
-        logEvent(receipt, "info", "UXP_PLUGIN_MANIFEST_FOUND", "Found installed Premiere MCP Agent manifest.", {
+        logEvent(receipt, "info", "UXP_PLUGIN_MANIFEST_FOUND", "Found installed UXP plugin manifest.", {
             manifestPath: receipt.plugin.manifestPath,
+            expectedName: pluginName,
         });
 
         if (!skipHostWait) {
-            receipt.hostConnection = await waitForPremiereHost(hostTimeoutMs);
+            receipt.hostConnection = await waitForPremiereHost(hostTimeoutMs, pollIntervalMs, uxpAppsTimeoutMs);
             if (receipt.hostConnection.connected) {
                 logEvent(receipt, "info", "UXP_HOST_APP_CONNECTED", "Premiere is connected to the UXP Developer Tools service.", {
                     hostTimeoutMs,
                     lastOutput: receipt.hostConnection.lastOutput,
                 });
             } else {
-                await activateUdt();
+                await activateUdt(options);
                 receipt.screenshots = {
                     hostNotConnected: await screenshot(path.join(receipt.evidenceDir, "host-not-connected.png")),
                 };
@@ -793,15 +935,21 @@ async function main() {
                 else receipt.attempts.push(failedAttempt);
             }
 
-            const confirmed = attempt?.status === "CONFIRMED" || (dryRun && attempt);
+            const confirmed = attempt?.status === "CONFIRMED" || attempt?.status === "CLICK_RECORDED" || (dryRun && attempt);
             if (confirmed) {
+                const confirmedBy = dryRun
+                    ? ["dry-run"]
+                    : options.verification === "click-only"
+                        ? ["click-evidence"]
+                        : ["premiere-proxy"];
                 receipt.status = "COMPLETE";
                 receipt.result = {
-                    confirmedBy: attempt?.bridgeConnected
-                        ? ["premiere-proxy"]
-                        : ["dry-run"],
+                    confirmedBy,
                     bridgeConnected: Boolean(attempt?.bridgeConnected),
+                    bridgeStateMatched: Boolean(attempt?.bridgeStateMatched),
+                    expectedBridgeConnected: attempt?.expectedBridgeConnected,
                     uiLoadedVisible: Boolean(attempt?.uiLoadedVisible),
+                    uiNotLoadedVisible: Boolean(attempt?.uiNotLoadedVisible),
                     receiptPath,
                 };
                 writeReceipt(receipt, receiptPath);

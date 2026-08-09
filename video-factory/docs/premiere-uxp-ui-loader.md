@@ -28,11 +28,12 @@ npm run stack:start -- --button load-watch
 npm run stack:start -- --x-from-right 260 --y-from-top 203
 npm run stack:start -- --retries 3 --recovery reopen-uxp
 npm run stack:start -- --click-backend auto
-npm run stack:start -- --host-timeout-ms 30000
-npm run stack:start -- --timeout-ms 15000
+npm run stack:start -- --host-timeout-ms 3000
+npm run stack:start -- --timeout-ms 3000
+npm run stack:start -- --click-timeout-ms 500 --post-click-delay-ms 100
 ```
 
-The managed startup script supplies shorter defaults than the raw loader: `--host-timeout-ms 30000`, `--timeout-ms 15000`, `--retry-delay-ms 1000`, and `--retries 1` unless those options are passed explicitly.
+The managed startup script supplies millisecond-level defaults unless those options are passed explicitly: `--host-timeout-ms 3000`, `--timeout-ms 3000`, `--retry-delay-ms 250`, `--click-timeout-ms 500`, `--window-bounds-timeout-ms 750`, `--post-click-delay-ms 100`, `--poll-interval-ms 100`, `--ui-state-timeout-ms 300`, `--proxy-timeout-ms 300`, and `--retries 1`.
 
 ## Managed Stop
 
@@ -70,18 +71,29 @@ Options:
 | `--dry-run` | Capture screenshots and receipt without clicking. |
 | `--force-click` | Click even when the Premiere bridge is already connected. |
 | `--require-ui-loaded` | Require accessible UXP UI text to explicitly report Loaded. |
-| `--button load\|load-watch` | Select the row action. Default is `load`. |
+| `--button load\|load-watch\|unload` | Select the row action. Default is `load`. |
+| `--plugin-name <name>` | Expected plugin display name in receipts and UI checks. |
+| `--plugin-dir <path>` | Installed plugin directory whose `manifest.json` must exist. |
 | `--row-index <n>` | Select a plugin row when the target plugin is not first. Default is `1`. |
 | `--x-from-right <points>` | Override the click X coordinate relative to the UXP window right edge. |
 | `--y-from-top <points>` | Override the first-row click Y coordinate relative to the UXP window top edge. |
+| `--window-bounds <x,y,w,h>` | Use known UXP Developer Tools bounds and skip the AppleScript window-bounds probe. |
 | `--evidence-dir <path>` | Store screenshots and receipt in a specific folder. |
-| `--timeout-ms <n>` | Bridge verification timeout. Default is `30000`. |
-| `--host-timeout-ms <n>` | Wait for Premiere to appear in `uxp apps list` before clicking Load. Default is `60000`. |
+| `--timeout-ms <n>` | Bridge verification timeout. Default is `3000`. |
+| `--host-timeout-ms <n>` | Wait for Premiere to appear in `uxp apps list` before clicking Load. Default is `3000`. |
 | `--skip-host-wait` | Skip the UXP host wait and click anyway, mostly for diagnostics. |
-| `--retries <n>` | Retry count after the first attempt. Default is `2`. |
-| `--retry-delay-ms <n>` | Delay before retry/recovery. Default is `3000`. |
+| `--verification bridge\|click-only` | `bridge` confirms the Premiere MCP proxy state; `click-only` proves the button press and evidence screenshots for non-bridge plugins. |
+| `--retries <n>` | Retry count after the first attempt. Default is `1`. |
+| `--retry-delay-ms <n>` | Delay before retry/recovery. Default is `250`. |
 | `--recovery none\|reopen-uxp` | Recovery method between retries. Default is `reopen-uxp`. |
 | `--click-backend auto\|applescript\|cliclick\|quartz` | Click backend. `auto` tries AppleScript first, then `cliclick`, then Python Quartz. |
+| `--activation-delay-ms <n>` | Delay after focusing UXP before reading bounds. Default is `50`. |
+| `--window-bounds-timeout-ms <n>` | AppleScript window-bounds timeout. Default is `750`. |
+| `--click-timeout-ms <n>` | Per-backend click timeout. Default is `500`. |
+| `--post-click-delay-ms <n>` | Settle delay before the after-click screenshot. Default is `100`. |
+| `--poll-interval-ms <n>` | Bridge verification poll interval. Default is `100`. |
+| `--ui-state-timeout-ms <n>` | Accessibility UI text probe timeout. Default is `300`. |
+| `--proxy-timeout-ms <n>` | Local proxy status timeout. Default is `300`. |
 
 Environment tuning:
 
@@ -89,6 +101,7 @@ Environment tuning:
 | --- | ---: | --- |
 | `UXP_LOAD_X_FROM_RIGHT` | `260` | Load button X offset. |
 | `UXP_LOAD_WATCH_X_FROM_RIGHT` | `140` | Load & Watch button X offset. |
+| `UXP_UNLOAD_X_FROM_RIGHT` | `135` | Unload button X offset. |
 | `UXP_LOAD_Y_FROM_TOP` | `203` | First plugin row Y offset. |
 | `UXP_LOAD_ROW_HEIGHT` | `33` | Row height for additional plugin rows. |
 
@@ -115,6 +128,10 @@ Each run includes:
 - `uxp-load-run.ndjson`
 
 The receipt records the UXP window bounds, click coordinates, installed plugin path, proxy status before and after, whether the bridge was already connected, whether a click was performed, retry/recovery actions, accessible UI state when macOS exposes it, and the final bridge result.
+
+The receipt also records the exact timing policy used for that run under `timing`, including click timeout, window-bounds timeout, post-click delay, proxy timeout, poll interval, and retry delay. The UI-control defaults are intentionally sub-second so button failures produce evidence in milliseconds instead of waiting through long generic timeouts.
+
+When `--verification click-only` is used, an attempt can finish as `CLICK_RECORDED`. That means the loader captured before/after screenshots and the click backend result; it does not claim that the UXP row visually changed to Loaded. Use bridge verification or inspect the screenshots before treating the plugin as loaded.
 
 When `--click-backend auto` is used, each click backend failure is preserved on the attempt as `clickBackendFailures`. This lets the operator see whether AppleScript timed out, whether `cliclick` was unavailable, or whether Quartz was needed.
 
@@ -197,6 +214,19 @@ npm run uxp:load-ui -- --dry-run --evidence-dir /tmp/premiere-uxp-loader-probe
 ```
 
 Open `before-load.png` and check whether the `Premiere MCP Agent` row is first. If it is not first, pass `--row-index`. If the Load button moved, pass adjusted `--x-from-right` and `--y-from-top` values or set the `UXP_LOAD_*` environment variables.
+
+For a fast Load/Unload button-control test on a plugin that does not own the Premiere proxy connection, use click-only verification:
+
+```bash
+npm run uxp:load-ui -- --force-click --skip-host-wait --verification click-only --button unload --row-index 2 --plugin-name "Edit Studio EDL Executor" --click-timeout-ms 500 --post-click-delay-ms 100
+```
+
+Observed on the August 2026 UXP Developer Tools table:
+
+- AppleScript `click at` can hang on the Electron webview; keep `--click-timeout-ms` low so it fails as `UXP_LOAD_CLICK_TIMED_OUT` and falls back quickly.
+- `--click-backend auto` successfully falls back to `cliclick` when AppleScript times out.
+- Edit Studio `Unload` was visually verified at `--x-from-right 135`.
+- Edit Studio `Load`/`Load & Watch` coordinate clicks may select the table row instead of activating the button. Treat this as a `CLICK_RECORDED` diagnostic until a visual state change or bridge connection confirms loading. CLI load remains a recovery path, not the preferred managed UI path.
 
 Check the local services:
 

@@ -1,5 +1,6 @@
 const http = require("http");
 const { URL } = require("url");
+const uxpUiDriver = require("./uxp-ui-driver");
 
 const API_ERROR_CODES = Object.freeze({
     API_NOT_FOUND: {
@@ -85,6 +86,38 @@ const API_ERROR_CODES = Object.freeze({
     UXP_LOAD_RETRY_EXHAUSTED: {
         status: 503,
         description: "All configured UXP plugin load attempts and recovery retries were exhausted.",
+    },
+    UXP_ROW_NOT_FOUND: {
+        status: 503,
+        description: "The UXP UI driver could not find the requested plugin row in the Developer Tools table.",
+    },
+    UXP_ACTION_NOT_AVAILABLE: {
+        status: 409,
+        description: "The requested action is not available for the plugin row's current state (e.g. load on an already-loaded plugin).",
+    },
+    UXP_STATE_VERIFY_TIMEOUT: {
+        status: 503,
+        description: "The UXP UI driver clicked the action but the row state did not change within the verify timeout.",
+    },
+    UXP_UI_DRIVER_FAILED: {
+        status: 503,
+        description: "The pixel-locator UXP UI driver failed before producing a parseable receipt.",
+    },
+    UXP_CAPTURE_FAILED: {
+        status: 503,
+        description: "The UXP UI driver could not capture a window screenshot.",
+    },
+    UXP_DRIVER_BUSY: {
+        status: 429,
+        description: "Another UXP UI driver invocation holds the single-flight lock.",
+    },
+    UXP_WINDOW_OBSCURED: {
+        status: 503,
+        description: "The UXP window capture failed the workspace sanity check (occluded, wrong tab, or wrong window).",
+    },
+    UXP_CLICK_FAILED: {
+        status: 503,
+        description: "The UXP UI driver's click backend failed to post the click event.",
     },
     WORKFLOW_VALIDATION_FAILED: {
         status: 422,
@@ -263,6 +296,43 @@ function createFactoryServer({
             if (request.method === "POST" && url.pathname === "/api/premiere/open-project") {
                 const body = await readBody(request);
                 sendJson(response, 200, await appManager.openProject(body.project_path));
+                return;
+            }
+
+            if (request.method === "GET" && url.pathname === "/api/uxp/ui-state") {
+                try {
+                    sendJson(response, 200, await uxpUiDriver.inspectUi());
+                } catch (error) {
+                    throw new ApiError(error.code || "UXP_UI_DRIVER_FAILED", error.message, error.details);
+                }
+                return;
+            }
+
+            if (request.method === "POST" && url.pathname === "/api/uxp/plugin-action") {
+                const body = await readBody(request);
+                const row = body.row == null ? null : Number(body.row);
+                const pluginName = body.plugin_name ? String(body.plugin_name) : null;
+                const action = String(body.action || "");
+                const allowed = ["load", "unload", "load-watch", "watch", "reload", "debug"];
+                if ((!pluginName && (!Number.isInteger(row) || row < 1)) || !allowed.includes(action)) {
+                    throw new ApiError(
+                        "API_VALIDATION_FAILED",
+                        "plugin-action requires plugin_name or integer row >= 1, and action in " + allowed.join("|"),
+                        { row: body.row, plugin_name: body.plugin_name, action: body.action }
+                    );
+                }
+                try {
+                    sendJson(response, 200, await uxpUiDriver.pluginAction({
+                        row,
+                        pluginName,
+                        action,
+                        verifyTimeoutMs: body.verify_timeout_ms,
+                        pollIntervalMs: body.poll_interval_ms,
+                        evidenceDir: body.evidence_dir,
+                    }));
+                } catch (error) {
+                    throw new ApiError(error.code || "UXP_UI_DRIVER_FAILED", error.message, error.details);
+                }
                 return;
             }
 

@@ -76,3 +76,6 @@ claude-progress.txt
 
 # Live provider inventories (regenerated with video-factory voices-sync)
 video-factory/config/*-live.json
+
+# Runtime evidence + error logs (regenerated per run)
+video-factory/work/

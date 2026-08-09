@@ -35,16 +35,34 @@ if ! has_loader_arg "--evidence-dir"; then
   LOADER_ARGS+=(--evidence-dir "$LOADER_EVIDENCE_DIR")
 fi
 if ! has_loader_arg "--host-timeout-ms" && ! has_loader_arg "--skip-host-wait"; then
-  LOADER_ARGS+=(--host-timeout-ms "${PREMIERE_UXP_HOST_TIMEOUT_MS:-30000}")
+  LOADER_ARGS+=(--host-timeout-ms "${PREMIERE_UXP_HOST_TIMEOUT_MS:-3000}")
 fi
 if ! has_loader_arg "--timeout-ms"; then
-  LOADER_ARGS+=(--timeout-ms "${PREMIERE_UXP_LOAD_TIMEOUT_MS:-15000}")
+  LOADER_ARGS+=(--timeout-ms "${PREMIERE_UXP_LOAD_TIMEOUT_MS:-3000}")
 fi
 if ! has_loader_arg "--retry-delay-ms"; then
-  LOADER_ARGS+=(--retry-delay-ms "${PREMIERE_UXP_RETRY_DELAY_MS:-1000}")
+  LOADER_ARGS+=(--retry-delay-ms "${PREMIERE_UXP_RETRY_DELAY_MS:-250}")
 fi
 if ! has_loader_arg "--retries"; then
   LOADER_ARGS+=(--retries "${PREMIERE_UXP_RETRIES:-1}")
+fi
+if ! has_loader_arg "--click-timeout-ms"; then
+  LOADER_ARGS+=(--click-timeout-ms "${PREMIERE_UXP_CLICK_TIMEOUT_MS:-500}")
+fi
+if ! has_loader_arg "--window-bounds-timeout-ms"; then
+  LOADER_ARGS+=(--window-bounds-timeout-ms "${PREMIERE_UXP_WINDOW_BOUNDS_TIMEOUT_MS:-750}")
+fi
+if ! has_loader_arg "--post-click-delay-ms"; then
+  LOADER_ARGS+=(--post-click-delay-ms "${PREMIERE_UXP_POST_CLICK_DELAY_MS:-100}")
+fi
+if ! has_loader_arg "--poll-interval-ms"; then
+  LOADER_ARGS+=(--poll-interval-ms "${PREMIERE_UXP_POLL_INTERVAL_MS:-100}")
+fi
+if ! has_loader_arg "--ui-state-timeout-ms"; then
+  LOADER_ARGS+=(--ui-state-timeout-ms "${PREMIERE_UXP_UI_STATE_TIMEOUT_MS:-300}")
+fi
+if ! has_loader_arg "--proxy-timeout-ms"; then
+  LOADER_ARGS+=(--proxy-timeout-ms "${PREMIERE_UXP_PROXY_TIMEOUT_MS:-300}")
 fi
 
 mkdir -p "$LOG_DIR" "$STARTUP_RUN_DIR" "$LOADER_EVIDENCE_DIR"
