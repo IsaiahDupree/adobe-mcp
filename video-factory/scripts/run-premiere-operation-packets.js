@@ -20,7 +20,14 @@ const { io } = require(path.join(__dirname, "../../proxy-server/node_modules/soc
 const PROXY_URL = process.env.PREMIERE_PROXY_URL || "http://127.0.0.1:3031";
 
 function parseArgs(argv) {
-  const out = { proxyUrl: PROXY_URL, commandTimeoutMs: 20000, stopOnError: false };
+  const out = {
+    proxyUrl: PROXY_URL,
+    commandTimeoutMs: 20000,
+    stopOnError: false,
+    exportRecoveryWaitMs: 45000,
+    exportRecoveryPollMs: 500,
+    exportRecoveryStableMs: 1500,
+  };
   for (let i = 2; i < argv.length; i++) {
     const a = argv[i];
     const next = () => argv[++i];
@@ -31,6 +38,9 @@ function parseArgs(argv) {
       case "--preflight-only": out.preflightOnly = true; break;
       case "--stop-on-error": out.stopOnError = true; break;
       case "--command-timeout-ms": out.commandTimeoutMs = Number(next()); break;
+      case "--export-recovery-wait-ms": out.exportRecoveryWaitMs = Number(next()); break;
+      case "--export-recovery-poll-ms": out.exportRecoveryPollMs = Number(next()); break;
+      case "--export-recovery-stable-ms": out.exportRecoveryStableMs = Number(next()); break;
       case "--only": out.only = new Set(next().split(",").map((n) => Number(n.trim()))); break;
       case "--skip": out.skip = new Set(next().split(",").map((n) => Number(n.trim()))); break;
       case "--from": out.from = Number(next()); break;
@@ -43,6 +53,8 @@ function parseArgs(argv) {
   if (!out.evidenceDir) throw new Error("--evidence-dir is required");
   return out;
 }
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 function sendCommand(proxyUrl, action, options, timeoutMs) {
   return new Promise((resolve) => {
@@ -100,30 +112,92 @@ function unresolvedPlaceholders(value, found = []) {
   return found;
 }
 
-function recoverExportResultFromFile(op, options, result) {
+async function waitForStableFile(filePath, waitMs, pollMs, stableMs) {
+  const started = Date.now();
+  const deadline = started + Math.max(0, waitMs);
+  const poll = Math.max(50, pollMs);
+  const stableFor = Math.max(0, stableMs);
+  let lastSize = -1;
+  let stableSince = 0;
+  while (Date.now() <= deadline) {
+    try {
+      const stat = fs.statSync(filePath);
+      if (stat.size > 0 && stat.size === lastSize) {
+        if (!stableSince) stableSince = Date.now();
+        if (Date.now() - stableSince >= stableFor) {
+          return {
+            exists: true,
+            stable: true,
+            bytes: stat.size,
+            waitedMs: Date.now() - started,
+          };
+        }
+      } else {
+        lastSize = stat.size;
+        stableSince = stat.size > 0 ? Date.now() : 0;
+      }
+    } catch (_) {
+      lastSize = -1;
+      stableSince = 0;
+    }
+    await sleep(poll);
+  }
+  try {
+    const stat = fs.statSync(filePath);
+    return {
+      exists: stat.size > 0,
+      stable: false,
+      bytes: stat.size,
+      waitedMs: Date.now() - started,
+    };
+  } catch (_) {
+    return {
+      exists: false,
+      stable: false,
+      bytes: 0,
+      waitedMs: Date.now() - started,
+    };
+  }
+}
+
+async function recoverExportResultFromFile(op, options, result, cfg) {
   if (op.action !== "exportSequence" || result.ok || !options.outputFile) return result;
   if (result.status !== "TIMEOUT") return result;
-  try {
-    const stat = fs.statSync(options.outputFile);
-    if (stat.size <= 0) return result;
+  const file = await waitForStableFile(
+    options.outputFile,
+    cfg.exportRecoveryWaitMs,
+    cfg.exportRecoveryPollMs,
+    cfg.exportRecoveryStableMs
+  );
+  if (file.exists && file.stable) {
     return {
       ...result,
       ok: true,
-      status: "EXPORT_FILE_CREATED_RESPONSE_TIMEOUT",
+      status: "EXPORT_FILE_STABLE_AFTER_RESPONSE_TIMEOUT",
       message: (
         "Premiere did not return a bridge response before timeout, "
-        + "but the requested export file exists on disk."
+        + "but the requested export file appeared and stabilized on disk."
       ),
       recovered: true,
       recovery: {
-        code: "EXPORT_FILE_CREATED_RESPONSE_TIMEOUT",
+        code: "EXPORT_FILE_STABLE_AFTER_RESPONSE_TIMEOUT",
         outputFile: options.outputFile,
-        bytes: stat.size,
+        bytes: file.bytes,
+        waitedMs: file.waitedMs,
+        stableMs: cfg.exportRecoveryStableMs,
       },
     };
-  } catch (_) {
-    return result;
   }
+  return {
+    ...result,
+    recovery: {
+      code: "EXPORT_FILE_NOT_STABLE_AFTER_RESPONSE_TIMEOUT",
+      outputFile: options.outputFile,
+      exists: file.exists,
+      bytes: file.bytes,
+      waitedMs: file.waitedMs,
+    },
+  };
 }
 
 function collectPaths(obj, keys, acc = []) {
@@ -250,10 +324,11 @@ async function preflight(cfg, doc) {
       continue;
     }
 
-    const result = recoverExportResultFromFile(
+    const result = await recoverExportResultFromFile(
       op,
       options,
-      await sendCommand(cfg.proxyUrl, op.command_packet.action, options, cfg.commandTimeoutMs)
+      await sendCommand(cfg.proxyUrl, op.command_packet.action, options, cfg.commandTimeoutMs),
+      cfg
     );
     const record = {
       n: human,
