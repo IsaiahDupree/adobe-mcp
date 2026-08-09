@@ -1,5 +1,6 @@
 const http = require("http");
 const { URL } = require("url");
+const { MarketingDepartmentRepresentative } = require("./marketing-review-judge");
 const uxpUiDriver = require("./uxp-ui-driver");
 
 const API_ERROR_CODES = Object.freeze({
@@ -118,6 +119,18 @@ const API_ERROR_CODES = Object.freeze({
     UXP_CLICK_FAILED: {
         status: 503,
         description: "The UXP UI driver's click backend failed to post the click event.",
+    },
+    PREMIERE_PROJECT_SAVE_REQUIRED: {
+        status: 422,
+        description: "A live packet creates or opens a Premiere project but does not include saveProject/saveProjectAs.",
+    },
+    PREMIERE_PROJECT_HANDOFF_FAILED: {
+        status: 503,
+        description: "The runner could not safely save, close, or verify the active Premiere project before switching.",
+    },
+    PREMIERE_PROJECT_CLOSE_VERIFY_FAILED: {
+        status: 503,
+        description: "Premiere still reported the previous project active after closeProject and verification.",
     },
     WORKFLOW_VALIDATION_FAILED: {
         status: 422,
@@ -285,6 +298,30 @@ function createFactoryServer({
                     schemaVersion: 1,
                     errorCodes: API_ERROR_CODES,
                 });
+                return;
+            }
+
+            if (request.method === "POST" && url.pathname === "/api/marketing/review-edit") {
+                const body = await readBody(request);
+                const packet = body.packet || body.receipt || body.operation_packet;
+                const runSummary = body.runSummary || body.run_summary;
+                if (!packet || typeof packet !== "object" || !runSummary || typeof runSummary !== "object") {
+                    throw new ApiError(
+                        "API_VALIDATION_FAILED",
+                        "marketing review requires packet and runSummary/run_summary objects.",
+                        {
+                            hasPacket: Boolean(packet && typeof packet === "object"),
+                            hasRunSummary: Boolean(runSummary && typeof runSummary === "object"),
+                        }
+                    );
+                }
+                const reviewer = new MarketingDepartmentRepresentative(body.reviewer || {});
+                sendJson(response, 200, reviewer.review({
+                    packet,
+                    runSummary,
+                    outputMeasurement: body.outputMeasurement || body.output_measurement || {},
+                    qcFrames: body.qcFrames || body.qc_frames || [],
+                }));
                 return;
             }
 

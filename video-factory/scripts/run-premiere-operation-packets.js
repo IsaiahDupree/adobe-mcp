@@ -19,6 +19,11 @@ const { io } = require(path.join(__dirname, "../../proxy-server/node_modules/soc
 const {
   evaluatePremiereOperationSafety,
 } = require("../lib/premiere-operation-safety");
+const {
+  executeProjectHandoff,
+  projectSavePlanned,
+  requestedProjectFromOperations,
+} = require("../lib/premiere-project-handoff");
 
 const PROXY_URL = process.env.PREMIERE_PROXY_URL || "http://127.0.0.1:3031";
 
@@ -268,11 +273,20 @@ async function preflight(cfg, doc) {
   const add = (id, pass, detail) => checks.push({ id, pass, detail });
   const selected = selectedOperations(doc, cfg);
   const operationSafety = evaluatePremiereOperationSafety(selected, liveSafetyPolicy(cfg));
+  const requestedProject = requestedProjectFromOperations(selected);
+  const savePlanned = projectSavePlanned(selected);
   add("live_operation_safety", operationSafety.passed, {
     selected_operations: selected.length,
     counts: operationSafety.counts,
     policy: operationSafety.policy,
     violations: operationSafety.violations,
+  });
+  add("project_save_planned", savePlanned, {
+    requested_project: requestedProject,
+    error_code: requestedProject && !savePlanned ? "PREMIERE_PROJECT_SAVE_REQUIRED" : null,
+    requirement: requestedProject
+      ? "Packets that create or open a Premiere project must also include saveProject/saveProjectAs."
+      : "No project-open operation selected.",
   });
 
   // 1. bridge / proxy
@@ -380,6 +394,27 @@ async function preflight(cfg, doc) {
     process.exit(gate.passed || cfg.preflightOnly ? 0 : 2);
   }
 
+  const selectedForExecution = selectedOperations(doc, cfg);
+  const requestedProject = requestedProjectFromOperations(selectedForExecution);
+  summary.project_handoff = await executeProjectHandoff({
+    sendCommand,
+    proxyUrl: cfg.proxyUrl,
+    timeoutMs: cfg.commandTimeoutMs,
+    currentProject: gate.probe && gate.probe.packet && gate.probe.packet.response,
+    requestedProject,
+  });
+  const skipProjectOperationIds = new Set(summary.project_handoff.skipOperationIds || []);
+  if (!summary.project_handoff.ok) {
+    summary.status = "PROJECT_HANDOFF_FAILED";
+    writeSummary();
+    console.log(JSON.stringify({
+      status: summary.status,
+      project_handoff: summary.project_handoff,
+      summaryPath: path.join(cfg.evidenceDir, "run-summary.json"),
+    }, null, 2));
+    process.exit(3);
+  }
+
   const symbols = new Map();
   for (const op of doc.operations) {
     const human = op.index + 1;
@@ -393,6 +428,17 @@ async function preflight(cfg, doc) {
     if (!selected) {
       summary.counts.skipped += 1;
       summary.executed.push({ n: human, operation_id: op.operation_id, action: op.action, status: "SKIPPED_BY_SELECTION" });
+      continue;
+    }
+    if (op.operation_id && skipProjectOperationIds.has(op.operation_id)) {
+      summary.counts.skipped += 1;
+      summary.executed.push({
+        n: human,
+        operation_id: op.operation_id,
+        action: op.action,
+        status: "SKIPPED_PROJECT_ALREADY_ACTIVE",
+        message: "Premiere already had the requested project active before this packet started.",
+      });
       continue;
     }
 

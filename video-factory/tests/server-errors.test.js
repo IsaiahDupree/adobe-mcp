@@ -72,6 +72,9 @@ test("GET /api/errors exposes the stable API error catalog", async () => {
         assert.equal(response.body.errorCodes.UXP_PLUGIN_LOAD_NOT_CONFIRMED.status, 503);
         assert.equal(response.body.errorCodes.UXP_PLUGIN_DISPLAY_NOT_CONFIRMED.status, 503);
         assert.equal(response.body.errorCodes.UXP_LOAD_RETRY_EXHAUSTED.status, 503);
+        assert.equal(response.body.errorCodes.PREMIERE_PROJECT_SAVE_REQUIRED.status, 422);
+        assert.equal(response.body.errorCodes.PREMIERE_PROJECT_HANDOFF_FAILED.status, 503);
+        assert.equal(response.body.errorCodes.PREMIERE_PROJECT_CLOSE_VERIFY_FAILED.status, 503);
         assert.deepEqual(response.body.errorCodes, API_ERROR_CODES);
     } finally {
         await factory.close();

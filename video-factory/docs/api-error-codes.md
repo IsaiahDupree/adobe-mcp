@@ -60,6 +60,24 @@ These are the important recovery codes for the Premiere Pro app, Adobe UXP Devel
 | `UXP_PLUGIN_DISPLAY_NOT_CONFIRMED` | 503 | The Premiere proxy connected, but UXP Developer Tools did not visibly report the plugin as Loaded. | `attempt-*-after-click.png`, `uiStateAfter`, `error.details.attempts`. | Inspect the screenshot. If it still shows Not loaded, retry with tuned coordinates or `--button load-watch`; if only Accessibility could not read the webview, rely on proxy confirmation for production and keep the screenshot in the receipt. |
 | `UXP_LOAD_RETRY_EXHAUSTED` | 503 | Every configured attempt failed after retry/recovery. | `error.details.attempts`, `error.details.recovery`, `error.details.runLog`, all attempt screenshots. | Inspect final screenshot, tune coordinates, confirm Premiere is open, then retry with adjusted loader options. |
 
+## Premiere Project Handoff Errors
+
+These are emitted by live operation-packet runners and should be surfaced by API
+adapters that execute Premiere packets.
+
+| Code | HTTP | Meaning | Inspect | Recovery |
+| --- | ---: | --- | --- | --- |
+| `PREMIERE_PROJECT_SAVE_REQUIRED` | 422 | The selected packet creates or opens a Premiere project but does not include `saveProject` or `saveProjectAs`. | `run-summary.json`, `preflight.checks[]` with id `project_save_planned`. | Regenerate the packet with an explicit save operation before export/review. |
+| `PREMIERE_PROJECT_HANDOFF_FAILED` | 503 | The runner could not safely save, close, or verify the active project before switching to the requested project. | `run-summary.json`, `project_handoff.failedStep`, per-step handoff receipts. | Do not switch packets. Inspect the failed step, restart the local stack if Premiere is unresponsive, then retry after `getProjectInfo` is sane. |
+| `PREMIERE_PROJECT_CLOSE_VERIFY_FAILED` | 503 | `closeProject` returned, but verification still showed the previous project active. | `run-summary.json`, `project_handoff.failedStep`, `getProjectInfo` response. | Full restart of Premiere/UXP/local bridge, then retry the packet. |
+
+## Marketing Review API
+
+`POST /api/marketing/review-edit` returns a review receipt with either
+`APPROVED_FOR_INTERNAL_MARKETING_HANDOFF` or `NEEDS_EDITING_REVISION`.
+Revision verdicts are not transport errors; the response remains `200` and
+includes `requiredFixes`. Malformed requests return `API_VALIDATION_FAILED`.
+
 ## General API Errors
 
 | Code | HTTP | Meaning |
@@ -72,6 +90,9 @@ These are the important recovery codes for the Premiere Pro app, Adobe UXP Devel
 | `API_CONFLICT` | 409 | The request conflicts with existing factory state. |
 | `API_REQUEST_FAILED` | 400 | The request failed for a known but uncategorized client-side reason. |
 | `APP_NOT_READY` | 503 | Premiere, UXP, bridge, or another local dependency is not ready. |
+| `PREMIERE_PROJECT_SAVE_REQUIRED` | 422 | The packet creates or opens a Premiere project without an explicit save operation. |
+| `PREMIERE_PROJECT_HANDOFF_FAILED` | 503 | Premiere project save/close/verification failed before a packet switch. |
+| `PREMIERE_PROJECT_CLOSE_VERIFY_FAILED` | 503 | Premiere still reported the previous project after close verification. |
 | `WORKFLOW_VALIDATION_FAILED` | 422 | A deterministic production or QC gate rejected the workflow result. |
 | `WAITING_FOR_ASSETS` | 409 | Required local source assets are missing. |
 | `RENDER_TIMEOUT` | 504 | Adobe export did not finish before the render timeout. |
