@@ -75,3 +75,19 @@ These are the important recovery codes for the Premiere Pro app, Adobe UXP Devel
 | `WORKFLOW_VALIDATION_FAILED` | 422 | A deterministic production or QC gate rejected the workflow result. |
 | `WAITING_FOR_ASSETS` | 409 | Required local source assets are missing. |
 | `RENDER_TIMEOUT` | 504 | Adobe export did not finish before the render timeout. |
+
+## Premiere Live Operation Packet Errors
+
+These codes are emitted in operation-packet preflight receipts under
+`preflight.checks[].detail.violations[]`. API adapters should surface them as a
+422 validation failure before executing any Premiere command.
+
+| Code | HTTP | Meaning | Recovery |
+| --- | ---: | --- | --- |
+| `PREMIERE_DECLARED_UNSAFE_OPERATION` | 422 | The packet selected an operation marked `safe_to_execute=false`. | Regenerate the packet or run it as a dry-run/planned operation only. |
+| `PREMIERE_UNSTABLE_CLIP_PROPERTY_MUTATION` | 422 | The packet selected `setVideoClipProperties`, which has returned stale-script-object failures in live runs. | Keep motion/effect intent in the receipt until the UXP clip-property route passes isolated single-op tests. |
+| `PREMIERE_CAPTION_OVERLAY_MEDIA_UNSAFE` | 422 | The packet selected caption PNG/JPEG media insertion on the timeline. Dense caption overlay insertion has hung Premiere/bridge runs. | Use caption markers/sidecars or a native caption route; do not insert caption stills in batch exports. |
+| `PREMIERE_STILL_IMAGE_TIMELINE_MEDIA_UNSAFE` | 422 | The packet selected still-image timeline media insertion without explicit opt-in. | Convert the visual to a verified native graphics/caption command or run a single-op canary before opting in. |
+| `PREMIERE_STILL_IMAGE_TIMELINE_MEDIA_BURST` | 422 | The packet selected more still-image timeline insertions than the live safety policy allows. | Split into canary runs or remove still-image overlays from the live packet. |
+| `PREMIERE_CAPTION_OVERLAY_TRIM_UNSAFE` | 422 | The packet selected trim operations against caption overlay stills. | Do not trim caption overlay stills; use markers/sidecars until native caption rendering is stable. |
+| `PREMIERE_AUDIO_MEDIA_PLACEMENT_REQUIRES_OPT_IN` | 422 | The packet selected WAV/MP3/AAC media placement without a verified audio-only route. | Keep SFX/music as mix instructions, or run a dedicated audio route canary and opt in explicitly. |

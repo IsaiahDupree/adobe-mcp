@@ -16,6 +16,9 @@
 const fs = require("fs");
 const path = require("path");
 const { io } = require(path.join(__dirname, "../../proxy-server/node_modules/socket.io-client"));
+const {
+  evaluatePremiereOperationSafety,
+} = require("../lib/premiere-operation-safety");
 
 const PROXY_URL = process.env.PREMIERE_PROXY_URL || "http://127.0.0.1:3031";
 
@@ -27,6 +30,12 @@ function parseArgs(argv) {
     exportRecoveryWaitMs: 45000,
     exportRecoveryPollMs: 500,
     exportRecoveryStableMs: 1500,
+    allowDeclaredUnsafe: false,
+    allowUnstableLiveOps: false,
+    allowCaptionOverlayMedia: false,
+    allowStillImageTimelineMedia: false,
+    maxStillImageTimelineMedia: 0,
+    allowAudioMediaPlacement: false,
   };
   for (let i = 2; i < argv.length; i++) {
     const a = argv[i];
@@ -41,6 +50,12 @@ function parseArgs(argv) {
       case "--export-recovery-wait-ms": out.exportRecoveryWaitMs = Number(next()); break;
       case "--export-recovery-poll-ms": out.exportRecoveryPollMs = Number(next()); break;
       case "--export-recovery-stable-ms": out.exportRecoveryStableMs = Number(next()); break;
+      case "--allow-declared-unsafe": out.allowDeclaredUnsafe = true; break;
+      case "--allow-unstable-live-ops": out.allowUnstableLiveOps = true; break;
+      case "--allow-caption-overlay-media": out.allowCaptionOverlayMedia = true; break;
+      case "--allow-still-image-timeline-media": out.allowStillImageTimelineMedia = true; break;
+      case "--max-still-image-timeline-media": out.maxStillImageTimelineMedia = Number(next()); break;
+      case "--allow-audio-media-placement": out.allowAudioMediaPlacement = true; break;
       case "--only": out.only = new Set(next().split(",").map((n) => Number(n.trim()))); break;
       case "--skip": out.skip = new Set(next().split(",").map((n) => Number(n.trim()))); break;
       case "--from": out.from = Number(next()); break;
@@ -110,6 +125,40 @@ function unresolvedPlaceholders(value, found = []) {
   else if (value && typeof value === "object")
     Object.values(value).forEach((v) => unresolvedPlaceholders(v, found));
   return found;
+}
+
+function operationNumber(op) {
+  if (Number.isFinite(op.index)) return Number(op.index) + 1;
+  if (Number.isFinite(op.step)) return Number(op.step);
+  return null;
+}
+
+function operationSelected(op, cfg) {
+  const human = operationNumber(op);
+  if (human == null) return true;
+  return (
+    (!cfg.only || cfg.only.has(human)) &&
+    (!cfg.skip || !cfg.skip.has(human)) &&
+    (cfg.from == null || human >= cfg.from) &&
+    (cfg.to == null || human <= cfg.to)
+  );
+}
+
+function selectedOperations(doc, cfg) {
+  return (doc.operations || []).filter((op) => operationSelected(op, cfg));
+}
+
+function liveSafetyPolicy(cfg) {
+  return {
+    allowDeclaredUnsafe: cfg.allowDeclaredUnsafe || cfg.allowUnstableLiveOps,
+    allowSetVideoClipProperties: cfg.allowUnstableLiveOps,
+    allowCaptionOverlayMedia: cfg.allowCaptionOverlayMedia || cfg.allowUnstableLiveOps,
+    allowStillImageTimelineMedia: cfg.allowStillImageTimelineMedia || cfg.allowUnstableLiveOps,
+    maxStillImageTimelineMedia: cfg.allowUnstableLiveOps
+      ? Number.MAX_SAFE_INTEGER
+      : cfg.maxStillImageTimelineMedia,
+    allowAudioMediaPlacement: cfg.allowAudioMediaPlacement || cfg.allowUnstableLiveOps,
+  };
 }
 
 async function waitForStableFile(filePath, waitMs, pollMs, stableMs) {
@@ -217,6 +266,14 @@ function collectPaths(obj, keys, acc = []) {
 async function preflight(cfg, doc) {
   const checks = [];
   const add = (id, pass, detail) => checks.push({ id, pass, detail });
+  const selected = selectedOperations(doc, cfg);
+  const operationSafety = evaluatePremiereOperationSafety(selected, liveSafetyPolicy(cfg));
+  add("live_operation_safety", operationSafety.passed, {
+    selected_operations: selected.length,
+    counts: operationSafety.counts,
+    policy: operationSafety.policy,
+    violations: operationSafety.violations,
+  });
 
   // 1. bridge / proxy
   let proxyStatus = null;
@@ -229,16 +286,25 @@ async function preflight(cfg, doc) {
   const premiereClients = Number(proxyStatus && proxyStatus.clients && proxyStatus.clients.premiere || 0);
   add("bridge_connected", premiereClients > 0, { proxyUrl: cfg.proxyUrl, premiereClients, proxyStatus });
 
-  // 2. Premiere responds to a read-only probe
-  const probe = await sendCommand(cfg.proxyUrl, "getProjectInfo", {}, cfg.commandTimeoutMs);
-  add("premiere_responsive", probe.ok, {
-    status: probe.status,
-    durationMs: probe.durationMs,
-    project: probe.packet && probe.packet.response,
-  });
+  // 2. Premiere responds to a read-only probe. Skip even read-only plugin traffic when
+  // a packet has already failed the static live-operation safety gate.
+  let probe = null;
+  if (operationSafety.passed) {
+    probe = await sendCommand(cfg.proxyUrl, "getProjectInfo", {}, cfg.commandTimeoutMs);
+    add("premiere_responsive", probe.ok, {
+      status: probe.status,
+      durationMs: probe.durationMs,
+      project: probe.packet && probe.packet.response,
+    });
+  } else {
+    add("premiere_responsive", false, {
+      status: "SKIPPED_BY_LIVE_OPERATION_SAFETY",
+      reason: "Static packet safety failed; no Premiere command was sent.",
+    });
+  }
 
   // 3. source media present on disk
-  const inputs = collectPaths(doc.operations.map((o) => o.command_packet), ["filePaths"]);
+  const inputs = collectPaths(selected.map((o) => o.command_packet), ["filePaths"]);
   const missing = inputs.filter(([, p]) => !fs.existsSync(p)).map(([, p]) => p);
   add("source_media_present", missing.length === 0, {
     total: inputs.length,
@@ -247,7 +313,7 @@ async function preflight(cfg, doc) {
   });
 
   // 4. export targets are local paths, nothing published
-  const outputs = collectPaths(doc.operations.map((o) => o.command_packet), ["outputFile", "filePath"]);
+  const outputs = collectPaths(selected.map((o) => o.command_packet), ["outputFile", "filePath"]);
   const nonLocal = outputs.filter(([, p]) => !p.startsWith("/")).map(([, p]) => p);
   add("exports_local_only", nonLocal.length === 0 && doc.not_published === true, {
     outputs: outputs.map(([, p]) => p),
@@ -313,6 +379,29 @@ async function preflight(cfg, doc) {
     }
 
     const options = resolvePlaceholders(op.command_packet.options || {}, symbols);
+    const opSafety = evaluatePremiereOperationSafety([op], liveSafetyPolicy(cfg));
+    if (!opSafety.passed) {
+      const record = {
+        n: human,
+        operation_id: op.operation_id,
+        action: op.action,
+        declared_safe_to_execute: op.safe_to_execute,
+        sent_options: null,
+        status: "BLOCKED_BY_LIVE_OPERATION_SAFETY",
+        duration_ms: 0,
+        message: "Operation was not sent to Premiere.",
+        violations: opSafety.violations,
+      };
+      summary.counts.failed += 1;
+      summary.executed.push(record);
+      fs.writeFileSync(
+        path.join(cfg.evidenceDir, `op-${String(human).padStart(2, "0")}-${op.operation_id}.json`),
+        JSON.stringify({ operation: op, result: record }, null, 2)
+      );
+      console.log(`${String(human).padStart(2, "0")} ${op.action} -> ${record.status} (0ms) :: ${record.message}`);
+      if (cfg.stopOnError) break;
+      continue;
+    }
     const stillUnresolved = unresolvedPlaceholders(options);
     if (stillUnresolved.length) {
       summary.counts.failed += 1;
