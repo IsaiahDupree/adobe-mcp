@@ -539,7 +539,27 @@ async function main() {
     }
     if (command === "serve") {
         const port = Number(optionValue(args, "--port", config.FACTORY_PORT));
+        let premierePipeline = null;
+        try {
+            const { PremierePipelineService } = require("./lib/premiere-pipeline-service");
+            const foundryRoot = process.env.VIDEO_FOUNDRY_ROOT
+                || path.resolve(__dirname, "../../../marketing-video-foundry");
+            if (fs.existsSync(foundryRoot)) {
+                premierePipeline = new PremierePipelineService({
+                    foundryRoot,
+                    videoFactoryRoot: __dirname,
+                });
+            } else {
+                process.stderr.write(
+                    `premiere pipeline bridge disabled: foundry repo not found at ${foundryRoot} `
+                    + "(set VIDEO_FOUNDRY_ROOT)\n"
+                );
+            }
+        } catch (error) {
+            process.stderr.write(`premiere pipeline bridge disabled: ${error.message}\n`);
+        }
         const { server, startScheduler } = createFactoryServer({
+            premierePipeline,
             store,
             runner: productionRunner,
             appManager,

@@ -130,6 +130,26 @@ const API_ERROR_CODES = Object.freeze({
         status: 503,
         description: "The Premiere proxy reports no connected Premiere client (clients.premiere < 1); reload the UXP plugin, verify the proxy, or restart the stack.",
     },
+    PREMIERE_PIPELINE_NOT_CONFIGURED: {
+        status: 503,
+        description: "The Premiere pipeline bridge is not configured (foundry repo path missing); set VIDEO_FOUNDRY_ROOT or pass premierePipeline to the server.",
+    },
+    PREMIERE_COMPILE_FAILED: {
+        status: 422,
+        description: "compile-premiere-edit-plans.py rejected or failed to compile the edit plan; see stderr_tail in details.",
+    },
+    PREMIERE_RUN_NOT_FOUND: {
+        status: 404,
+        description: "No tracked packet run matches the requested run id.",
+    },
+    PREMIERE_RECEIPT_WRITE_FAILED: {
+        status: 500,
+        description: "premiere-live-receipt.py failed to write the production receipt; see stderr_tail in details.",
+    },
+    PREMIERE_PATH_OUTSIDE_ALLOWED_ROOTS: {
+        status: 400,
+        description: "A supplied filesystem path resolved outside the allowed pipeline roots.",
+    },
     PREMIERE_PROJECT_SAVE_REQUIRED: {
         status: 422,
         description: "A live packet creates or opens a Premiere project but does not include saveProject/saveProjectAs.",
@@ -256,8 +276,19 @@ function createFactoryServer({
     shortFormRunner = null,
     shortFormCampaignStore = null,
     shortFormCampaignRunner = null,
+    premierePipeline = null,
 }) {
     let schedulerTimer = null;
+
+    const requirePipeline = () => {
+        if (!premierePipeline) {
+            throw new ApiError(
+                "PREMIERE_PIPELINE_NOT_CONFIGURED",
+                "Premiere pipeline bridge is not configured on this server."
+            );
+        }
+        return premierePipeline;
+    };
 
     const server = http.createServer(async (request, response) => {
         const url = new URL(request.url, `http://${request.headers.host || "localhost"}`);
@@ -337,6 +368,115 @@ function createFactoryServer({
 
             if (request.method === "GET" && url.pathname === "/api/premiere/state") {
                 sendJson(response, 200, await inspectPremiereState(appManager));
+                return;
+            }
+
+            if (request.method === "POST" && url.pathname === "/api/premiere/compile-request") {
+                const pipeline = requirePipeline();
+                const body = await readBody(request);
+                if (!body.plan_path || !body.output_dir) {
+                    throw new ApiError(
+                        "API_VALIDATION_FAILED",
+                        "compile-request requires plan_path and output_dir."
+                    );
+                }
+                sendJson(response, 200, await pipeline.compileRequest({
+                    planPath: body.plan_path,
+                    outputDir: body.output_dir,
+                    liveSafeOnly: body.live_safe_only !== false,
+                    legacyNormalize: body.legacy_normalize !== false,
+                    requireImportableFiles: body.require_importable_files !== false,
+                }));
+                return;
+            }
+
+            if (request.method === "POST" && url.pathname === "/api/premiere/run-packet") {
+                const pipeline = requirePipeline();
+                const body = await readBody(request);
+                if (!body.packet_path || !body.evidence_dir) {
+                    throw new ApiError(
+                        "API_VALIDATION_FAILED",
+                        "run-packet requires packet_path and evidence_dir."
+                    );
+                }
+                sendJson(response, 202, pipeline.startPacketRun({
+                    packetPath: body.packet_path,
+                    evidenceDir: body.evidence_dir,
+                    extraArgs: Array.isArray(body.args) ? body.args : [],
+                }));
+                return;
+            }
+
+            if (request.method === "GET" && url.pathname === "/api/premiere/runs") {
+                sendJson(response, 200, { runs: requirePipeline().listRuns() });
+                return;
+            }
+
+            if (
+                request.method === "GET"
+                && segments.length === 4
+                && segments[0] === "api"
+                && segments[1] === "premiere"
+                && segments[2] === "evidence"
+            ) {
+                const pipeline = requirePipeline();
+                sendJson(response, 200, pipeline.readEvidence(decodeURIComponent(segments[3])));
+                return;
+            }
+
+            if (request.method === "GET" && url.pathname === "/api/premiere/evidence") {
+                const pipeline = requirePipeline();
+                const dir = url.searchParams.get("dir");
+                if (!dir) {
+                    throw new ApiError("API_VALIDATION_FAILED", "evidence requires ?dir= or /:run_id.");
+                }
+                sendJson(response, 200, pipeline.readEvidence(dir));
+                return;
+            }
+
+            if (request.method === "POST" && url.pathname === "/api/premiere/write-receipt") {
+                const pipeline = requirePipeline();
+                const body = await readBody(request);
+                if (!body.render_dir) {
+                    throw new ApiError("API_VALIDATION_FAILED", "write-receipt requires render_dir.");
+                }
+                sendJson(response, 200, await pipeline.writeReceipt({
+                    renderDir: body.render_dir,
+                    evidenceDir: body.evidence_dir || null,
+                    receiptPath: body.receipt_path || null,
+                    ingestSocialRegistry: body.ingest_social_registry || null,
+                    referenceProfileId: body.reference_profile_id || null,
+                    compareGenerationOutputId: body.compare_generation_output_id || null,
+                }));
+                return;
+            }
+
+            if (request.method === "GET" && url.pathname === "/api/premiere/styles") {
+                sendJson(response, 200, requirePipeline().getStyles({
+                    styleBankPath: url.searchParams.get("style_bank") || null,
+                }));
+                return;
+            }
+
+            if (request.method === "GET" && url.pathname === "/api/premiere/assets") {
+                const editPlan = url.searchParams.get("edit_plan");
+                if (!editPlan) {
+                    throw new ApiError("API_VALIDATION_FAILED", "assets requires ?edit_plan=<path>.");
+                }
+                sendJson(response, 200, requirePipeline().getAssets({ editPlanPath: editPlan }));
+                return;
+            }
+
+            if (request.method === "GET" && (url.pathname === "/ui" || url.pathname === "/ui/")) {
+                const uiPath = path.join(__dirname, "static", "control-surface.html");
+                if (!fs.existsSync(uiPath)) {
+                    throw new ApiError("API_RESOURCE_NOT_FOUND", "control surface UI not installed.");
+                }
+                response.writeHead(200, {
+                    "content-type": "text/html; charset=utf-8",
+                    "cache-control": "no-store",
+                });
+                response.end(fs.readFileSync(uiPath));
                 return;
             }
 

@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Premiere Video Factory — Control Surface</title>
+<style>
+  :root { color-scheme: light dark;
+    --surface:#fcfcfb; --page:#f9f9f7; --ink:#0b0b0b; --ink2:#52514e; --ink3:#898781;
+    --grid:#e1e0d9; --ring:rgba(11,11,11,0.10);
+    --good:#0ca30c; --warn:#fab219; --bad:#d03b3b; --goodtext:#006300;
+  }
+  @media (prefers-color-scheme: dark) { :root {
+    --surface:#1a1a19; --page:#0d0d0d; --ink:#ffffff; --ink2:#c3c2b7; --ink3:#898781;
+    --grid:#2c2c2a; --ring:rgba(255,255,255,0.10); --goodtext:#0ca30c;
+  }}
+  * { box-sizing: border-box; margin: 0; }
+  body { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; background: var(--page); color: var(--ink); padding: 22px clamp(14px,3vw,36px) 60px; }
+  h1 { font-size: 19px; font-weight: 650; }
+  .sub { color: var(--ink2); font-size: 12.5px; margin-top: 4px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); gap: 12px; margin-top: 18px; }
+  .panel { background: var(--surface); border: 1px solid var(--ring); border-radius: 10px; padding: 14px 16px; }
+  .panel h2 { font-size: 13px; font-weight: 650; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink3); display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .panel h2 .st { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--ring); text-transform: none; letter-spacing: 0; }
+  .st.ok { color: var(--goodtext); } .st.warn { color: var(--warn); } .st.bad { color: var(--bad); }
+  .kv { font-size: 12.5px; color: var(--ink2); line-height: 1.6; margin-top: 8px; }
+  .kv b { color: var(--ink); font-weight: 600; }
+  button { font: inherit; font-size: 12.5px; font-weight: 600; padding: 6px 12px; border-radius: 8px; border: 1px solid var(--ring); background: var(--page); color: var(--ink); cursor: pointer; margin: 6px 6px 0 0; }
+  button:hover { border-color: var(--ink3); }
+  input, textarea { font: inherit; font-size: 12.5px; width: 100%; margin-top: 6px; padding: 7px 9px; border-radius: 8px; border: 1px solid var(--grid); background: var(--page); color: var(--ink); }
+  textarea { min-height: 54px; font-family: ui-monospace, Menlo, monospace; }
+  pre { font-family: ui-monospace, Menlo, monospace; font-size: 11.5px; background: var(--page); border: 1px solid var(--grid); border-radius: 8px; padding: 10px; margin-top: 10px; max-height: 300px; overflow: auto; white-space: pre-wrap; word-break: break-word; color: var(--ink2); }
+  table { border-collapse: collapse; width: 100%; font-size: 12px; margin-top: 8px; }
+  th, td { text-align: left; padding: 5px 8px; border-bottom: 1px solid var(--grid); color: var(--ink2); }
+  th { color: var(--ink3); font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.05em; }
+  .full { grid-column: 1 / -1; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  label { font-size: 11.5px; color: var(--ink3); display: block; margin-top: 8px; }
+</style>
+</head>
+<body>
+<h1>Premiere Video Factory — Control Surface</h1>
+<div class="sub">One surface over the local stack: state, readiness, compile, run, evidence, review. Exports stay local; nothing here publishes.</div>
+
+<div class="grid">
+  <div class="panel">
+    <h2>Stack &amp; bridge <span class="st" id="stack-status">…</span></h2>
+    <div class="kv" id="stack-info">loading…</div>
+    <button onclick="ensureStack()">Ensure ready</button>
+    <button onclick="refreshState()">Refresh</button>
+  </div>
+
+  <div class="panel">
+    <h2>UXP plugin <span class="st" id="plugin-status">…</span></h2>
+    <div class="kv" id="plugin-info">loading…</div>
+    <button onclick="pluginAction('load')">Load</button>
+    <button onclick="pluginAction('reload')">Reload</button>
+    <button onclick="refreshPlugin()">Refresh</button>
+  </div>
+
+  <div class="panel">
+    <h2>Premiere state <span class="st" id="premiere-status">…</span></h2>
+    <div class="kv" id="premiere-info">loading…</div>
+  </div>
+
+  <div class="panel">
+    <h2>Styles</h2>
+    <div class="kv" id="styles-info">loading…</div>
+  </div>
+
+  <div class="panel full">
+    <h2>Compile &amp; run</h2>
+    <label>Edit plan path</label>
+    <input id="plan-path" placeholder="/…/marketing-video-foundry/…/plan.edit-plan.json">
+    <label>Packets output dir</label>
+    <input id="packets-dir" placeholder="/…/packets">
+    <button onclick="compilePlan()">Compile (live-safe)</button>
+    <button onclick="checkAssets()">Check assets &amp; rights</button>
+    <label>Packet path</label>
+    <input id="packet-path" placeholder="/…/packets/….premiere-operations.json">
+    <label>Evidence dir</label>
+    <input id="evidence-dir" placeholder="/…/evidence-YYYYMMDD">
+    <div class="row">
+      <button onclick="runPacket(true)">Preflight only</button>
+      <button onclick="runPacket(false)">Run live</button>
+      <button onclick="listRuns()">List runs</button>
+    </div>
+    <pre id="pipeline-out">—</pre>
+  </div>
+
+  <div class="panel full">
+    <h2>Runs &amp; evidence</h2>
+    <table id="runs-table"><thead><tr><th>Run</th><th>Status</th><th>Summary</th><th>Ops</th><th>Review</th><th></th></tr></thead><tbody></tbody></table>
+    <pre id="evidence-out">—</pre>
+  </div>
+
+  <div class="panel full">
+    <h2>Receipt &amp; review</h2>
+    <label>Render dir (contains edit plan, exports/, project/, evidence-*/)</label>
+    <input id="render-dir" placeholder="/…/narrative-no-captions-render">
+    <button onclick="writeReceipt()">Write production receipt</button>
+    <pre id="receipt-out">—</pre>
+  </div>
+
+  <div class="panel full">
+    <h2>Errors &amp; recovery</h2>
+    <div class="kv">Every failure is typed; recovery guidance is part of the catalog.</div>
+    <button onclick="loadErrors()">Show error catalog</button>
+    <pre id="errors-out">—</pre>
+  </div>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const out = (id, value) => { $(id).textContent = typeof value === "string" ? value : JSON.stringify(value, null, 2); };
+const setStatus = (id, cls, text) => { const el = $(id); el.className = "st " + cls; el.textContent = text; };
+
+async function api(path, options) {
+  const response = await fetch(path, options);
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) throw Object.assign(new Error(body?.error?.message || response.statusText), { body });
+  return body;
+}
+
+async function refreshState() {
+  try {
+    const state = await api("/api/premiere/state");
+    const bridge = state.proxy?.bridgeConnected;
+    setStatus("stack-status", bridge ? "ok" : "bad", bridge ? "bridge connected" : "bridge down");
+    $("stack-info").innerHTML =
+      `proxy: <b>${state.proxy?.status || "?"}</b> · premiere clients: <b>${state.proxy?.premiereClients ?? "?"}</b>`;
+    const project = state.premiere?.project;
+    setStatus("premiere-status", state.premiere?.responsive ? "ok" : "warn",
+      state.premiere?.responsive ? "responsive" : "not responsive");
+    $("premiere-info").innerHTML = project?.hasProject
+      ? `project: <b>${project.name}</b><br>${project.path || ""}`
+      : "no project open";
+  } catch (error) {
+    setStatus("stack-status", "bad", "unreachable");
+    $("stack-info").textContent = error.message;
+  }
+}
+
+async function ensureStack() {
+  out("pipeline-out", "ensuring stack…");
+  try { out("pipeline-out", await api("/api/node/ensure", { method: "POST" })); await refreshState(); }
+  catch (error) { out("pipeline-out", error.body || error.message); }
+}
+
+async function refreshPlugin() {
+  try {
+    const state = await api("/api/uxp/ui-state");
+    const loaded = JSON.stringify(state).toLowerCase().includes("loaded");
+    setStatus("plugin-status", loaded ? "ok" : "warn", loaded ? "row detected" : "check rows");
+    $("plugin-info").innerHTML = `<pre style="max-height:120px">${JSON.stringify(state.rows || state, null, 1).slice(0, 1200)}</pre>`;
+  } catch (error) {
+    setStatus("plugin-status", "bad", "driver error");
+    $("plugin-info").textContent = error.message;
+  }
+}
+
+async function pluginAction(action) {
+  out("pipeline-out", `plugin ${action}…`);
+  try {
+    out("pipeline-out", await api("/api/uxp/plugin-action", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ action }),
+    }));
+    await refreshPlugin();
+  } catch (error) { out("pipeline-out", error.body || error.message); }
+}
+
+async function loadStyles() {
+  try {
+    const styles = await api("/api/premiere/styles");
+    $("styles-info").innerHTML = styles.present
+      ? styles.style_profiles.map((p) => `<b>${p.id}</b> · ${p.pacing || ""} ${p.caption_style || ""}`).join("<br>")
+      : "style bank not found";
+  } catch (error) { $("styles-info").textContent = error.message; }
+}
+
+async function compilePlan() {
+  out("pipeline-out", "compiling…");
+  try {
+    out("pipeline-out", await api("/api/premiere/compile-request", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ plan_path: $("plan-path").value, output_dir: $("packets-dir").value }),
+    }));
+  } catch (error) { out("pipeline-out", error.body || error.message); }
+}
+
+async function checkAssets() {
+  out("pipeline-out", "checking assets…");
+  try {
+    out("pipeline-out", await api(`/api/premiere/assets?edit_plan=${encodeURIComponent($("plan-path").value)}`));
+  } catch (error) { out("pipeline-out", error.body || error.message); }
+}
+
+async function runPacket(preflightOnly) {
+  out("pipeline-out", preflightOnly ? "preflighting…" : "starting live run…");
+  try {
+    const body = {
+      packet_path: $("packet-path").value,
+      evidence_dir: $("evidence-dir").value,
+      args: preflightOnly ? ["--preflight-only"] : ["--approve"],
+    };
+    out("pipeline-out", await api("/api/premiere/run-packet", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    }));
+    await listRuns();
+  } catch (error) { out("pipeline-out", error.body || error.message); }
+}
+
+async function listRuns() {
+  try {
+    const { runs } = await api("/api/premiere/runs");
+    const tbody = $("runs-table").querySelector("tbody");
+    tbody.innerHTML = "";
+    for (const run of runs) {
+      const row = document.createElement("tr");
+      row.innerHTML = `<td>${run.run_id}</td><td>${run.status}</td><td>—</td><td>—</td><td>—</td>
+        <td><button onclick="showEvidence('${run.run_id}')">evidence</button></td>`;
+      tbody.appendChild(row);
+    }
+  } catch (error) { out("evidence-out", error.body || error.message); }
+}
+
+async function showEvidence(runId) {
+  try {
+    const evidence = await api(`/api/premiere/evidence/${encodeURIComponent(runId)}`);
+    out("evidence-out", evidence);
+  } catch (error) { out("evidence-out", error.body || error.message); }
+}
+
+async function writeReceipt() {
+  out("receipt-out", "writing receipt…");
+  try {
+    out("receipt-out", await api("/api/premiere/write-receipt", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ render_dir: $("render-dir").value }),
+    }));
+  } catch (error) { out("receipt-out", error.body || error.message); }
+}
+
+async function loadErrors() {
+  try { out("errors-out", await api("/api/errors")); }
+  catch (error) { out("errors-out", error.message); }
+}
+
+refreshState();
+refreshPlugin();
+loadStyles();
+listRuns();
+setInterval(refreshState, 15000);
+</script>
+</body>
+</html>
