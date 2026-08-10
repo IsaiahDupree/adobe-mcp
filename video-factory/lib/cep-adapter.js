@@ -8,6 +8,50 @@ function premiereDbToLevel(db) {
     return Math.min(1, Math.max(0, Math.pow(10, (value - 15) / 20)));
 }
 
+const EXTENDSCRIPT_JSON_POLYFILL = `
+if (typeof JSON === "undefined") {
+    JSON = {};
+}
+if (typeof JSON.stringify !== "function") {
+    JSON.stringify = function(value) {
+        function escapeString(input) {
+            return String(input).replace(/[\\\\"]/g, "\\\\$&").replace(/\\r/g, "\\\\r").replace(/\\n/g, "\\\\n").replace(/\\t/g, "\\\\t");
+        }
+        function stringifyValue(item) {
+            var type = typeof item;
+            if (item === null) return "null";
+            if (type === "number" || type === "boolean") return String(item);
+            if (type === "string") return "\\"" + escapeString(item) + "\\"";
+            if (item instanceof Array) {
+                var arrayValues = [];
+                for (var arrayIndex = 0; arrayIndex < item.length; arrayIndex++) {
+                    var arrayValue = stringifyValue(item[arrayIndex]);
+                    arrayValues.push(arrayValue === undefined ? "null" : arrayValue);
+                }
+                return "[" + arrayValues.join(",") + "]";
+            }
+            if (type === "object") {
+                var objectValues = [];
+                for (var key in item) {
+                    if (!item.hasOwnProperty(key)) continue;
+                    var objectValue = stringifyValue(item[key]);
+                    if (objectValue !== undefined) {
+                        objectValues.push("\\"" + escapeString(key) + "\\":" + objectValue);
+                    }
+                }
+                return "{" + objectValues.join(",") + "}";
+            }
+            return undefined;
+        }
+        return stringifyValue(value);
+    };
+}
+`;
+
+function withExtendScriptJsonPolyfill(script) {
+    return `${EXTENDSCRIPT_JSON_POLYFILL}\n${script}`;
+}
+
 class CepAdapter {
     constructor(config) {
         this.tempDir = config.PREMIERE_CEP_TEMP_DIR;
@@ -20,7 +64,7 @@ class CepAdapter {
         const id = `${process.pid}_${Date.now()}_${Math.random().toString(16).slice(2)}`;
         const commandPath = path.join(this.tempDir, `cmd_${id}.jsx`);
         const responsePath = path.join(this.tempDir, `res_${id}.json`);
-        fs.writeFileSync(commandPath, script, "utf8");
+        fs.writeFileSync(commandPath, withExtendScriptJsonPolyfill(script), "utf8");
 
         const deadline = Date.now() + timeoutMs;
         while (Date.now() < deadline) {
@@ -815,6 +859,46 @@ class CepAdapter {
         return this.executeScript(script);
     }
 
+    async exportFrame({ sequenceName, seconds, filePath }) {
+        ensureDir(path.dirname(filePath));
+        const outputBase = filePath.replace(/\.png$/i, "");
+        const script = `(function(){try{
+    var sequenceName=${JSON.stringify(sequenceName)};
+    var seconds=Number(${JSON.stringify(seconds)});
+    var outputBase=${JSON.stringify(outputBase)};
+    var outputFile=${JSON.stringify(filePath)};
+    var sequence=null;
+    for(var i=0;i<app.project.sequences.numSequences;i++) if(app.project.sequences[i].name===sequenceName) sequence=app.project.sequences[i];
+    if(!sequence) return JSON.stringify({success:false,error:"Sequence not found"});
+    if(!app.project.activeSequence||app.project.activeSequence.sequenceID!==sequence.sequenceID)app.project.openSequence(sequence.sequenceID);
+    if(!app.project.activeSequence||app.project.activeSequence.sequenceID!==sequence.sequenceID)return JSON.stringify({success:false,error:"Premiere could not activate the frame export sequence"});
+    var time=new Time();time.seconds=seconds;
+    sequence.setPlayerPosition(time.ticks);
+    if(typeof app.enableQE==="function")app.enableQE();
+    if(typeof qe==="undefined"||!qe.project)return JSON.stringify({success:false,error:"Premiere QE DOM is unavailable for frame export"});
+    var qeSequence=qe.project.getActiveSequence();
+    if(!qeSequence||typeof qeSequence.exportFramePNG!=="function")return JSON.stringify({success:false,error:"Premiere QE exportFramePNG is unavailable"});
+    var timecode=qeSequence.CTI&&qeSequence.CTI.timecode?qeSequence.CTI.timecode:null;
+    if(!timecode)return JSON.stringify({success:false,error:"Premiere QE current-time timecode is unavailable"});
+    var exported=qeSequence.exportFramePNG(timecode,outputBase);
+    var expectedFile=new File(outputFile);
+    return JSON.stringify({
+        success:Boolean(exported)&&expectedFile.exists,
+        exported:Boolean(exported),
+        exists:expectedFile.exists,
+        sequenceName:sequenceName,
+        seconds:seconds,
+        timecode:timecode,
+        filePath:outputFile
+    });
+}catch(error){return JSON.stringify({success:false,error:String(error)});}})();`;
+        const result = await this.executeScript(script, 120000);
+        if (!result.success) {
+            throw new Error(result.error || `Premiere did not export frame: ${filePath}`);
+        }
+        return result;
+    }
+
     async exportSequence({ sequenceName, outputFile, presetFile }) {
         presetFile = presetFile || this.h264Preset;
         if (!fs.existsSync(presetFile)) throw new Error(`Premiere export preset does not exist: ${presetFile}`);
@@ -831,4 +915,4 @@ class CepAdapter {
 
 }
 
-module.exports = { CepAdapter, premiereDbToLevel };
+module.exports = { CepAdapter, premiereDbToLevel, withExtendScriptJsonPolyfill };

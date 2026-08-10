@@ -3,7 +3,7 @@ const assert = require("node:assert/strict");
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
-const { CepAdapter, premiereDbToLevel } = require("../lib/cep-adapter");
+const { CepAdapter, premiereDbToLevel, withExtendScriptJsonPolyfill } = require("../lib/cep-adapter");
 const { writeJsonAtomic } = require("../lib/util");
 
 test("native caption receipt makes caption-track creation idempotent", async () => {
@@ -33,6 +33,15 @@ test("native caption receipt makes caption-track creation idempotent", async () 
     assert.equal(result.success, true);
     assert.equal(result.created, false);
     assert.equal(result.reused, true);
+});
+
+test("CEP commands include an ExtendScript JSON.stringify fallback", () => {
+    const script = 'JSON.stringify({success:true,message:"ok"})';
+    const wrapped = withExtendScriptJsonPolyfill(script);
+
+    assert.match(wrapped, /typeof JSON === "undefined"/);
+    assert.match(wrapped, /JSON\.stringify = function/);
+    assert.ok(wrapped.endsWith(script));
 });
 
 test("retention script falls back to an available SFX track and records the mapping", async () => {
@@ -189,6 +198,37 @@ test("short-form Motion adapts pixel plans to Premiere's coordinate mode", async
     assert.match(capturedScript, /coordinateMode:normalizedPosition\?"normalized":"pixels"/);
     assert.match(capturedScript, /audioProperty\.displayName==="Level"/);
     assert.match(capturedScript, /Math\.pow\(10,\(gainDb-15\)\/20\)/);
+});
+
+test("CEP frame export uses the QE DOM and writes a PNG evidence path", async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "premiere-cep-frame-"));
+    const adapter = new CepAdapter({
+        PREMIERE_CEP_TEMP_DIR: root,
+        PREMIERE_CEP_TIMEOUT_MS: 100,
+        PREMIERE_H264_PRESET: path.join(root, "unused.epr"),
+    });
+    let capturedScript = "";
+    adapter.executeScript = async (script) => {
+        capturedScript = script;
+        return {
+            success: true,
+            exported: true,
+            exists: true,
+            filePath: path.join(root, "frame.png"),
+        };
+    };
+
+    const result = await adapter.exportFrame({
+        sequenceName: "SHORT_9X16",
+        seconds: 12.5,
+        filePath: path.join(root, "frame.png"),
+    });
+
+    assert.equal(result.success, true);
+    assert.match(capturedScript, /app\.enableQE/);
+    assert.match(capturedScript, /qe\.project\.getActiveSequence/);
+    assert.match(capturedScript, /exportFramePNG\(timecode,outputBase\)/);
+    assert.match(capturedScript, /sequence\.setPlayerPosition\(time\.ticks\)/);
 });
 
 test("Premiere dB conversion accounts for the Level property's +15 dB ceiling", () => {
