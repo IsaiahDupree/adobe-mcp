@@ -329,16 +329,21 @@ async function finalizeExportResultFromFile(op, options, result, cfg) {
   };
 }
 
-function finalizeExportFrameResult(op, options, result) {
+async function finalizeExportFrameResult(op, options, result, waitMs = 8000) {
   // Audit F-14: bridges have written QC frames to "<requested>.png" (double
   // extension) while receipts recorded the requested path. Verify the frame on
   // disk, repair a doubled extension back to the requested path, and record
-  // truthful evidence either way.
+  // truthful evidence either way. The bridge acknowledges before the file
+  // lands, so poll briefly for arrival instead of checking once.
   if (op.action !== "exportFrame" || !result.ok) return result;
   const requested = options.filePath || options.outputFile;
   if (!requested) return result;
   const frame = { requested_path: requested, written_path: null, renamed: false, bytes: null };
   const doubled = `${requested}${path.extname(requested)}`;
+  const deadline = Date.now() + Math.max(0, waitMs);
+  while (Date.now() < deadline && !fs.existsSync(requested) && !fs.existsSync(doubled)) {
+    await sleep(250);
+  }
   try {
     if (fs.existsSync(requested)) {
       frame.written_path = requested;
@@ -599,7 +604,7 @@ async function main() {
       continue;
     }
 
-    const result = finalizeExportFrameResult(
+    const result = await finalizeExportFrameResult(
       op,
       options,
       await finalizeExportResultFromFile(

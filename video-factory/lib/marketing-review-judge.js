@@ -161,7 +161,13 @@ function hasCaptionEvidence(packet, runSummary) {
         const id = String(record.operation_id || "").toLowerCase();
         return statusSucceeded(record.status) && (action.includes("caption") || id.includes("caption"));
     });
-    return hasPacketEvidence || hasRunEvidence;
+    // Post-export captioning (e.g. ffmpeg/libass burn-in from word timestamps)
+    // is legitimate caption evidence when the run records the burned file.
+    const post = runSummary?.post_export;
+    const hasPostExportEvidence = Boolean(
+        post && post.captions && post.captions.burned === true && post.captions.path
+    );
+    return hasPacketEvidence || hasRunEvidence || hasPostExportEvidence;
 }
 
 function hasNarrativeEvidence(packet) {
