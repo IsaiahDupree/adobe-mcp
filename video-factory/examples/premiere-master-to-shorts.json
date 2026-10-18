@@ -1,0 +1,23 @@
+{
+  "short_form_id": "premiere-agent-factory-v2-shorts-v3",
+  "campaign_id": "premiere-agent-factory-v2-short-form",
+  "source_job_ids": [
+    "ops-campaign-2-premiere-agent-factory-v2-elevenlabs"
+  ],
+  "clips_per_source": 3,
+  "styles": [
+    "kinetic-proof",
+    "clean-authority",
+    "rapid-explainer"
+  ],
+  "variant_mode": "rotate",
+  "minimum_seconds": 15,
+  "maximum_seconds": 45,
+  "require_captions": true,
+  "archive": {
+    "enabled": true,
+    "mode": "copy",
+    "destination_root": "/Volumes/My Passport/VideoFactory/ShortForm",
+    "include_source_assets": false
+  }
+}

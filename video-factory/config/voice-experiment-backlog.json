@@ -1,0 +1,72 @@
+{
+  "schemaVersion": 1,
+  "status": "BACKLOGGED",
+  "experimentId": "voice-provider-retention-001",
+  "purpose": "Select the narration voice that maximizes qualified viewer retention without reducing perceived authenticity.",
+  "default": {
+    "provider": "elevenlabs",
+    "voiceId": "k0HDiJKO5QdXkGN6NSLI",
+    "name": "Isaiahdupree_v2"
+  },
+  "candidates": [
+    {
+      "variantId": "elevenlabs-isaiah-primary",
+      "provider": "elevenlabs",
+      "voiceId": "7B3f4QcIssMg3thV5ypj",
+      "name": "Isaiah Dupree",
+      "validation": "available"
+    },
+    {
+      "variantId": "elevenlabs-isaiah-v2",
+      "provider": "elevenlabs",
+      "voiceId": "k0HDiJKO5QdXkGN6NSLI",
+      "name": "Isaiahdupree_v2",
+      "validation": "available"
+    },
+    {
+      "variantId": "heygen-isaiah-primary",
+      "provider": "heygen",
+      "voiceId": "32ebf1506d7f4b9d93fbcfdda958721c",
+      "name": "Isaiah Dupree",
+      "validation": "available-private-voice"
+    },
+    {
+      "variantId": "requested-id-unresolved",
+      "provider": "unknown",
+      "voiceId": "e40f41c567924222a60ed3e1d557fc77",
+      "name": "User-provided Isaiah ID",
+      "validation": "invalid-for-elevenlabs-and-not-present-in-heygen-catalog"
+    }
+  ],
+  "controlRules": {
+    "minimumPostsPerVariant": 5,
+    "matchedFactors": [
+      "channel",
+      "topic-cluster",
+      "video-duration-band",
+      "thumbnail-style",
+      "publication-daypart"
+    ],
+    "changeOnly": "narration-voice"
+  },
+  "metrics": {
+    "primary": [
+      "thirty_second_retention_rate",
+      "average_percentage_viewed"
+    ],
+    "secondary": [
+      "average_view_duration_seconds",
+      "qualified_comments_per_thousand_views",
+      "subscriber_conversion_rate"
+    ],
+    "guardrails": [
+      "negative_voice_comments_rate",
+      "audio_complaint_rate"
+    ]
+  },
+  "decision": {
+    "minimumComparablePosts": 15,
+    "minimumRelativeLift": 0.08,
+    "action": "Promote the winner to the default only after guardrails pass."
+  }
+}

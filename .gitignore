@@ -1,0 +1,84 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+!video-factory/lib/
+!video-factory/lib/**
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+.venv/
+venv/
+ENV/
+env/
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+yarn.lock
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Logs
+*.log
+
+# Adobe specific
+*.idlk
+*.indd
+*.psd
+*.prproj
+*.ai
+
+# UXP Developer Tool
+.debug/
+.uxprc
+**/.uxprc
+
+# Local startup journals and screenshot evidence
+video-factory/startup/
+video-factory/uxp-loader/
+video-factory/.startup/
+
+# Claude Code session tracking
+claude-progress.txt
+
+# Live provider inventories (regenerated with video-factory voices-sync)
+video-factory/config/*-live.json
+
+# Runtime evidence + error logs (regenerated per run)
+video-factory/work/
+
+# audit transfer scratch (cowork session)
+_audit_sync/

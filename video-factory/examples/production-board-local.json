@@ -1,0 +1,120 @@
+{
+  "board_id": "premiere-production-board-local-20260801-clean",
+  "campaign_id": "production-board-integration",
+  "topic": "How autonomous agents build an editable Premiere video",
+  "objective": "Demonstrate a closed-loop Premiere workflow with licensed footage, native captions, structured critique, and a selected final revision.",
+  "max_revisions": 3,
+  "minimum_revisions": 3,
+  "agents": {
+    "provider": "local",
+    "judge_count": 2
+  },
+  "trend": {
+    "enabled": true,
+    "query": "AI video editing automation",
+    "limit": 3,
+    "max_age_days": 30,
+    "region": "US"
+  },
+  "release": {
+    "minimum_overall_score": 82,
+    "minimum_category_score": 6,
+    "required_judge_passes": 2,
+    "require_claims": true,
+    "require_captions": true
+  },
+  "claims_and_sources": [],
+  "prohibited_patterns": [
+    "pre-existing local creative footage",
+    "unlicensed repository media",
+    "vague non-timecoded revision notes"
+  ],
+  "base_job": {
+    "campaign_id": "production-board-integration",
+    "priority": 98,
+    "request": {
+      "topic": "How autonomous agents build an editable Premiere video",
+      "audience": "creators and agent engineers",
+      "viewer_problem": "Automated videos often hide their decisions and produce uneditable exports.",
+      "core_promise": "See a complete autonomous Premiere workflow that remains editable.",
+      "cta": "Use the winning project as the starting point for the next production board."
+    },
+    "generation": {
+      "enabled": true,
+      "provider": "macos_say",
+      "voice_name": "Samantha",
+      "words_per_minute": 180,
+      "aspect_ratio": "16:9",
+      "resolution": "720p",
+      "scenes": [
+        {
+          "id": "video-editor",
+          "title": "Start With the Finished Result",
+          "script": "Here is the result first: an autonomous agent opened Premiere, assembled licensed footage, created native captions, and exported an editable project."
+        },
+        {
+          "id": "computer-automation",
+          "title": "Inspect the Evidence",
+          "script": "Every production decision is structured and timecoded. The board records its brief, asset licenses, timeline events, quality checks, and exact revision requests."
+        },
+        {
+          "id": "content-creator",
+          "title": "Choose the Strongest Revision",
+          "script": "The release arbiter compares every playable version and chooses the strongest score, not simply the newest edit. Use the winning project for the next production board."
+        }
+      ]
+    },
+    "retention": {
+      "enabled": true,
+      "preset": "youtube-explainer",
+      "caption_mode": "both",
+      "hook_text": "AUTONOMOUS, BUT STILL EDITABLE",
+      "pattern_interrupt_text": "SHOW THE PROOF",
+      "punch_in_scale": 1.06,
+      "native_caption_track_name": "C1_ACCESSIBILITY_EN",
+      "creative_reference_ids": [
+        "heygen-hyperframes-launch",
+        "remotion-overlay",
+        "remotion-tiktok-captions"
+      ]
+    },
+    "showcase": {
+      "enabled": true,
+      "minimum_duration_seconds": 20,
+      "maximum_duration_seconds": 90,
+      "asset_policy": {
+        "mode": "provider-only",
+        "record_provenance": true
+      },
+      "asset_requests": [
+        {
+          "id": "opening-editor-proof",
+          "scene_id": "video-editor",
+          "query": "professional video editor editing timeline computer",
+          "providers": ["pexels", "pixabay"],
+          "purpose": "opening-proof",
+          "orientation": "landscape",
+          "min_duration_seconds": 5,
+          "max_duration_seconds": 35,
+          "placement_duration_seconds": 6
+        }
+      ],
+      "broll_sources": [],
+      "sfx_sources": []
+    },
+    "production": {
+      "project_name": "premiere-production-board-local",
+      "sequence_name": "PRODUCTION_BOARD_MASTER",
+      "render": {
+        "timeout_ms": 1800000
+      }
+    },
+    "archive": {
+      "enabled": false
+    }
+  },
+  "archive": {
+    "enabled": true,
+    "destination_root": "/Volumes/My Passport/VideoFactory/ProductionBoards"
+  }
+}
