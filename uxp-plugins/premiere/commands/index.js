@@ -1,0 +1,1103 @@
+/* MIT License
+ *
+ * Copyright (c) 2025 Mike Chambers
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+
+const fs = require("uxp").storage.localFileSystem;
+//const openfs = require('fs')
+const app = require("premierepro");
+const {consts, BLEND_MODES} = require("./consts.js")
+
+const createSequenceFromMedia = async (command) => {
+
+    let options = command.options
+
+    let itemNames = options.itemNames
+    let sequenceName = options.sequenceName
+
+    let project = await app.Project.getActiveProject()
+
+    let found = false
+    try {
+        await findProjectItem(sequenceName, project)
+        found  = true
+    } catch {
+        //do nothing
+    }
+
+    if(found) {
+        throw Error(`createSequenceFromMedia : sequence name [${sequenceName}] is already in use`)
+    }
+
+    let items = []
+    for (const name of itemNames) {
+
+        //this is a little inefficient
+        let insertItem = await findProjectItem(name, project)
+        items.push(insertItem)
+    }
+
+
+    let root = await project.getRootItem()
+    
+    let sequence = await project.createSequenceFromMedia(sequenceName, items, root)
+
+    await _setActiveSequence(sequence)
+}
+
+const findSequenceByName = async (sequenceName) => {
+    let project = await app.Project.getActiveProject()
+    let sequences = await project.getSequences()
+
+    for(const s of sequences) {
+        if(s.name == sequenceName) {
+            return s
+        }
+    }
+
+    return
+}
+
+const getFunctionNames = (value) => {
+    const names = new Set();
+    let cursor = value;
+
+    while (cursor) {
+        for (const name of Object.getOwnPropertyNames(cursor)) {
+            try {
+                if (typeof value[name] === "function") {
+                    names.add(name);
+                }
+            } catch {
+                // Some UXP host-backed properties can throw during inspection.
+            }
+        }
+        cursor = Object.getPrototypeOf(cursor);
+    }
+
+    return Array.from(names).sort();
+}
+
+const getProjectInfo = async (command) => {
+    let project = await app.Project.getActiveProject()
+
+    if(!project) {
+        return { hasProject: false }
+    }
+
+    const activeSequence = await project.getActiveSequence()
+
+    return {
+        hasProject: true,
+        id: project.guid ? project.guid.toString() : undefined,
+        name: project.name,
+        path: project.path,
+        activeSequenceId: activeSequence && activeSequence.guid
+            ? activeSequence.guid.toString()
+            : undefined,
+        activeSequenceName: activeSequence ? activeSequence.name : undefined,
+        constructorName: project.constructor ? project.constructor.name : undefined,
+        keys: Object.keys(project),
+        functions: getFunctionNames(project)
+    }
+}
+
+const _getSequenceFromId = async (id) => {
+    let project = await app.Project.getActiveProject()
+
+    let guid = app.Guid.fromString(id)
+    let sequence = await project.getSequence(guid)
+
+    if(!sequence) {
+        throw new Error(`_getSequenceFromId : Could not find sequence with id : ${id}`)
+    }
+
+    return sequence
+}
+
+
+const _setActiveSequence = async (sequence) => {
+    let project = await app.Project.getActiveProject()
+    await project.setActiveSequence(sequence)
+
+    let item = await findProjectItem(sequence.name, project)
+    await app.SourceMonitor.openProjectItem(item)
+}
+
+const setActiveSequence = async (command) => {
+    let options = command.options
+    let id = options.sequenceId
+
+    let sequence = await _getSequenceFromId(id)
+
+    await _setActiveSequence(sequence)
+}
+
+const createProject = async (command) => {
+
+    let options = command.options
+    let path = options.path
+    let name = options.name
+
+    if (!path.endsWith('/')) {
+        path = path + '/';
+    }
+
+    //todo: this will open a dialog if directory doesnt exist
+    let project = await app.Project.createProject(`${path}${name}.prproj`) 
+
+
+    if(!project) {
+        throw new Error("createProject : Could not create project. Check that the directory path exists and try again.")
+    }
+
+    //create a default sequence and set it as active
+    //let sequence = await project.createSequence("default")
+    //await project.setActiveSequence(sequence)
+}
+
+const createSequence = async (command) => {
+    let options = command.options
+    let sequenceName = options.sequenceName || options.name || "default"
+
+    let project = await app.Project.getActiveProject()
+
+    let found = false
+    try {
+        await findProjectItem(sequenceName, project)
+        found  = true
+    } catch {
+        //do nothing
+    }
+
+    if(found) {
+        throw Error(`createSequence : sequence name [${sequenceName}] is already in use`)
+    }
+
+    let sequence = await project.createSequence(sequenceName)
+
+    if(!sequence) {
+        throw new Error(`createSequence : Could not create sequence [${sequenceName}]`)
+    }
+
+    await _setActiveSequence(sequence)
+
+    return {
+        id: sequence.guid.toString(),
+        name: sequence.name,
+    }
+}
+
+const createSequenceWithPresetPath = async (command) => {
+    const options = command.options
+    const sequenceName = options.sequenceName || options.name || "default"
+    const presetPath = options.presetPath
+
+    if(!presetPath) {
+        throw new Error("createSequenceWithPresetPath : presetPath is required")
+    }
+
+    const project = await app.Project.getActiveProject()
+    const existing = await findSequenceByName(sequenceName)
+
+    if(existing) {
+        throw Error(`createSequenceWithPresetPath : sequence name [${sequenceName}] is already in use`)
+    }
+
+    const sequence = await project.createSequenceWithPresetPath(sequenceName, presetPath)
+
+    if(!sequence) {
+        throw new Error(`createSequenceWithPresetPath : Could not create sequence [${sequenceName}]`)
+    }
+
+    await _setActiveSequence(sequence)
+
+    return {
+        id: sequence.guid.toString(),
+        name: sequence.name,
+        presetPath,
+    }
+}
+
+const exportFrame = async (command) => {
+    const options = command.options
+    let id = options.sequenceId
+
+    let sequence = await _getSequenceFromId(id)
+
+    let size = await sequence.getFrameSize()
+
+    let p = window.path.parse(options.filePath)
+
+    let t = app.TickTime.createWithSeconds(options.seconds)
+
+    let out = await app.Exporter.exportSequenceFrame(sequence, t, p.base, p.dir, size.width, size.height)
+
+    let ps = `${p.dir}${window.path.sep}${p.base}`
+    let outPath = `${ps}.png`
+
+    if(!out) {
+        throw new Error(`exportFrame : Could not save frame to [${outPath}]`);
+    }
+    //console.log(ps)
+    //console.log(`${ps}.png`)
+
+    //let tmp = await openfs.rename(`file:${ps}.png`, `file:${ps}`);
+
+    return {"filePath": outPath}
+}
+
+const setAudioClipDisabled = async (command) => {
+
+    let options = command.options
+    let id = options.sequenceId
+
+    let project = await app.Project.getActiveProject()
+    let sequence = await _getSequenceFromId(id)
+
+    if(!sequence) {
+        throw new Error(`setAudioClipDisabled : Requires an active sequence.`)
+    }
+
+    let trackItem = await getAudioTrack(sequence, options.audioTrackIndex, options.trackItemIndex)
+
+    execute(() => {
+        let action = trackItem.createSetDisabledAction(options.disabled)
+        return [action]
+    }, project)
+
+}
+
+const setVideoClipDisabled = async (command) => {
+
+    let options = command.options
+    let id = options.sequenceId
+
+    let project = await app.Project.getActiveProject()
+    let sequence = await _getSequenceFromId(id)
+
+    if(!sequence) {
+        throw new Error(`setVideoClipDisabled : Requires an active sequence.`)
+    }
+
+    let trackItem = await getVideoTrack(sequence, options.videoTrackIndex, options.trackItemIndex)
+
+    execute(() => {
+        let action = trackItem.createSetDisabledAction(options.disabled)
+        return [action]
+    }, project)
+}
+
+const appendVideoTransition = async (command) => {
+
+    let options = command.options
+    let id = options.sequenceId
+
+    let project = await app.Project.getActiveProject()
+    let sequence = await _getSequenceFromId(id)
+
+    if(!sequence) {
+        throw new Error(`appendVideoTransition : Requires an active sequence.`)
+    }
+
+    let trackItem = await getVideoTrack(sequence, options.videoTrackIndex, options.trackItemIndex)
+
+    let transition = await app.TransitionFactory.createVideoTransition(options.transitionName);
+
+    let transitionOptions = new app.AddTransitionOptions()
+    transitionOptions.setApplyToStart(false)
+
+    const time = await app.TickTime.createWithSeconds(options.duration)
+    transitionOptions.setDuration(time)
+    transitionOptions.setTransitionAlignment(options.clipAlignment)
+
+    execute(() => {
+        let action = trackItem.createAddVideoTransitionAction(transition, transitionOptions)
+        return [action]
+    }, project)
+}
+
+
+const setParam = async(trackItem, componentName, paramName, value) => {
+
+    const project = await app.Project.getActiveProject()
+
+    let param = await getParam(trackItem, componentName, paramName)
+
+    let keyframe = await param.createKeyframe(value)
+
+    execute(() => {
+        let action = param.createSetValueAction(keyframe);
+        return [action]
+    }, project)
+}
+
+const getParam = async (trackItem, componentName, paramName) => {
+
+    let components = await trackItem.getComponentChain()
+
+    const count = components.getComponentCount()
+    for(let i = 0; i < count; i++) {
+        const component =  components.getComponentAtIndex(i)
+
+        //search for match name
+        //component name AE.ADBE Opacity
+        const matchName = await component.getMatchName()
+        
+        
+        if(matchName == componentName) {
+            console.log(matchName)
+            let pCount = component.getParamCount()
+
+            for (let j = 0; j < pCount; j++) {
+                
+                const param = component.getParam(j);
+
+                console.log(param.type)
+                console.log(param)
+                if(param.displayName == paramName) {
+                    return param
+                }
+
+            }
+        }
+    }
+}
+
+
+const setVideoClipProperties = async (command) => {
+
+    const options = command.options
+    let id = options.sequenceId
+
+    let project = await app.Project.getActiveProject()
+    let sequence = await _getSequenceFromId(id)
+
+    if(!sequence) {
+        throw new Error(`setVideoClipProperties : Requires an active sequence.`)
+    }
+
+    let trackItem = await getVideoTrack(sequence, options.videoTrackIndex, options.trackItemIndex)
+
+    let opacityParam = await getParam(trackItem, "AE.ADBE Opacity", "Opacity")
+    let opacityKeyframe = await opacityParam.createKeyframe(options.opacity)
+
+    let blendModeParam = await getParam(trackItem, "AE.ADBE Opacity", "Blend Mode")
+
+    let mode = BLEND_MODES[options.blendMode.toUpperCase()]
+    let blendModeKeyframe = await blendModeParam.createKeyframe(mode)
+
+    execute(() => {
+        let opacityAction = opacityParam.createSetValueAction(opacityKeyframe);
+        let blendModeAction = blendModeParam.createSetValueAction(blendModeKeyframe);
+        return [opacityAction, blendModeAction]
+    }, project)
+
+    // /AE.ADBE Opacity
+    //Opacity
+    //Blend Mode
+
+}
+
+const appendVideoFilter = async (command) => {
+
+    let options = command.options
+    let id = options.sequenceId
+
+    let sequence = await _getSequenceFromId(id)
+
+    if(!sequence) {
+        throw new Error(`appendVideoFilter : Requires an active sequence.`)
+    }
+
+    let trackItem = await getVideoTrack(sequence, options.videoTrackIndex, options.trackItemIndex)
+
+    let effectName = options.effectName
+    let properties = options.properties
+
+    let d = await addEffect(trackItem, effectName)
+
+    for(const p of properties) {
+        console.log(p.value)
+        await setParam(trackItem, effectName, p.name, p.value)
+    }
+}
+
+const addEffect = async (trackItem, effectName) => {
+    let project = await app.Project.getActiveProject()
+    const effect = await app.VideoFilterFactory.createComponent(effectName);
+
+    let componentChain = await trackItem.getComponentChain()
+    
+    execute(() => {
+        let action = componentChain.createAppendComponentAction(
+            effect, 0)//todo, second isnt needed
+        return [action]
+    }, project)
+}
+
+
+const setAudioTrackMute = async (command) => {
+
+    let options = command.options
+    let id = options.sequenceId
+
+    let sequence = await _getSequenceFromId(id)
+
+    let track = await sequence.getAudioTrack(options.audioTrackIndex)
+    track.setMute(options.mute)
+}
+
+
+const findProjectItem = async (itemName, project) => {
+    let root = await project.getRootItem()
+    let rootItems = await root.getItems()
+
+    let insertItem;
+    for(const item of rootItems) {
+        if (item.name == itemName) {
+            insertItem = item;
+            break;
+        }
+    }
+
+    if(!insertItem) {
+        throw new Error(
+            `addItemToSequence : Could not find item named ${itemName}`
+        );
+    }
+
+    return insertItem
+}
+
+const _tickTimeFromOptions = (options, ticksKey, secondsKey) => {
+    if(options[ticksKey] !== undefined && options[ticksKey] !== null) {
+        return app.TickTime.createWithTicks(options[ticksKey].toString())
+    }
+    if(options[secondsKey] !== undefined && options[secondsKey] !== null) {
+        return app.TickTime.createWithSeconds(Number(options[secondsKey]))
+    }
+    throw new Error(`Missing ${ticksKey} or ${secondsKey}`)
+}
+
+const setProjectItemInOutPoints = async (command) => {
+    const options = command.options
+    const project = await app.Project.getActiveProject()
+    const item = app.ClipProjectItem.cast(await findProjectItem(options.itemName, project))
+
+    if(typeof item.createSetInOutPointsAction !== "function") {
+        throw new Error(`setProjectItemInOutPoints : item [${options.itemName}] does not support in/out actions`)
+    }
+
+    const inPoint = _tickTimeFromOptions(options, "inPointTicks", "inPointSeconds")
+    const outPoint = _tickTimeFromOptions(options, "outPointTicks", "outPointSeconds")
+
+    execute(() => {
+        const action = item.createSetInOutPointsAction(inPoint, outPoint)
+        return [action]
+    }, project)
+
+    return {
+        itemName: options.itemName,
+        inPointTicks: options.inPointTicks ?? null,
+        outPointTicks: options.outPointTicks ?? null,
+        inPointSeconds: options.inPointSeconds ?? null,
+        outPointSeconds: options.outPointSeconds ?? null,
+    }
+}
+
+const createSubClipFromProjectItem = async (command) => {
+    const options = command.options
+    const project = await app.Project.getActiveProject()
+    const item = app.ClipProjectItem.cast(await findProjectItem(options.itemName, project))
+
+    if(typeof item.createSubClipAction !== "function") {
+        throw new Error(`createSubClipFromProjectItem : item [${options.itemName}] does not support subclip actions`)
+    }
+
+    const subClipName = options.subClipName || `${options.itemName}_subclip`
+    const startTime = _tickTimeFromOptions(options, "startTicks", "startSeconds")
+    const endTime = _tickTimeFromOptions(options, "endTicks", "endSeconds")
+    const hasHardBoundaries = options.hasHardBoundaries !== false
+    const subClipOptions = {
+        takeVideo: options.takeVideo !== false,
+        takeAudio: options.takeAudio !== false,
+    }
+
+    execute(() => {
+        const action = item.createSubClipAction(
+            subClipName,
+            startTime,
+            endTime,
+            hasHardBoundaries,
+            subClipOptions
+        )
+        return [action]
+    }, project)
+
+    return {
+        itemName: options.itemName,
+        subClipName,
+        startTicks: options.startTicks ?? null,
+        endTicks: options.endTicks ?? null,
+        startSeconds: options.startSeconds ?? null,
+        endSeconds: options.endSeconds ?? null,
+        hasHardBoundaries,
+        takeVideo: subClipOptions.takeVideo,
+        takeAudio: subClipOptions.takeAudio,
+    }
+}
+
+//note: right now, we just always add to the active sequence. Need to add support
+//for specifying sequence
+const addMediaToSequence = async (command) => {
+
+    let options = command.options
+    let itemName = options.itemName
+    let id = options.sequenceId
+
+    let project = await app.Project.getActiveProject()
+    let sequence = await _getSequenceFromId(id)
+
+    let insertItem = await findProjectItem(itemName, project)
+
+    let editor = await app.SequenceEditor.getEditor(sequence)
+  
+    const insertionTime = await app.TickTime.createWithTicks(options.insertionTimeTicks.toString());
+    const videoTrackIndex = options.videoTrackIndex
+    const audioTrackIndex = options.audioTrackIndex
+  
+    //not sure what this does
+    const limitShift = false
+
+    //let f = ((options.overwrite) ? editor.createOverwriteItemAction : editor.createInsertProjectItemAction).bind(editor)
+    //let action = f(insertItem, insertionTime, videoTrackIndex, audioTrackIndex, limitShift)
+    execute(() => {
+        let action = editor.createOverwriteItemAction(insertItem, insertionTime, videoTrackIndex, audioTrackIndex)
+        return [action]
+    }, project)  
+}
+
+const applySceneReframe = async (sequenceId, scene) => {
+    const sequence = await _getSequenceFromId(sequenceId)
+    const trackItem = await getVideoTrack(sequence, 0, scene.trackItemIndex)
+    await setParam(trackItem, "AE.ADBE Motion", "Scale", scene.punchIn.scale)
+    return {
+        sceneId:scene.sceneId,
+        mode:"static-reframe",
+        scale:scene.punchIn.scale
+    }
+}
+
+const clearVideoTracksAboveBase = async (sequenceId) => {
+    const project = await app.Project.getActiveProject()
+    const sequence = await _getSequenceFromId(sequenceId)
+    const editor = await app.SequenceEditor.getEditor(sequence)
+    const selection = await sequence.getSelection()
+    const selectedItems = await selection.getTrackItems()
+    for(const selected of selectedItems) {
+        await selection.removeItem(selected)
+    }
+
+    let removed = 0
+    const trackCount = await sequence.getVideoTrackCount()
+    for(let trackIndex = 1; trackIndex < trackCount; trackIndex++) {
+        const track = await sequence.getVideoTrack(trackIndex)
+        const items = await track.getTrackItems(1, false)
+        for(const item of items) {
+            selection.addItem(item, true)
+            removed++
+        }
+    }
+
+    if(removed > 0) {
+        execute(() => [
+            editor.createRemoveItemsAction(selection, false, app.Constants.MediaType.ANY, false)
+        ], project)
+    }
+    return removed
+}
+
+const applyRetentionPlan = async (command) => {
+    const options = command.options
+    const plan = options.plan
+    const sequenceId = options.sequenceId
+    const punchIns = []
+
+    const removedOverlayItems = await clearVideoTracksAboveBase(sequenceId)
+
+    for(let i = 0; i < plan.scenes.length; i++) {
+        try {
+            punchIns.push(await applySceneReframe(sequenceId, {
+                ...plan.scenes[i],
+                trackItemIndex:i
+            }))
+        } catch(e) {
+            throw new Error(`applyRetentionPlan punch-in [${plan.scenes[i].sceneId}] : ${e}`)
+        }
+    }
+    return {
+        editor:"premiere-pro-uxp",
+        sequenceId,
+        removedOverlayItems,
+        punchIns
+    }
+}
+
+const execute = (getActions, project) => {
+    try {
+        project.lockedAccess( () => {
+            project.executeTransaction((compoundAction) => {
+                let actions = getActions()
+
+                for(const a of actions) {
+                    compoundAction.addAction(a);
+                }
+            });
+          });
+    } catch (e) {
+        throw new Error(`Error executing locked transaction : ${e}`);
+    }
+}
+
+const executeAction = (project, action) => {
+    try {
+        project.lockedAccess( () => {
+            project.executeTransaction((compoundAction) => {
+                compoundAction.addAction(action);
+            });
+          });
+    } catch (e) {
+        throw new Error(`Error executing locked transaction : ${e}`);
+    }
+};
+
+const importMedia = async (command) => {
+
+    let options = command.options
+    let paths = command.options.filePaths
+
+    let project = await app.Project.getActiveProject()
+
+    let root = await project.getRootItem()
+    let originalItems = await root.getItems()
+
+    //import everything into root
+    let rootFolderItems = await project.getRootItem()
+
+
+    let success = await project.importFiles(paths, true, rootFolderItems)
+    //TODO: what is not success?
+
+    let updatedItems = await root.getItems()
+    
+    const addedItems = updatedItems.filter(
+        updatedItem => !originalItems.some(originalItem => originalItem.name === updatedItem.name)
+      );
+      
+    let addedProjectItems = [];
+    for (const p of addedItems) { 
+        addedProjectItems.push({ name: p.name });
+    }
+    
+    return { addedProjectItems };
+}
+
+
+const getAudioTracks = async (sequence) => {
+    let audioCount = await sequence.getAudioTrackCount()
+
+    let audioTracks = []
+    for(let i = 0; i < audioCount; i++) {
+        let audioTrack = await sequence.getAudioTrack(i)
+
+        let track = {
+            index:i,
+            tracks:[]
+        }
+
+        let clips = await audioTrack.getTrackItems(1, false)
+
+
+        if(clips.length === 0) {
+            continue
+        }
+
+        let k = 0
+        for (const c of clips) {
+            let startTimeTicks = (await c.getStartTime()).ticks
+            let endTimeTicks = (await c.getEndTime()).ticks
+            let durationTicks = (await c.getDuration()).ticks
+            let durationSeconds = (await c.getDuration()).seconds
+            let projectItem = await c.getProjectItem()
+            let name = projectItem ? projectItem.name : "Generated Audio"
+            if(!projectItem && typeof c.getName === "function") {
+                name = await c.getName()
+            }
+            let type = await c.getType()
+            let index = k++
+
+            track.tracks.push({
+                startTimeTicks,
+                endTimeTicks,
+                durationTicks,
+                durationSeconds,
+                name,
+                type,
+                index
+            })
+        }
+
+        audioTracks.push(track)
+    }
+    return audioTracks
+}
+
+const getSequences = async () => {
+    let project = await app.Project.getActiveProject()
+    let active = await project.getActiveSequence()
+
+    let sequences = await project.getSequences()
+
+    let out = []
+    for(const sequence of sequences) {
+        let size = await sequence.getFrameSize()
+        //let settings = await sequence.getSettings()
+    
+        //let projectItem = await sequence.getProjectItem()
+        //let name = projectItem.name
+        let name = sequence.name
+        let id = sequence.guid.toString()
+    
+        let videoTracks = await getVideoTracks(sequence)
+        let audioTracks = await getAudioTracks(sequence)
+    
+        let isActive = active == sequence
+
+        out.push( {
+            isActive,
+            name,
+            id,
+            frameSize:{width:size.width, height:size.height},
+            videoTracks,
+            audioTracks
+        })
+    }
+
+    return out
+}
+
+const getVideoTracks = async (sequence) => {
+    let videoCount = await sequence.getVideoTrackCount()
+
+    let videoTracks = []
+    for(let i = 0; i < videoCount; i++) {
+        let videoTrack = await sequence.getVideoTrack(i)
+
+        let track = {
+            index:i,
+            tracks:[]
+        }
+
+        let clips = await videoTrack.getTrackItems(1, false)
+
+
+        if(clips.length === 0) {
+            continue
+        }
+
+
+        let k = 0;
+        for (const c of clips) {
+            let startTimeTicks = (await c.getStartTime()).ticks
+            let endTimeTicks = (await c.getEndTime()).ticks
+            let durationTicks = (await c.getDuration()).ticks
+            let durationSeconds = (await c.getDuration()).seconds
+            let projectItem = await c.getProjectItem()
+            let name = projectItem ? projectItem.name : "Generated Graphic"
+            if(!projectItem && typeof c.getName === "function") {
+                name = await c.getName()
+            }
+            let type = await c.getType()
+            let index = k++
+
+            track.tracks.push({
+                startTimeTicks,
+                endTimeTicks,
+                durationTicks,
+                durationSeconds,
+                name,
+                type,
+                index
+            })
+        }
+        
+        videoTracks.push(track)
+    }
+    return videoTracks
+}
+
+const getAudioTrack = async (sequence, trackIndex, clipIndex) => {
+
+    //todo: pass this in
+    let audioTrack = await sequence.getAudioTrack(trackIndex)
+ 
+    if(!audioTrack) {
+        throw new Error(`getAudioTrack : audioTrackIndex [${trackIndex}] does not exist`)
+    }
+
+
+    let trackItems = await audioTrack.getTrackItems(1, false)
+
+    let trackItem;
+    let i = 0
+    for(const t of trackItems) {
+        let index = i++
+        if(index === clipIndex) {
+            trackItem = t
+            break
+        }
+    }
+    if(!trackItem) {
+        throw new Error(`getAudioTrack : trackItemIndex [${clipIndex}] does not exist`)
+    }
+
+    return trackItem
+}
+
+
+const getVideoTrack = async (sequence, trackIndex, clipIndex) => {
+
+    //todo: pass this in
+    let videoTrack = await sequence.getVideoTrack(trackIndex)
+ 
+    if(!videoTrack) {
+        throw new Error(`getVideoTrack : videoTrackIndex [${trackIndex}] does not exist`)
+    }
+
+    let trackItems = await videoTrack.getTrackItems(1, false)
+
+    let trackItem;
+    let i = 0
+    for(const t of trackItems) {
+        let index = i++
+        if(index === clipIndex) {
+            trackItem = t
+            break
+        }
+    }
+    if(!trackItem) {
+        throw new Error(`getVideoTrack : clipIndex [${clipIndex}] does not exist`)
+    }
+
+    return trackItem
+}
+
+const getProjectContentInfo = async () => {
+    let project = await app.Project.getActiveProject()
+
+    let root = await project.getRootItem()
+    let items = await root.getItems()
+
+    let out = []
+    for(const item of items) {
+        //todo: it would be good to get more data / info here
+        out.push({name:item.name})
+    }
+
+    return out
+}
+
+const saveProject = async (command) => {
+    let project = await app.Project.getActiveProject()
+
+    const saved = await project.save()
+    return { saved, path: project.path }
+}
+
+const saveProjectAs = async (command) => {
+    let project = await app.Project.getActiveProject()
+
+    const options = command.options;
+    const filePath = options.filePath;
+
+    const saved = await project.saveAs(filePath)
+    return { saved, path: project.path }
+}
+
+const openProject = async (command) => {
+
+    const options = command.options;
+    const filePath = options.filePath;
+
+    const project = await app.Project.open(filePath)
+    return {
+        opened: Boolean(project),
+        id: project && project.guid ? project.guid.toString() : undefined,
+        name: project ? project.name : undefined,
+        path: project ? project.path : filePath,
+    }
+}
+
+const closeProject = async () => {
+    const project = await app.Project.getActiveProject()
+    if(!project) {
+        return { closed: true, hadProject: false }
+    }
+
+    await project.save()
+    const options = new app.CloseProjectOptions()
+    options.setPromptIfDirty(false)
+    options.setShowCancelButton(false)
+    options.setSaveWorkspace(true)
+    options.setIsAppBeingPreparedToQuit(false)
+    const closed = await project.close(options)
+
+    if(!closed) {
+        throw new Error(`closeProject : Could not close [${project.path}]`)
+    }
+
+    return { closed, hadProject: true, path: project.path }
+}
+
+const exportSequence = async (command) => {
+    const options = command.options
+    const sequence = options.sequenceId
+        ? await _getSequenceFromId(options.sequenceId)
+        : await app.Project.getActiveProject().then(project => project.getActiveSequence())
+
+    if(!sequence) {
+        throw new Error("exportSequence : Requires an active or specified sequence")
+    }
+
+    const outputFile = options.outputFile
+    const presetFile = options.presetFile || ""
+    const exportTypeName = options.exportType || "IMMEDIATELY"
+    const exportType = app.Constants.ExportType[exportTypeName]
+
+    if(!outputFile) {
+        throw new Error("exportSequence : outputFile is required")
+    }
+
+    if(exportType === undefined) {
+        throw new Error(`exportSequence : Unknown exportType [${exportTypeName}]`)
+    }
+
+    const manager = await app.EncoderManager.getManager()
+
+    if(!manager || !manager.isAMEInstalled) {
+        throw new Error("exportSequence : Adobe Media Encoder is not installed")
+    }
+
+    if(exportTypeName === "QUEUE_TO_AME" && typeof manager.launchEncoder === "function") {
+        await manager.launchEncoder()
+    }
+
+    const accepted = await manager.exportSequence(
+        sequence,
+        exportType,
+        outputFile,
+        presetFile,
+        options.exportFull !== false
+    )
+
+    if(!accepted) {
+        throw new Error(`exportSequence : Export was not accepted for [${outputFile}]`)
+    }
+
+    if(exportTypeName === "QUEUE_TO_AME" && options.startQueueImmediately !== false && typeof manager.startBatchEncode === "function") {
+        await manager.startBatchEncode()
+    }
+
+    return {
+        accepted,
+        outputFile,
+        presetFile,
+        exportType: exportTypeName,
+        sequenceId: sequence.guid.toString(),
+        sequenceName: sequence.name,
+    }
+}
+
+const parseAndRouteCommand = async (command) => {
+    let action = command.action;
+
+    let f = commandHandlers[action];
+
+    if (typeof f !== "function") {
+        throw new Error(`Unknown Command: ${action}`);
+    }
+
+    console.log(f.name)
+    return f(command);
+};
+
+const commandHandlers = {
+    openProject,
+    closeProject,
+    saveProjectAs,
+    saveProject,
+    getProjectInfo,
+    setActiveSequence,
+    exportFrame,
+    setVideoClipProperties,
+    createSequenceFromMedia,
+    setAudioTrackMute,
+    setProjectItemInOutPoints,
+    createSubClipFromProjectItem,
+    setAudioClipDisabled,
+    setVideoClipDisabled,
+    appendVideoTransition,
+    appendVideoFilter,
+    applyRetentionPlan,
+    addMediaToSequence,
+    importMedia,
+    createProject,
+    createSequence,
+    createSequenceWithPresetPath,
+    exportSequence,
+};
+
+const checkRequiresActiveProject = async (command) => {
+    if (!requiresActiveProject(command)) {
+        return;
+    }
+
+    let project = await app.Project.getActiveProject()
+    if (!project) {
+        throw new Error(
+            `${command.action} : Requires an open Premiere Project`
+        );
+    }
+};
+
+const requiresActiveProject = (command) => {
+    return !["createProject", "openProject", "closeProject", "getProjectInfo"].includes(command.action);
+};
+
+module.exports = {
+    getSequences,
+    getProjectContentInfo,
+    getAudioTracks,
+    getVideoTracks,
+    checkRequiresActiveProject,
+    parseAndRouteCommand
+};

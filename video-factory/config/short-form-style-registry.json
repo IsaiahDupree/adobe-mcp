@@ -1,0 +1,231 @@
+{
+  "schemaVersion": 1,
+  "styles": [
+    {
+      "id": "kinetic-proof",
+      "description": "Evidence-first pacing with a quick crop pulse and frequent hard visual resets.",
+      "selectionKeywords": ["result", "proof", "evidence", "before", "after", "quality", "test"],
+      "duration": { "minimumSeconds": 18, "idealSeconds": 32, "maximumSeconds": 45 },
+      "captions": { "mode": "stable-keyword-highlight", "safeBottomRatio": 0.18, "anchorYRatio": 0.67, "wordsPerChunk": 5, "frameRate": 30, "minimumVisibleFrames": 18, "bridgeGapFrames": 6 },
+      "layout": { "faceZoomMultiplier": 1.16, "faceAnchor": { "x": 0.5, "y": 0.35 }, "platformUiReserveBottomRatio": 0.18, "headlineYRatio": 0.12 },
+      "motion": { "introScaleMultiplier": 1.04, "outroScaleMultiplier": 1.015, "introSeconds": 0.7 },
+      "editing": {
+        "hookMode": "result-first",
+        "transition": "hard-cut",
+        "visualChangeIntervalSeconds": 2.2,
+        "calloutMode": "proof-takeaway",
+        "audioPriority": "dialogue-first",
+        "dialogueGainDb": 1
+      }
+    },
+    {
+      "id": "clean-authority",
+      "description": "Restrained expert framing with a slow push and fewer competing treatments.",
+      "selectionKeywords": ["decision", "system", "process", "important", "project", "strategy"],
+      "duration": { "minimumSeconds": 24, "idealSeconds": 42, "maximumSeconds": 60 },
+      "captions": { "mode": "stable-keyword-highlight", "safeBottomRatio": 0.18, "anchorYRatio": 0.67, "wordsPerChunk": 6, "frameRate": 30, "minimumVisibleFrames": 18, "bridgeGapFrames": 6 },
+      "layout": { "faceZoomMultiplier": 1.13, "faceAnchor": { "x": 0.5, "y": 0.36 }, "platformUiReserveBottomRatio": 0.18, "headlineYRatio": 0.12 },
+      "motion": { "introScaleMultiplier": 1, "outroScaleMultiplier": 1.025, "introSeconds": 1.2 },
+      "editing": {
+        "hookMode": "claim-first",
+        "transition": "hard-cut",
+        "visualChangeIntervalSeconds": 3.5,
+        "calloutMode": "single-takeaway",
+        "audioPriority": "dialogue-first",
+        "dialogueGainDb": 1
+      }
+    },
+    {
+      "id": "rapid-explainer",
+      "description": "Compact instructional pacing with an early punch-in and dense semantic changes.",
+      "selectionKeywords": ["how", "step", "first", "then", "workflow", "edit", "create"],
+      "duration": { "minimumSeconds": 15, "idealSeconds": 28, "maximumSeconds": 40 },
+      "captions": { "mode": "stable-keyword-highlight", "safeBottomRatio": 0.18, "anchorYRatio": 0.67, "wordsPerChunk": 4, "frameRate": 30, "minimumVisibleFrames": 15, "bridgeGapFrames": 6 },
+      "layout": { "faceZoomMultiplier": 1.18, "faceAnchor": { "x": 0.5, "y": 0.34 }, "platformUiReserveBottomRatio": 0.18, "headlineYRatio": 0.11 },
+      "motion": { "introScaleMultiplier": 1.05, "outroScaleMultiplier": 1.02, "introSeconds": 0.45 },
+      "editing": {
+        "hookMode": "open-loop",
+        "transition": "hard-cut",
+        "visualChangeIntervalSeconds": 1.8,
+        "calloutMode": "step-label",
+        "audioPriority": "dialogue-first",
+        "dialogueGainDb": 1
+      }
+    },
+    {
+      "id": "semantic-focus",
+      "description": "Face-anchored presenter framing with concise top-line context, stable keyword-highlight captions, and semantic-only visual inserts.",
+      "selectionKeywords": ["premiere", "visual", "asset", "caption", "workflow", "edit", "project"],
+      "duration": { "minimumSeconds": 18, "idealSeconds": 28, "maximumSeconds": 42 },
+      "captions": { "mode": "stable-keyword-highlight", "safeBottomRatio": 0.18, "anchorYRatio": 0.67, "wordsPerChunk": 5, "frameRate": 30, "minimumVisibleFrames": 18, "bridgeGapFrames": 6 },
+      "layout": { "faceZoomMultiplier": 1.16, "faceAnchor": { "x": 0.5, "y": 0.35 }, "platformUiReserveBottomRatio": 0.18, "headlineYRatio": 0.12 },
+      "motion": { "introScaleMultiplier": 1.035, "outroScaleMultiplier": 1.015, "introSeconds": 0.6 },
+      "editing": {
+        "hookMode": "visual-claim-first",
+        "transition": "hard-cut",
+        "visualChangeIntervalSeconds": 2.4,
+        "calloutMode": "condensed-main-point",
+        "audioPriority": "dialogue-first",
+        "dialogueGainDb": 1,
+        "semanticVisualsOnly": true,
+        "maximumVisualInserts": 4
+      }
+    },
+    {
+      "id": "benchmark-comparison-ladder",
+      "description": "Presenter-led two- or three-column comparison that escalates from a weak choice to a clear preferred choice.",
+      "selectionKeywords": ["versus", "difference", "choose", "better", "system", "tool", "compare"],
+      "duration": { "minimumSeconds": 12, "idealSeconds": 27, "maximumSeconds": 48 },
+      "captions": { "mode": "stable-keyword-highlight", "safeBottomRatio": 0.2, "anchorYRatio": 0.68, "wordsPerChunk": 4, "frameRate": 30, "minimumVisibleFrames": 18, "bridgeGapFrames": 6 },
+      "layout": { "faceZoomMultiplier": 1.17, "faceAnchor": { "x": 0.5, "y": 0.37 }, "platformUiReserveBottomRatio": 0.2, "headlineYRatio": 0.09 },
+      "motion": { "introScaleMultiplier": 1.04, "outroScaleMultiplier": 1.02, "introSeconds": 0.55 },
+      "graphics": { "headlineAccent": "#20D5C2", "comparisonLabels": true, "maximumHeadlineWords": 8 },
+      "editing": {
+        "formatFamily": "comparison-ladder",
+        "hookMode": "triple-hook-contrast",
+        "transition": "hard-cut",
+        "visualChangeIntervalSeconds": 2,
+        "calloutMode": "comparison-label-not-caption",
+        "audioPriority": "dialogue-first",
+        "dialogueGainDb": 1,
+        "semanticVisualsOnly": true,
+        "maximumVisualInserts": 6
+      }
+    },
+    {
+      "id": "benchmark-hook-test",
+      "description": "A/B creative demonstration that holds the idea constant while changing delivery, edit, hook, or proof.",
+      "selectionKeywords": ["hook", "test", "version", "views", "experiment", "delivery", "edit"],
+      "duration": { "minimumSeconds": 15, "idealSeconds": 32, "maximumSeconds": 50 },
+      "captions": { "mode": "stable-keyword-highlight", "safeBottomRatio": 0.2, "anchorYRatio": 0.68, "wordsPerChunk": 4, "frameRate": 30, "minimumVisibleFrames": 18, "bridgeGapFrames": 6 },
+      "layout": { "faceZoomMultiplier": 1.18, "faceAnchor": { "x": 0.5, "y": 0.36 }, "platformUiReserveBottomRatio": 0.2, "headlineYRatio": 0.09 },
+      "motion": { "introScaleMultiplier": 1.055, "outroScaleMultiplier": 1.015, "introSeconds": 0.45 },
+      "graphics": { "headlineAccent": "#FFD166", "variantLabels": ["A", "B"], "maximumHeadlineWords": 8 },
+      "editing": {
+        "formatFamily": "hook-test",
+        "hookMode": "triple-hook-question",
+        "transition": "hard-cut",
+        "visualChangeIntervalSeconds": 1.8,
+        "calloutMode": "variant-and-result-label",
+        "audioPriority": "dialogue-first",
+        "dialogueGainDb": 1,
+        "semanticVisualsOnly": true,
+        "maximumVisualInserts": 7
+      }
+    },
+    {
+      "id": "benchmark-rating-list",
+      "description": "Fast opinionated ratings or taxonomies where each item gets a visible score, reason, and semantic example.",
+      "selectionKeywords": ["rating", "rank", "types", "tools", "list", "myth", "best"],
+      "duration": { "minimumSeconds": 12, "idealSeconds": 26, "maximumSeconds": 45 },
+      "captions": { "mode": "stable-keyword-highlight", "safeBottomRatio": 0.2, "anchorYRatio": 0.68, "wordsPerChunk": 4, "frameRate": 30, "minimumVisibleFrames": 15, "bridgeGapFrames": 6 },
+      "layout": { "faceZoomMultiplier": 1.19, "faceAnchor": { "x": 0.5, "y": 0.36 }, "platformUiReserveBottomRatio": 0.2, "headlineYRatio": 0.09 },
+      "motion": { "introScaleMultiplier": 1.05, "outroScaleMultiplier": 1.02, "introSeconds": 0.4 },
+      "graphics": { "headlineAccent": "#FF5C77", "scoreBadge": true, "maximumHeadlineWords": 8 },
+      "editing": {
+        "formatFamily": "rating-list",
+        "hookMode": "triple-hook-opinion",
+        "transition": "hard-cut",
+        "visualChangeIntervalSeconds": 1.7,
+        "calloutMode": "score-and-reason",
+        "audioPriority": "dialogue-first",
+        "dialogueGainDb": 1,
+        "semanticVisualsOnly": true,
+        "maximumVisualInserts": 8
+      }
+    },
+    {
+      "id": "benchmark-story-authority",
+      "description": "Conversational founder story that alternates personal context, concrete proof, and a transferable lesson.",
+      "selectionKeywords": ["story", "built", "learned", "mistake", "founder", "journey", "lesson"],
+      "duration": { "minimumSeconds": 24, "idealSeconds": 44, "maximumSeconds": 60 },
+      "captions": { "mode": "stable-keyword-highlight", "safeBottomRatio": 0.2, "anchorYRatio": 0.68, "wordsPerChunk": 5, "frameRate": 30, "minimumVisibleFrames": 18, "bridgeGapFrames": 6 },
+      "layout": { "faceZoomMultiplier": 1.14, "faceAnchor": { "x": 0.5, "y": 0.37 }, "platformUiReserveBottomRatio": 0.2, "headlineYRatio": 0.09 },
+      "motion": { "introScaleMultiplier": 1.025, "outroScaleMultiplier": 1.02, "introSeconds": 0.75 },
+      "graphics": { "headlineAccent": "#63D2FF", "proofLabels": true, "maximumHeadlineWords": 8 },
+      "editing": {
+        "formatFamily": "story-authority",
+        "hookMode": "triple-hook-belief-shift",
+        "transition": "hard-cut",
+        "visualChangeIntervalSeconds": 2.4,
+        "calloutMode": "lesson-or-proof-not-caption",
+        "audioPriority": "dialogue-first",
+        "dialogueGainDb": 1,
+        "semanticVisualsOnly": true,
+        "maximumVisualInserts": 6
+      }
+    },
+    {
+      "id": "benchmark-contrarian-deconstruction",
+      "description": "A familiar belief is stated plainly, broken with one causal explanation, then replaced by a more useful operating rule.",
+      "selectionKeywords": ["wrong", "myth", "mistake", "stop", "actually", "fail", "belief", "truth"],
+      "duration": { "minimumSeconds": 15, "idealSeconds": 30, "maximumSeconds": 46 },
+      "captions": { "mode": "stable-keyword-highlight", "safeBottomRatio": 0.2, "anchorYRatio": 0.66, "wordsPerChunk": 3, "frameRate": 30, "minimumVisibleFrames": 18, "bridgeGapFrames": 6 },
+      "layout": { "faceZoomMultiplier": 1.2, "faceAnchor": { "x": 0.5, "y": 0.35 }, "platformUiReserveBottomRatio": 0.2, "headlineYRatio": 0.08 },
+      "motion": { "introScaleMultiplier": 1.065, "outroScaleMultiplier": 1.015, "introSeconds": 0.35 },
+      "graphics": { "headlineAccent": "#F4E04D", "formatLabel": "MYTH / REALITY", "maximumHeadlineWords": 7 },
+      "editing": {
+        "formatFamily": "contrarian-deconstruction",
+        "hookMode": "triple-hook-contrarian",
+        "transition": "hard-cut",
+        "visualChangeIntervalSeconds": 1.6,
+        "calloutMode": "myth-cause-replacement",
+        "audioPriority": "dialogue-first",
+        "dialogueGainDb": 1,
+        "musicMode": "restrained-tension",
+        "sfxMode": "myth-strike-and-rule-reveal",
+        "semanticVisualsOnly": true,
+        "semanticVisualMode": "diagram-plus-proof",
+        "maximumVisualInserts": 4
+      }
+    },
+    {
+      "id": "benchmark-screen-proof-walkthrough",
+      "description": "A proof-led screen demonstration where each visible action answers the phrase being spoken and the presenter returns to interpret the result.",
+      "selectionKeywords": ["show", "screen", "demo", "premiere", "project", "timeline", "result", "proof"],
+      "duration": { "minimumSeconds": 18, "idealSeconds": 36, "maximumSeconds": 52 },
+      "captions": { "mode": "stable-keyword-highlight", "safeBottomRatio": 0.2, "anchorYRatio": 0.71, "wordsPerChunk": 5, "frameRate": 30, "minimumVisibleFrames": 18, "bridgeGapFrames": 6 },
+      "layout": { "faceZoomMultiplier": 1.12, "faceAnchor": { "x": 0.5, "y": 0.34 }, "platformUiReserveBottomRatio": 0.2, "headlineYRatio": 0.08 },
+      "motion": { "introScaleMultiplier": 1.015, "outroScaleMultiplier": 1.025, "introSeconds": 0.8 },
+      "graphics": { "headlineAccent": "#7CF29A", "formatLabel": "LIVE PROOF", "maximumHeadlineWords": 7 },
+      "editing": {
+        "formatFamily": "screen-proof-walkthrough",
+        "hookMode": "result-before-process",
+        "transition": "action-matched-hard-cut",
+        "visualChangeIntervalSeconds": 1.5,
+        "calloutMode": "action-result-takeaway",
+        "audioPriority": "dialogue-first",
+        "dialogueGainDb": 1,
+        "musicMode": "minimal-technical-pulse",
+        "sfxMode": "interface-actions-only",
+        "semanticVisualsOnly": true,
+        "semanticVisualMode": "video-only",
+        "maximumVisualInserts": 8
+      }
+    },
+    {
+      "id": "benchmark-before-after-reveal",
+      "description": "The finished outcome appears first, the weak starting state creates contrast, and a compressed mechanism earns the final reveal.",
+      "selectionKeywords": ["before", "after", "changed", "fixed", "improved", "from", "to", "transformation"],
+      "duration": { "minimumSeconds": 15, "idealSeconds": 28, "maximumSeconds": 45 },
+      "captions": { "mode": "stable-keyword-highlight", "safeBottomRatio": 0.2, "anchorYRatio": 0.67, "wordsPerChunk": 4, "frameRate": 30, "minimumVisibleFrames": 18, "bridgeGapFrames": 6 },
+      "layout": { "faceZoomMultiplier": 1.18, "faceAnchor": { "x": 0.5, "y": 0.36 }, "platformUiReserveBottomRatio": 0.2, "headlineYRatio": 0.1 },
+      "motion": { "introScaleMultiplier": 1.07, "outroScaleMultiplier": 1.04, "introSeconds": 0.4 },
+      "graphics": { "headlineAccent": "#FF8A3D", "formatLabel": "BEFORE / AFTER", "maximumHeadlineWords": 8 },
+      "editing": {
+        "formatFamily": "before-after-reveal",
+        "hookMode": "triple-hook-outcome-first",
+        "transition": "hard-cut",
+        "visualChangeIntervalSeconds": 1.9,
+        "calloutMode": "before-mechanism-after",
+        "audioPriority": "dialogue-first",
+        "dialogueGainDb": 1,
+        "musicMode": "rising-proof-pulse",
+        "sfxMode": "before-after-reveal-only",
+        "semanticVisualsOnly": true,
+        "semanticVisualMode": "complete-evidence-sequence",
+        "maximumVisualInserts": 6
+      }
+    }
+  ]
+}

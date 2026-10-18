@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "creator": {
+    "handle": "personalbrandlaunch",
+    "displayName": "Ava | Content Marketing | Social Media Management",
+    "referenceProfile": "https://www.instagram.com/personalbrandlaunch/"
+  },
+  "scope": {
+    "ranking": "Top 20 current-year reels listed by SocialPruf on 2026-08-03",
+    "purpose": "Private production-pattern analysis; source media is not redistributed or used in generated posts.",
+    "engagementNote": "Counts are snapshots and differ slightly between the ranking index and live Instagram metadata."
+  },
+  "sources": [
+    "https://www.instagram.com/reel/DbfymuBhrC7/",
+    "https://socialpruf.com/instagram/personalbrandlaunch",
+    "https://www.contentcopilot.so/playbook/personalbrandlaunch"
+  ],
+  "entries": [
+    {"rank": 1, "shortcode": "DZXUbeGPBWp", "title": "Sound Effects 101", "url": "https://www.instagram.com/reel/DZXUbeGPBWp/", "file": "01-DZXUbeGPBWp.mp4", "views": 3340000, "likes": 238000, "comments": 25500},
+    {"rank": 2, "shortcode": "DQ1iunmjZ9j", "title": "Important vs. Not Important - Social Media Edition", "url": "https://www.instagram.com/reel/DQ1iunmjZ9j/", "file": "02-DQ1iunmjZ9j.mp4", "views": 1830000, "likes": 52000, "comments": 560},
+    {"rank": 3, "shortcode": "DWBm-iAlZb4", "title": "Slow Growth vs. Fast Growth Posting Schedule", "url": "https://www.instagram.com/reel/DWBm-iAlZb4/", "file": "03-DWBm-iAlZb4.mp4", "views": 1810000, "likes": 39000, "comments": 8990},
+    {"rank": 4, "shortcode": "DVYhLgCDeMO", "title": "Same Hook, Different Delivery", "url": "https://www.instagram.com/reel/DVYhLgCDeMO/", "file": "04-DVYhLgCDeMO.mp4", "views": 1720000, "likes": 56900, "comments": 45300},
+    {"rank": 5, "shortcode": "DN5dPT1jWYp", "title": "Rating Social Media Advice On a Scale of 1-10", "url": "https://www.instagram.com/reel/DN5dPT1jWYp/", "file": "05-DN5dPT1jWYp.mp4", "views": 1690000, "likes": 20000, "comments": 225},
+    {"rank": 6, "shortcode": "DZfC2ahsY9j", "title": "Music For Short Type", "url": "https://www.instagram.com/reel/DZfC2ahsY9j/", "file": "06-DZfC2ahsY9j.mp4", "views": 1580000, "likes": 39600, "comments": 166},
+    {"rank": 7, "shortcode": "DPJSguHDYlX", "title": "Reels vs. Carousels vs. Stories", "url": "https://www.instagram.com/reel/DPJSguHDYlX/", "file": "07-DPJSguHDYlX.mp4", "views": 1470000, "likes": 44300, "comments": 437},
+    {"rank": 8, "shortcode": "DQt1panjV5T", "title": "More Cuts = More Engagement", "url": "https://www.instagram.com/reel/DQt1panjV5T/", "file": "08-DQt1panjV5T.mp4", "views": 1380000, "likes": 39700, "comments": 444},
+    {"rank": 9, "shortcode": "DP_XMPEDJF4", "title": "Hi we're Ava & Ben", "url": "https://www.instagram.com/reel/DP_XMPEDJF4/", "file": "09-DP_XMPEDJF4.mp4", "views": 1160000, "likes": 76800, "comments": 473},
+    {"rank": 10, "shortcode": "DSNFwl8DHYX", "title": "Telling a Story vs. Storytelling", "url": "https://www.instagram.com/reel/DSNFwl8DHYX/", "file": "10-DSNFwl8DHYX.mp4", "views": 1080000, "likes": 17200, "comments": 118},
+    {"rank": 11, "shortcode": "DTxg4KDjfdx", "title": "Which video got more views? Video A or B?", "url": "https://www.instagram.com/reel/DTxg4KDjfdx/", "file": "11-DTxg4KDjfdx.mp4", "views": 1050000, "likes": 24300, "comments": 120},
+    {"rank": 12, "shortcode": "DNstL-22oeP", "title": "100 View vs. 100K vs. 1M View Hook", "url": "https://www.instagram.com/reel/DNstL-22oeP/", "file": "12-DNstL-22oeP.mp4", "views": 853000, "likes": 22200, "comments": 256},
+    {"rank": 13, "shortcode": "DUBvyjLEtFF", "title": "Hi we're Ava & Ben", "url": "https://www.instagram.com/reel/DUBvyjLEtFF/", "file": "13-DUBvyjLEtFF.mp4", "views": 824000, "likes": 56100, "comments": 313},
+    {"rank": 14, "shortcode": "DP8ycrgjJrE", "title": "Following vs. Personal Brand", "url": "https://www.instagram.com/reel/DP8ycrgjJrE/", "file": "14-DP8ycrgjJrE.mp4", "views": 788000, "likes": 27600, "comments": 182},
+    {"rank": 15, "shortcode": "DWE72LsIGQy", "title": "Which video got more views? Video A or B?", "url": "https://www.instagram.com/reel/DWE72LsIGQy/", "file": "15-DWE72LsIGQy.mp4", "views": 743000, "likes": 24200, "comments": 46},
+    {"rank": 16, "shortcode": "DQjhLi9DH0I", "title": "Educational vs. Storytelling vs. Authority Reels", "url": "https://www.instagram.com/reel/DQjhLi9DH0I/", "file": "16-DQjhLi9DH0I.mp4", "views": 733000, "likes": 17200, "comments": 189},
+    {"rank": 17, "shortcode": "DXJs0eIkcWY", "title": "Instagram 101", "url": "https://www.instagram.com/reel/DXJs0eIkcWY/", "file": "17-DXJs0eIkcWY.mp4", "views": 732000, "likes": 12100, "comments": 100},
+    {"rank": 18, "shortcode": "DPd68UjjZDV", "title": "5 Main Types of Content", "url": "https://www.instagram.com/reel/DPd68UjjZDV/", "file": "18-DPd68UjjZDV.mp4", "views": 719000, "likes": 22700, "comments": 202},
+    {"rank": 19, "shortcode": "DRHkT0Rjlgj", "title": "Reels vs. Carousels vs. Stories", "url": "https://www.instagram.com/reel/DRHkT0Rjlgj/", "file": "19-DRHkT0Rjlgj.mp4", "views": 718000, "likes": 17000, "comments": 150},
+    {"rank": 20, "shortcode": "DRPUBIWjQZK", "title": "Top Tools for Creators", "url": "https://www.instagram.com/reel/DRPUBIWjQZK/", "file": "20-DRPUBIWjQZK.mp4", "views": 629000, "likes": 15600, "comments": 159},
+    {"rank": 21, "shortcode": "DbfymuBhrC7", "title": "The Power of Background Music", "url": "https://www.instagram.com/reel/DbfymuBhrC7/", "file": "21-DbfymuBhrC7-style-anchor.mp4", "role": "user-selected-current-style-anchor"}
+  ]
+}

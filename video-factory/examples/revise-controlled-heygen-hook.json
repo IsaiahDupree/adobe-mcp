@@ -1,0 +1,225 @@
+{
+  "revise_id": "heygen-result-first-hook-20260802",
+  "topic_id": "autonomous-premiere-video-workflow",
+  "content_family_id": "premiere-autonomy-proof-family-001",
+  "research": {
+    "opportunity": "Test whether showing the completed autonomous Premiere result before explaining the problem improves early retention.",
+    "uncertainty": "Whether a result-first opening improves three-second hold while preserving average percentage viewed.",
+    "maximum_evidence_age_days": 30,
+    "evidence": [
+      {
+        "source": "premiere-video-factory live framing audit",
+        "observed_at": "2026-08-02T16:02:23.142Z",
+        "signal": "The selected HeyGen landscape and portrait looks both passed final full-frame coverage with zero detected bar area."
+      }
+    ],
+    "overused_patterns": ["generic problem-first opening"]
+  },
+  "experiment": {
+    "type": "controlled",
+    "hypothesis": "Result-first openings improve three-second retention.",
+    "primary_variable": "hook",
+    "locked_variables": ["body_script", "body_edit", "music", "captions", "cta", "duration"],
+    "primary_metric": "three_second_hold",
+    "primary_metric_direction": "higher_is_better",
+    "practical_significance_ratio": 0.1,
+    "minimum_exposure": {
+      "metric": "views",
+      "value": 1000
+    },
+    "guardrails": [
+      {
+        "metric": "average_percentage_viewed",
+        "direction": "higher_is_better",
+        "maximum_decline_ratio": 0.03
+      },
+      {
+        "metric": "shares",
+        "direction": "higher_is_better",
+        "maximum_decline_ratio": 0.05
+      }
+    ],
+    "replication_target_families": 3
+  },
+  "variants": [
+    {
+      "variant_id": "control-problem-first",
+      "role": "control",
+      "platform": "youtube",
+      "generation_family_id": "premiere-autonomy-proof-problem-first",
+      "variables": {
+        "hook": "problem-first",
+        "body_script": "plan-message-protect-face-build-motion-v1",
+        "body_edit": "safe-fill-before-after-panel-v1",
+        "music": "none",
+        "captions": "native",
+        "cta": "inspect-the-workflow",
+        "duration": "single-proof-scene"
+      },
+      "board": {
+        "board_id": "heygen-result-first-hook-20260802-control",
+        "campaign_id": "revise-heygen-hook",
+        "topic": "Why autonomous video creation needs a scene plan",
+        "objective": "Produce a problem-first control while preserving every locked experiment variable.",
+        "max_revisions": 3,
+        "minimum_revisions": 1,
+        "agents": { "provider": "local", "judge_count": 2 },
+        "trend": { "enabled": false },
+        "release": {
+          "minimum_overall_score": 82,
+          "minimum_category_score": 6,
+          "required_judge_passes": 2,
+          "require_claims": false,
+          "require_captions": true
+        },
+        "base_job": {
+          "campaign_id": "revise-heygen-hook",
+          "request": {
+            "topic": "Why autonomous video creation needs a scene plan",
+            "cta": "Inspect the workflow before your next production."
+          },
+          "generation": {
+            "provider": "heygen",
+            "engine": "avatar_v",
+            "avatar_id": "3583ef262c2c4b779989de0a79ec14dd",
+            "voice_id": "e40f41c567924222a60ed3e1d557fc77",
+            "aspect_ratio": "9:16",
+            "resolution": "720p",
+            "scenes": [
+              {
+                "id": "hook",
+                "script": "Without a visual plan, autonomous video fails before Premiere can build the edit."
+              },
+              {
+                "id": "body",
+                "script": "Plan the message, protect the face, then let Premiere build the motion."
+              },
+              {
+                "id": "cta",
+                "script": "Inspect the workflow before your next production."
+              }
+            ]
+          },
+          "retention": {
+            "preset": "social-dynamic",
+            "caption_mode": "native",
+            "hook_text": "AUTOMATION WITHOUT A PLAN FAILS",
+            "pattern_interrupt_text": "PLAN THE SCENE",
+            "punch_in_scale": 1.08
+          },
+          "composition": {
+            "enabled": true,
+            "layout": {
+              "framing_mode": "safe-fill",
+              "max_zoom": 1.28,
+              "edge_safety_margin": 0.005
+            },
+            "framing": {
+              "experiment_id": "heygen-result-first-hook-20260802",
+              "variant_id": "control-problem-first",
+              "control_id": "control-problem-first"
+            }
+          },
+          "production": {
+            "project_name": "revise-hook-control",
+            "sequence_name": "CONTROL_9x16",
+            "render": { "timeout_ms": 1800000 }
+          },
+          "archive": { "enabled": false }
+        },
+        "archive": { "enabled": false }
+      }
+    },
+    {
+      "variant_id": "treatment-result-first",
+      "role": "treatment",
+      "platform": "youtube",
+      "generation_family_id": "premiere-autonomy-proof-result-first",
+      "variables": {
+        "hook": "result-first",
+        "body_script": "plan-message-protect-face-build-motion-v1",
+        "body_edit": "safe-fill-before-after-panel-v1",
+        "music": "none",
+        "captions": "native",
+        "cta": "inspect-the-workflow",
+        "duration": "single-proof-scene"
+      },
+      "board": {
+        "board_id": "heygen-result-first-hook-20260802-treatment",
+        "campaign_id": "revise-heygen-hook",
+        "topic": "Why autonomous video creation needs a scene plan",
+        "objective": "Produce a result-first treatment while preserving every locked experiment variable.",
+        "max_revisions": 3,
+        "minimum_revisions": 1,
+        "agents": { "provider": "local", "judge_count": 2 },
+        "trend": { "enabled": false },
+        "release": {
+          "minimum_overall_score": 82,
+          "minimum_category_score": 6,
+          "required_judge_passes": 2,
+          "require_claims": false,
+          "require_captions": true
+        },
+        "base_job": {
+          "campaign_id": "revise-heygen-hook",
+          "request": {
+            "topic": "Why autonomous video creation needs a scene plan",
+            "cta": "Inspect the workflow before your next production."
+          },
+          "generation": {
+            "provider": "heygen",
+            "engine": "avatar_v",
+            "avatar_id": "3583ef262c2c4b779989de0a79ec14dd",
+            "voice_id": "e40f41c567924222a60ed3e1d557fc77",
+            "aspect_ratio": "9:16",
+            "resolution": "720p",
+            "scenes": [
+              {
+                "id": "hook",
+                "script": "Here is the finished result: a face-safe Premiere edit built completely autonomously."
+              },
+              {
+                "id": "body",
+                "script": "Plan the message, protect the face, then let Premiere build the motion."
+              },
+              {
+                "id": "cta",
+                "script": "Inspect the workflow before your next production."
+              }
+            ]
+          },
+          "retention": {
+            "preset": "social-dynamic",
+            "caption_mode": "native",
+            "hook_text": "HERE IS THE FINISHED RESULT",
+            "pattern_interrupt_text": "PLAN THE SCENE",
+            "punch_in_scale": 1.08
+          },
+          "composition": {
+            "enabled": true,
+            "layout": {
+              "framing_mode": "safe-fill",
+              "max_zoom": 1.28,
+              "edge_safety_margin": 0.005
+            },
+            "framing": {
+              "experiment_id": "heygen-result-first-hook-20260802",
+              "variant_id": "treatment-result-first",
+              "control_id": "control-problem-first"
+            }
+          },
+          "production": {
+            "project_name": "revise-hook-treatment",
+            "sequence_name": "TREATMENT_9x16",
+            "render": { "timeout_ms": 1800000 }
+          },
+          "archive": { "enabled": false }
+        },
+        "archive": { "enabled": false }
+      }
+    }
+  ],
+  "schedule": {
+    "start_at": "2026-08-11T18:00:00.000Z"
+  }
+}

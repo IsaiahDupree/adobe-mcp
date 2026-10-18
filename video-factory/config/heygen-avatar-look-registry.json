@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "avatarGroupId": "fe1d6bdab82a4e1e955ba4329d467c5b",
+  "retrievedAt": "2026-08-02T01:19:45.941Z",
+  "selectionMethod": "opencv-face-and-negative-space-ranking-plus-visual-review",
+  "selected": {
+    "16:9": {
+      "id": "93a72551393b4a13a7e256a3fa3ca421",
+      "orientation": "landscape",
+      "reason": "Wide composition, balanced face scale, and useful gesture room."
+    },
+    "9:16": {
+      "id": "3583ef262c2c4b779989de0a79ec14dd",
+      "orientation": "portrait",
+      "reason": "Upper-body composition with gesture room and a practical face scale."
+    }
+  },
+  "looks": [
+    { "id": "8be1ca0cb8864ed586af8cb1600baae8", "name": "Isaiah Dupree", "orientation": "portrait", "width": 720, "height": 1280 },
+    { "id": "5e421774b9924e70bc230851c56f87e7", "name": "Isaiah Dupree", "orientation": "portrait", "width": 720, "height": 1280 },
+    { "id": "083d13f1b59f4a96a4d031f9576cc29e", "name": "Isaiah Dupree", "orientation": "portrait", "width": 720, "height": 1280 },
+    { "id": "f47cc206e8dc480dacd6c8a28d79ec97", "name": "MyAvatar.MOV", "orientation": "portrait", "width": 720, "height": 1280 },
+    { "id": "7a0781b95787409b9c1c9741b556f592", "name": "MyAvatar.MOV", "orientation": "landscape", "width": 1280, "height": 720 },
+    { "id": "32aa55475ecf43eaa4fef7ef32958e65", "name": "MyAvatar.MOV", "orientation": "landscape", "width": 1280, "height": 720 },
+    { "id": "a4e0034befe9442690ee1f92f188879e", "name": "MyAvatar.MOV", "orientation": "portrait", "width": 720, "height": 1280 },
+    { "id": "532406405f4145a4b17bc4049866a619", "name": "MyAvatar.MOV", "orientation": "portrait", "width": 720, "height": 1280 },
+    { "id": "a8d627afa57f4b648d27128533301ae8", "name": "MyAvatar.MOV", "orientation": "portrait", "width": 720, "height": 1280 },
+    { "id": "f120f7a48bc045f889b17f25dc344e0a", "name": "MyAvatar.MOV", "orientation": "portrait", "width": 720, "height": 1280 },
+    { "id": "f776f1d8520e4661838a0fa929f327f6", "name": "MyAvatar.MOV", "orientation": "portrait", "width": 720, "height": 1280 },
+    { "id": "ae5c666fa2a941ca9aec3f164e366965", "name": "MyAvatar.MOV", "orientation": "landscape", "width": 1280, "height": 720 },
+    { "id": "3583ef262c2c4b779989de0a79ec14dd", "name": "MyAvatar.MOV", "orientation": "portrait", "width": 720, "height": 1280 },
+    { "id": "6753fb20f76948e88aeb1c128329f8b4", "name": "MyAvatar.MOV", "orientation": "landscape", "width": 1280, "height": 720 },
+    { "id": "93a72551393b4a13a7e256a3fa3ca421", "name": "MyAvatar.MOV", "orientation": "landscape", "width": 1280, "height": 720 },
+    { "id": "d8d8a4c3be2d4f79be14bbd796f3c37f", "name": "MyAvatar.MOV", "orientation": "landscape", "width": 1280, "height": 720 },
+    { "id": "2242a9acf15b41bb868035e031be214f", "name": "MyAvatar.MOV", "orientation": "landscape", "width": 1280, "height": 720 },
+    { "id": "01bf66f7130342ddbed197a190ade22e", "name": "MyAvatar.MOV", "orientation": "portrait", "width": 720, "height": 1280 },
+    { "id": "b5746422f4f24562855bb3cbf9b147ae", "name": "MyAvatar.MOV", "orientation": "portrait", "width": 720, "height": 1280 },
+    { "id": "c6eb9638220a4ac59ddbdca7246c1aae", "name": "MyAvatar.MOV", "orientation": "portrait", "width": 720, "height": 1280 }
+  ],
+  "supportedApiEngines": ["avatar_v", "avatar_iv", "avatar_iii"]
+}
