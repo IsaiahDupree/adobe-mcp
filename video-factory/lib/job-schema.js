@@ -14,6 +14,8 @@ const RETENTION_PRESETS = new Set(["social-dynamic", "social-accessible", "youtu
 const ASSET_PROVIDERS = new Set(["pexels", "pixabay"]);
 const COMPOSITION_FORMATS = new Set(["16:9", "9:16", "1:1"]);
 const CREATIVE_REFERENCE_IDS = new Set(creativeReferenceRegistry.references.map((item) => item.id));
+const DELIVERY_MODES = new Set(["premiere", "direct_heygen"]);
+const DIRECT_HEYGEN_PROVIDERS = new Set(["heygen-video-agent", "heygen-v3"]);
 
 function normalizeAsset(asset, index) {
     const input = typeof asset === "string" ? { path: asset } : { ...asset };
@@ -67,6 +69,46 @@ function normalizeArchive(spec, defaultArchiveRoot) {
         includeSourceAssets: Boolean(
             input.include_source_assets || input.includeSourceAssets
         ),
+    };
+}
+
+function normalizeDirectSource(production) {
+    const input = production.direct_source || production.directSource;
+    if (!input) return null;
+    const localPath = path.normalize(input.local_path || input.localPath || "");
+    if (!path.isAbsolute(localPath)) {
+        throw new Error("production.direct_source.local_path must be absolute.");
+    }
+    const provider = input.provider || "heygen-video-agent";
+    if (!DIRECT_HEYGEN_PROVIDERS.has(provider)) {
+        throw new Error(
+            `production.direct_source.provider must be one of: ${Array.from(DIRECT_HEYGEN_PROVIDERS).join(", ")}.`
+        );
+    }
+    if (input.consent_asserted !== true && input.consentAsserted !== true) {
+        throw new Error("production.direct_source.consent_asserted must be true.");
+    }
+    const aspectRatio = input.aspect_ratio || input.aspectRatio || "auto";
+    if (!ASPECT_RATIOS.has(aspectRatio)) {
+        throw new Error(`production.direct_source.aspect_ratio must be one of: ${Array.from(ASPECT_RATIOS).join(", ")}.`);
+    }
+    const maximumBarAreaRatio = Number(
+        input.maximum_bar_area_ratio ?? input.maximumBarAreaRatio ?? 0.003
+    );
+    if (!Number.isFinite(maximumBarAreaRatio)) {
+        throw new Error("production.direct_source.maximum_bar_area_ratio must be a number.");
+    }
+    return {
+        localPath,
+        provider,
+        providerVideoId: input.provider_video_id || input.providerVideoId || null,
+        providerSessionId: input.provider_session_id || input.providerSessionId || null,
+        providerPageUrl: input.provider_page_url || input.providerPageUrl || null,
+        title: input.title || null,
+        aspectRatio,
+        consentAsserted: true,
+        rightsBasis: input.rights_basis || input.rightsBasis || "owner-consented-digital-twin",
+        maximumBarAreaRatio: Math.max(0, Math.min(0.05, maximumBarAreaRatio)),
     };
 }
 
@@ -634,6 +676,8 @@ function normalizeJobSpec(
 
     const sourceAssets = collectAssets(spec);
     const archive = normalizeArchive(spec, defaultArchiveRoot);
+    const requestedDeliveryMode = production.delivery_mode || production.deliveryMode || null;
+    const directSource = normalizeDirectSource(production);
     const generation = normalizeGeneration(spec, defaults);
     const modelPolicy = normalizeModelPolicy(spec, generation);
     const retention = normalizeRetention(spec, defaults);
@@ -641,6 +685,52 @@ function normalizeJobSpec(
     const composition = normalizeComposition(spec, generation);
     const shortForm = normalizeShortForm(spec);
     const derivativeCampaign = normalizeDerivativeCampaign(spec, generation, defaultArchiveRoot);
+    const requiresPremiere = Boolean(
+        production.render ||
+        production.edit_plan ||
+        sourceAssets.length > 0 ||
+        archive.enabled ||
+        showcase.enabled ||
+        composition.enabled ||
+        shortForm.enabled ||
+        derivativeCampaign.enabled ||
+        (generation.enabled && generation.scenes.length !== 1)
+    );
+    const deliveryMode = requestedDeliveryMode || (
+        directSource || (
+            !requiresPremiere && generation.enabled && generation.provider === "heygen"
+        )
+            ? defaults.deliveryMode || "premiere"
+            : "premiere"
+    );
+    if (!DELIVERY_MODES.has(deliveryMode)) {
+        throw new Error(`production.delivery_mode must be one of: ${Array.from(DELIVERY_MODES).join(", ")}.`);
+    }
+
+    if (deliveryMode === "direct_heygen") {
+        if (!directSource && (!generation.enabled || generation.provider !== "heygen")) {
+            throw new Error(
+                "production.delivery_mode direct_heygen requires production.direct_source or generation.provider heygen."
+            );
+        }
+        if (production.render) {
+            throw new Error("production.render is not allowed with production.delivery_mode direct_heygen.");
+        }
+        if (production.edit_plan || sourceAssets.length > 0) {
+            throw new Error("Premiere edit plans and source assets are not allowed with production.delivery_mode direct_heygen.");
+        }
+        if (composition.enabled || showcase.enabled || shortForm.enabled) {
+            throw new Error(
+                "composition, showcase, and short_form must be disabled with production.delivery_mode direct_heygen."
+            );
+        }
+        if (archive.enabled) {
+            throw new Error("archive must be disabled with production.delivery_mode direct_heygen.");
+        }
+        if (!directSource && generation.scenes.length !== 1) {
+            throw new Error("Direct HeyGen delivery requires exactly one generated scene.");
+        }
+    }
     const render = production.render
         ? {
               ...production.render,
@@ -678,6 +768,8 @@ function normalizeJobSpec(
                 autonomy.final_publish_approval || (mode === "full" ? "automatic" : "required"),
         },
         production: {
+            deliveryMode,
+            directSource,
             projectName,
             sequenceName: production.sequence_name || "MASTER",
             sequencePresetPath: production.sequence_preset_path || null,
@@ -714,6 +806,7 @@ function normalizeJobSpec(
             framingSourceAudit: path.join(workspace, "qc", "heygen-source-framing.json"),
             framingAudit: path.join(workspace, "qc", "final-framing-audit.json"),
             shortFormManifest: path.join(workspace, "edit-plans", "short-form-manifest.json"),
+            directDeliveryReceipt: path.join(workspace, "qc", "direct-heygen-delivery-receipt.json"),
         },
     };
 }
@@ -727,6 +820,7 @@ function validateAssets(job) {
 
 module.exports = {
     normalizeComposition,
+    normalizeDirectSource,
     normalizeDerivativeCampaign,
     normalizeJobSpec,
     normalizeShortForm,

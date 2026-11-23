@@ -1,5 +1,23 @@
 # Premiere Video Factory
 
+## Direct HeyGen delivery
+
+New single-master HeyGen jobs default to `production.delivery_mode: direct_heygen`. Jobs that
+request composition, derivatives, source edits, archival, or an Adobe render remain on the
+Premiere lane. Direct delivery accepts one
+completed HeyGen master, verifies its video and audio streams, duration, aspect ratio,
+full-frame presentation, consent assertion, and SHA-256 lineage, then writes an approval-gated
+delivery receipt. It does not open or require Premiere Pro, Adobe Media Encoder, the Premiere
+proxy, or the UXP bridge.
+
+Use `production.direct_source` to register an already completed HeyGen Video Agent file. The
+source requires an absolute `local_path`, `provider: heygen-video-agent`, and
+`consent_asserted: true`. Generated direct jobs must contain exactly one HeyGen scene. Adobe
+editing remains available by explicitly setting `production.delivery_mode: premiere`.
+
+`GET /api/health` reports the direct and Premiere lanes separately. With direct delivery as the
+default, Adobe may be offline without degrading the active production lane.
+
 This is the durable single-node control plane for agent-driven Premiere production. Agents submit a structured job; the worker schedules it, prepares Premiere and its automation bridges, creates or versions the project, imports real assets, assembles the sequence, validates the timeline, saves, optionally renders through Adobe, and records every checkpoint.
 
 ## Quick start

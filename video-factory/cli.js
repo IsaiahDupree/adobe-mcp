@@ -38,6 +38,7 @@ const {
 } = require("./lib/short-form-campaign");
 const { AutonomousProductionCoordinator } = require("./lib/autonomous-production-coordinator");
 const { FramingTracker } = require("./lib/framing-tracker");
+const { DirectHeyGenDelivery } = require("./lib/direct-heygen-delivery");
 const { ReviseRunner } = require("./lib/revise-runner");
 const { ReviseStore } = require("./lib/revise-store");
 const { JobStore } = require("./lib/store");
@@ -108,6 +109,7 @@ function createRuntime() {
     const assetBroker = new ProductionAssetBroker(config);
     const localNarrationManager = new LocalNarrationManager(config);
     const framingTracker = new FramingTracker(config);
+    const directHeyGenDelivery = new DirectHeyGenDelivery(config, framingTracker);
     const runner = new VideoJobRunner(
         store,
         appManager,
@@ -125,7 +127,8 @@ function createRuntime() {
         new ResponsiveLayoutEngine(),
         new AnimationGrammarRenderer(config),
         new CompositionQa(),
-        framingTracker
+        framingTracker,
+        directHeyGenDelivery
     );
     const boardStore = new BoardStore(config);
     const compositionStore = new CompositionBatchStore(config, store);
@@ -222,6 +225,7 @@ function servicePlist() {
     <key>PATH</key><string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
     <key>VIDEO_FACTORY_HOME</key><string>${escape(config.FACTORY_HOME)}</string>
     <key>VIDEO_FACTORY_PORT</key><string>${config.FACTORY_PORT}</string>
+    <key>VIDEO_FACTORY_DEFAULT_DELIVERY_MODE</key><string>${escape(config.DEFAULT_DELIVERY_MODE)}</string>
     <key>PROXY_URL</key><string>${escape(config.PROXY_URL)}</string>
     <key>VIDEO_FACTORY_PASSPORT_MOUNT</key><string>${escape(config.PASSPORT_MOUNT)}</string>
     <key>VIDEO_FACTORY_ARCHIVE_ROOT</key><string>${escape(config.PASSPORT_ARCHIVE_ROOT)}</string>

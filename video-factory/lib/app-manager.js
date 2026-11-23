@@ -89,6 +89,7 @@ class ApplicationManager {
     }
 
     async health() {
+        const directDeliveryDefault = this.config.DEFAULT_DELIVERY_MODE === "direct_heygen";
         const [
             proxy,
             premiereRunning,
@@ -112,7 +113,7 @@ class ApplicationManager {
         let responsive = false;
         let project = null;
         let cepConnected = false;
-        if (proxy && proxy.clients && proxy.clients.premiere > 0) {
+        if (!directDeliveryDefault && proxy && proxy.clients && proxy.clients.premiere > 0) {
             try {
                 const snapshot = await this.adapter.inspectProject();
                 responsive = true;
@@ -121,7 +122,7 @@ class ApplicationManager {
                 responsive = false;
             }
         }
-        if (!responsive && this.cepAdapter) {
+        if (!directDeliveryDefault && !responsive && this.cepAdapter) {
             try {
                 const probe = await this.cepAdapter.probe();
                 responsive = true;
@@ -135,12 +136,30 @@ class ApplicationManager {
         const bridgeConnected = Boolean(
             proxy && proxy.clients && Number(proxy.clients.premiere || 0) > 0
         );
+        const premiereReady = Boolean(
+            premiereRunning && (bridgeConnected || cepConnected) && responsive
+        );
+        const directHeyGenReady = Boolean(
+            ffprobe && diskFreeGb !== null && diskFreeGb >= this.config.MIN_DISK_FREE_GB
+        );
         return {
             node: os.hostname(),
-            status:
-                premiereRunning && (bridgeConnected || cepConnected) && responsive
-                    ? "healthy"
-                    : "degraded",
+            status: directDeliveryDefault
+                ? (directHeyGenReady ? "healthy" : "degraded")
+                : (premiereReady ? "healthy" : "degraded"),
+            defaultDeliveryMode: this.config.DEFAULT_DELIVERY_MODE,
+            lanes: {
+                directHeygen: {
+                    status: directHeyGenReady ? "healthy" : "degraded",
+                    requires: ["ffprobe", "disk-headroom", "completed-heygen-output"],
+                    bypasses: ["adobe-premiere-pro", "adobe-media-encoder", "premiere-uxp-bridge"],
+                },
+                premiere: {
+                    status: premiereReady ? "healthy" : "degraded",
+                    optional: directDeliveryDefault,
+                    deepReadinessChecked: !directDeliveryDefault,
+                },
+            },
             premiere: {
                 installed: fs.existsSync(this.config.PREMIERE_APP_PATH),
                 running: premiereRunning,
@@ -507,6 +526,32 @@ class ApplicationManager {
             }
             throw error;
         }
+    }
+
+    async ensureDirectReady() {
+        const [diskFreeGb, ffprobe] = await Promise.all([
+            this.diskFreeGb(),
+            this.toolVersion(this.config.FFPROBE_BIN || "ffprobe", ["-version"]),
+        ]);
+        if (diskFreeGb === null || diskFreeGb < this.config.MIN_DISK_FREE_GB) {
+            throw new AppReadinessError(
+                `Direct HeyGen delivery requires ${this.config.MIN_DISK_FREE_GB} GB of free disk; ${diskFreeGb ?? "unknown"} GB is available.`
+            );
+        }
+        if (!ffprobe) {
+            throw new AppReadinessError("Direct HeyGen delivery requires ffprobe.");
+        }
+        return {
+            status: "healthy",
+            deliveryMode: "direct_heygen",
+            diskFreeGb,
+            tools: { ffprobe },
+            bypassedDependencies: [
+                "adobe-premiere-pro",
+                "adobe-media-encoder",
+                "premiere-uxp-bridge",
+            ],
+        };
     }
 
     async openProject(filePath) {

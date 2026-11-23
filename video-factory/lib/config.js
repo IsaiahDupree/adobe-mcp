@@ -41,6 +41,8 @@ module.exports = {
     BOARDS_DIR: path.join(FACTORY_HOME, "boards"),
     PROXY_URL: process.env.PROXY_URL || "http://127.0.0.1:3031",
     FACTORY_PORT: Number(process.env.VIDEO_FACTORY_PORT || 3032),
+    DEFAULT_DELIVERY_MODE:
+        process.env.VIDEO_FACTORY_DEFAULT_DELIVERY_MODE || "direct_heygen",
     PREMIERE_APP_NAME: process.env.PREMIERE_APP_NAME || "Adobe Premiere Pro 2026",
     PREMIERE_APP_PATH:
         process.env.PREMIERE_APP_PATH ||

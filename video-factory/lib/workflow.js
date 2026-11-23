@@ -118,7 +118,8 @@ class VideoJobRunner {
         responsiveLayoutEngine = null,
         animationGrammarRenderer = null,
         compositionQa = null,
-        framingTracker = null
+        framingTracker = null,
+        directHeyGenDelivery = null
     ) {
         this.store = store;
         this.appManager = appManager;
@@ -137,6 +138,7 @@ class VideoJobRunner {
         this.animationGrammarRenderer = animationGrammarRenderer;
         this.compositionQa = compositionQa;
         this.framingTracker = framingTracker;
+        this.directHeyGenDelivery = directHeyGenDelivery;
         this.activeJobId = null;
     }
 
@@ -995,6 +997,65 @@ class VideoJobRunner {
         return "FAILED_RECOVERABLE";
     }
 
+    async finalizeDirectHeyGen(id, generation, framingSourceAudit) {
+        await this.executeStage(
+            id,
+            "direct-readiness",
+            "PREPARING_DIRECT_DELIVERY",
+            () => this.appManager.ensureDirectReady(),
+            { always: true }
+        );
+        const receipt = await this.executeStage(
+            id,
+            "direct-delivery-qc",
+            "PACKAGING_DIRECT_HEYGEN",
+            (current) => {
+                if (!this.directHeyGenDelivery) {
+                    throw new Error("Direct HeyGen delivery is not configured.");
+                }
+                return this.directHeyGenDelivery.package(current, generation);
+            }
+        );
+        const job = this.store.get(id);
+        const approvalRequired =
+            job.autonomy.rough_cut_approval === "required" ||
+            job.autonomy.final_publish_approval === "required";
+        job.status = approvalRequired ? "APPROVAL_REQUIRED" : "COMPLETE";
+        job.completedAt = approvalRequired ? null : nowIso();
+        job.lock = null;
+        job.error = null;
+        job.result = {
+            deliveryMode: "direct_heygen",
+            projectPath: null,
+            sequenceName: null,
+            render: {
+                outputFile: receipt.output.outputFile,
+                bytes: receipt.output.bytes,
+                durationSeconds: receipt.output.durationSeconds,
+                streams: receipt.output.streams,
+                sha256: receipt.output.sha256,
+            },
+            structuralQcPassed: receipt.qc.passed,
+            archive: null,
+            generation,
+            retention: null,
+            framing: {
+                source: framingSourceAudit,
+                final: receipt.qc.framing,
+            },
+            composition: null,
+            shortForm: null,
+            directDelivery: receipt,
+        };
+        this.store.save(job);
+        this.store.addEvent(
+            id,
+            approvalRequired ? "DIRECT_HEYGEN_APPROVAL_REQUESTED" : "DIRECT_HEYGEN_COMPLETED",
+            { receiptPath: job.outputPaths.directDeliveryReceipt, result: job.result }
+        );
+        return this.store.get(id);
+    }
+
     async run(id) {
         if (this.activeJobId && this.activeJobId !== id) {
             throw new Error(`Production node is busy with ${this.activeJobId}.`);
@@ -1060,6 +1121,9 @@ class VideoJobRunner {
                         }
                     );
                 }
+                if (this.store.get(id).production.deliveryMode === "direct_heygen") {
+                    return this.finalizeDirectHeyGen(id, generation, framingSourceAudit);
+                }
                 if (this.store.get(id).composition?.enabled) {
                     subjectTrack = await this.executeStage(
                         id,
@@ -1116,6 +1180,9 @@ class VideoJobRunner {
                     );
                 }
                 this.applyGeneratedAssets(id, retention);
+            }
+            if (this.store.get(id).production.deliveryMode === "direct_heygen") {
+                return this.finalizeDirectHeyGen(id, generation, framingSourceAudit);
             }
             if ((this.store.get(id).showcase?.assetRequests || []).length > 0) {
                 const assetRegistry = await this.executeStage(
